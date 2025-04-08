@@ -72,7 +72,7 @@ lncRNA_summary <- analyze_lncRNA_communities(annotated_communities)
 
 ------------------------------------------------------------------------
 
-## 🧪 Core Functionalities
+## Core Functionalities
 
 | Function                             | Purpose                                            |
 |--------------------------------------|----------------------------------------------------|
@@ -88,7 +88,7 @@ lncRNA_summary <- analyze_lncRNA_communities(annotated_communities)
 
 ------------------------------------------------------------------------
 
-## 🧬 Use Case
+## Use Case
 
 This package is ideal for researchers interested in:
 
@@ -108,7 +108,7 @@ For academic or research use. Please cite appropriately.
 
 ------------------------------------------------------------------------
 
-## 🤝 Feedback and Contributions
+## Feedback and Contributions
 
 Contributions are welcome! Please submit issues or pull requests on
 GitHub.
