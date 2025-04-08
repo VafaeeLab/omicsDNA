@@ -31,8 +31,8 @@ install.packages("devtools")
 # Install from a local directory
 devtools::install("path/to/omicsDNA")
 
-# Or, after publishing to GitHub:
-devtools::install_github("yourusername/omicsDNA")
+# Install via GitHub:
+devtools::install_github("VafaeeLab/omicsDNA")
 ```
 
 ## Quick Start

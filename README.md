@@ -1,5 +1,4 @@
 
-
 # omicsDNA <img src="man/figures/logo.png" align="right" height="120"/>
 
 `omicsDNA` is an R package designed for multilayer network analysis of
@@ -37,8 +36,8 @@ install.packages("devtools")
 # Install from a local directory
 devtools::install("path/to/omicsDNA")
 
-# Or, after publishing to GitHub:
-devtools::install_github("yourusername/omicsDNA")
+# Install via GitHub:
+devtools::install_github("VafaeeLab/omicsDNA")
 ```
 
 ## Quick Start
@@ -117,5 +116,3 @@ GitHub.
 \`\`\`
 
 ------------------------------------------------------------------------
-
-# omicsDNA
