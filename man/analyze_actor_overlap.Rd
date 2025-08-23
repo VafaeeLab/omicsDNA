@@ -2,33 +2,85 @@
 % Please edit documentation in R/analyze_actor_overlap.R
 \name{analyze_actor_overlap}
 \alias{analyze_actor_overlap}
-\title{Analyze Actor (Gene) Overlap Across Network Layers}
+\title{Actor overlap across layers via Jaccard similarity (with heatmap):}
 \usage{
-analyze_actor_overlap(net)
+analyze_actor_overlap(
+  net,
+  layers = NULL,
+  palette = c("white", "steelblue"),
+  reorder = FALSE,
+  print_plot = TRUE
+)
 }
 \arguments{
-\item{net}{A multilayer network object of class \code{ml.network}, typically
-created using create_multilayer_network().}
+\item{net}{A multilayer network object compatible with \code{multinet}, i.e., one
+that responds to \code{multinet::layers_ml()} and \code{multinet::actors_ml()}.}
+
+\item{layers}{Optional character vector naming the layers to include. Default:
+all layers returned by \code{multinet::layers_ml(net)}.}
+
+\item{palette}{Character vector of \strong{two or more} colours for the heatmap
+gradient (passed to \code{scale_fill_gradientn(colours = ...)}). Default
+\code{c("white", "steelblue")}.}
+
+\item{reorder}{Logical; if \code{TRUE}, reorder rows/columns by hierarchical
+clustering on \code{1 - Jaccard}. Default \code{FALSE}.}
+
+\item{print_plot}{Logical; if \code{TRUE}, print the heatmap to the active device.
+Default \code{TRUE}.}
 }
 \value{
-A symmetric matrix containing Jaccard similarity scores for actor
-(gene) overlap between each pair of layers.
+A symmetric numeric \strong{matrix} of Jaccard indices in \verb{[0, 1]} with
+row/column names equal to the layer names. The returned object carries an
+attribute \code{"plot"} containing the \code{ggplot} heatmap object (invisibly
+printed when \code{print_plot = TRUE}).
 }
 \description{
-This function calculates the Jaccard similarity index for actors (genes)
-between all pairs of layers in a multilayer network using the
-\code{multinet} package. The results are visualized as a heatmap.
+Quantify how similar layers are in terms of their \strong{actor (gene) sets} by
+computing the pairwise \strong{Jaccard index} for all layer pairs, and (optionally)
+visualise the resulting similarity matrix as a heatmap.
 }
 \details{
+\strong{Computation}
 \itemize{
-\item Computes pairwise Jaccard indices of shared actors across layers.
-\item Converts the similarity matrix to long format.
-\item Plots the result as a heatmap using \code{ggplot2}.
+\item If available in your \code{multinet} build, the function uses
+\code{multinet::layer_comparison_ml(..., method = "jaccard.actors")} to obtain a
+Jaccard matrix directly and converts it to base R \code{matrix} form.
+\item Otherwise, it \strong{falls back} to a manual computation: for each layer, it
+extracts the actor set via \code{multinet::actors_ml(net, layers = L)} (accepting
+either a character vector or a data frame with an \code{"actor"} column), then
+for each pair \verb{(A, B)} computes
+\deqn{J(A,B) = |A \cap B| \, / \, |A \cup B|.}
+The diagonal is set to 1. If both sets are empty, the corresponding entry is
+left as \code{NA} (rendered in a pale colour on the heatmap).
+}
+
+\strong{Layer selection and reordering}
+\itemize{
+\item If \code{layers} is \code{NULL}, all layers from \code{multinet::layers_ml(net)} are used.
+If a subset is supplied, it is intersected with available layers.
+\item When \code{reorder = TRUE}, the matrix is re‑indexed by hierarchical clustering
+on a dissimilarity of \code{1 - Jaccard} (average linkage). For the sole purpose
+of computing the dendrogram, \code{NA} entries are temporarily treated as \code{0}
+(i.e., no overlap).
+}
+
+\strong{Heatmap}
+\itemize{
+\item A tidy long table is produced from the Jaccard matrix and drawn with
+\code{ggplot2::geom_tile()}. The fill scale spans \verb{[0, 1]}, \code{NA} cells are shown
+in a light grey, and the plot is square (\code{coord_equal}). Colours can be
+customised via \code{palette} (passed to \code{scale_fill_gradientn()}).
 }
 }
 \examples{
 \dontrun{
-actor_jaccard_matrix <- analyze_actor_overlap(net)
+# Compute and visualise actor overlap across all layers
+A <- analyze_actor_overlap(net, reorder = TRUE)
+attr(A, "plot")   # access the ggplot object programmatically
 }
 
+}
+\seealso{
+\code{\link{analyze_edge_overlap}} for edge‑set overlap across layers.
 }
