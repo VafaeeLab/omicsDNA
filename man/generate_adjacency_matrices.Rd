@@ -12,7 +12,7 @@ generate_adjacency_matrices(
   expression_mat,
   metaData,
   genesInfo,
-  DEGs
+  TargetGenes
 )
 }
 \arguments{
@@ -30,7 +30,7 @@ generate_adjacency_matrices(
 
 \item{genesInfo}{A data frame containing information about each gene, with at least two columns; \code{"GeneName"} and \code{"GeneType"}.}
 
-\item{DEGs}{A data frame of differentially expressed genes with at least a \code{"DEgenes"} column.}
+\item{TargetGenes}{A data frame of differentially expressed genes with at least a \code{"DEgenes"} column.}
 }
 \value{
 A list of length \code{num_repetitions}, where each element is a list of adjacency matrices (one per age group).
@@ -40,7 +40,7 @@ Each adjacency matrix is a weighted, symmetric matrix of gene-gene correlations 
 This function creates weighted adjacency matrices for each group
 across multiple repetitions by computing pairwise gene-gene correlations
 from gene expression data. It filters out low-correlation values based on
-a specified threshold.
+a specified threshold. Moreover, it is using goodSamplesGenes method to select good actors.
 }
 \examples{
 \dontrun{
@@ -48,7 +48,8 @@ adjacency_matrices <- generate_adjacency_matrices(
   expression_mat = my_expression_matrix,
   metaData = my_meta,
   genesInfo = my_genes_info,
-  DEGs = my_deg_list,
+  TargetGenes = my_deg_list,
+  correlation = "spearman",
   threshold = 0.7,
   num_repetitions = 10,
   num_samples = 5

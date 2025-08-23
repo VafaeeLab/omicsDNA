@@ -46,13 +46,14 @@ adj_list <- generate_adjacency_matrices(
   expression_mat = expr_matrix,
   metaData = sample_metadata,
   genesInfo = gene_annotation,
+  correlation = "spearman",
   DEGs = deg_table,
   num_repetitions = 10,
   num_samples = 30
 )
 
 # Step 2: Build multilayer network
-net <- create_multilayer_network(adj_list)
+net <- build_DNA(adj_list)
 
 # Step 3: Add metadata (e.g., gene type) as actor attributes
 net <- add_network_attributes(net, genesInfo = gene_annotation)
@@ -73,7 +74,7 @@ lncRNA_summary <- analyze_lncRNA_communities(annotated_communities)
 | Function                          | Purpose |
 |----------------------------------|---------|
 | `generate_adjacency_matrices()`  | Create condition-specific adjacency matrices |
-| `create_multilayer_network()`    | Build multilayer gene network from adjacency lists |
+| `build_DNA()`    | Build multilayer gene network from adjacency lists |
 | `add_network_attributes()`       | Annotate actors with gene metadata |
 | `plot_filtered_ABACUS_network()` | Detect & visualize communities |
 | `analyze_actor_overlap()`        | Assess gene overlap between layers |
