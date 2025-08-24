@@ -1,9 +1,3 @@
-````markdown
----
-output: github_document
-editor_options:
-  chunk_output_type: inline
----
 
 # omicsDNA <img src="man/figures/logo.png" align="right" height="120"/>
 
