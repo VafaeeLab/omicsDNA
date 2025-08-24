@@ -1,4 +1,4 @@
-#' Plot differences between two layers on a shared layout
+#' Plot differences between two layers on a shared layout:
 #'
 #' Shows edges present only in layer A (red), only in layer B (green),
 #' and edges common to both (grey). Positions are computed on the union graph.

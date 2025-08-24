@@ -1,4 +1,4 @@
-#' Relate community counts to sample sizes across layers (with a quick scatter)
+#' Relate community counts to sample sizes across layers (with a quick scatter):
 #'
 #' @description
 #' For each layer, count the number of **unique communities** observed in a

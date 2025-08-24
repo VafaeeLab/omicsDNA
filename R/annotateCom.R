@@ -22,7 +22,7 @@
 # 12 - annotateCom: shorter name, comprehensive docs, robust saving
 # ---------------------------------------------------------------------------
 
-#' Annotate multilayer community rows with a node attribute (pure data-frame join)
+#' Annotate multilayer community rows with a node attribute (pure data-frame join):
 #'
 #' @description
 #' Add a node attribute (e.g., a gene annotation such as `"GeneType"`) to a

@@ -1,3 +1,189 @@
+#' Animate a multilayer network across layers using \pkg{ndtv}:
+#'
+#' @description
+#' \code{animate_multiNet()} converts a multilayer network (built with
+#' \pkg{multinet}) into a time‑aware \code{networkDynamic} object and renders an
+#' interactive HTML animation with \pkg{ndtv}. Each **layer** is treated as a
+#' discrete **time slice**; nodes persist across slices (isolates are kept) and
+#' edges are taken from the corresponding layer only. Optionally, the function
+#' colours vertices by community membership per slice (e.g., the output of
+#' \code{detectCom()}), so you can watch communities evolve across age groups
+#' or conditions.
+#'
+#' The conversion is robust to minor schema differences in \code{multinet} edge
+#' tables (it auto‑detects endpoint and layer columns), and it writes a
+#' timestamped HTML file under your project results folder for easy sharing.
+#'
+#' @details
+#' **Workflow / What the function does**
+#'
+#' 1. **Layer order.** Retrieves the available layers via
+#'    \code{multinet::layers_ml(net)} and optionally reorders/subsets them using
+#'    \code{layer_order}. If not supplied, all layers are used in their original
+#'    order.
+#' 2. **Edge normalization.** Pulls a single global edge table via
+#'    \code{multinet::edges_ml(net)} and harmonizes columns to one
+#'    \code{layer} field while keeping **intra‑layer** edges only
+#'    (if \code{from_layer}/\code{to_layer} exist, they are filtered to
+#'    \code{from_layer == to_layer}).
+#' 3. **Vertex universe.** Creates the union of all actors observed in the
+#'    selected layers (falling back to \code{multinet::actors_ml(net)} if
+#'    necessary) and constructs one static \pkg{network} object per layer with
+#'    that common vertex set (so isolates are preserved).
+#' 4. **Time mapping.** Wraps the list of per‑layer networks into a single
+#'    \code{networkDynamic} object, assigning onsets/termini for each slice
+#'    (layer) based on \code{slice.par}. With \code{K} layers, the default
+#'    slices are \eqn{[0,1)}, \eqn{[1,2)}, …, \eqn{[K-1,K)}.
+#' 5. **Optional colours by community.** If a \code{communities} data frame is
+#'    provided (columns \code{actor}, \code{layer}, and \code{com} or \code{cid}),
+#'    the function assigns a per‑slice dynamic vertex attribute
+#'    \code{"vertex.col"} so that \code{render.d3movie()} automatically colours
+#'    nodes by community on each layer.
+#' 6. **Layout and rendering.** Computes an animation layout with
+#'    \code{ndtv::compute.animation()} (default Kamada–Kawai) and writes an
+#'    interactive HTML animation via \code{ndtv::render.d3movie()}.
+#'
+#' **Why this design?**
+#'
+#' - Treating layers as time slices is a natural way to visualize temporal or
+#'   age‑stratified multilayer graphs without requiring continuous timestamps.
+#' - Keeping isolates ensures that vertices can reappear after disappearing in
+#'   intermediate slices, making trajectories easy to follow.
+#' - Storing colours in the dynamic attribute \code{"vertex.col"} exploits
+#'   \pkg{ndtv}'s native mechanism for per‑slice styling.
+#'
+#' **Common interpretation**
+#'
+#' - Clusters of nodes that remain close across slices indicate communities that
+#'   persist across conditions/ages. Sudden movements or fragmentations suggest
+#'   community reorganization. Colour stability (when \code{communities} are
+#'   supplied) helps track membership changes.
+#'
+#' **Dependencies**
+#'
+#' Requires \pkg{ndtv}, \pkg{networkDynamic}, and \pkg{network}; \pkg{RColorBrewer}
+#' is optional (used for palettes; otherwise a perceptually uniform HCL palette
+#' is generated).
+#'
+#' @param net A multilayer network object compatible with
+#'   \code{multinet::layers_ml()}, \code{multinet::edges_ml()}, and (optionally)
+#'   \code{multinet::actors_ml()}.
+#' @param communities Optional \code{data.frame} with per‑slice community labels
+#'   used for vertex colours. Must contain columns:
+#'   \itemize{
+#'     \item \code{actor}: vertex identifiers;
+#'     \item \code{layer}: layer name matching those in \code{net};
+#'     \item \code{com} or \code{cid}: community label. If only \code{cid} is
+#'           present, it is converted to \code{com = paste0("C", cid)}.
+#'   }
+#'   Actor IDs are matched robustly using \code{actor_normalize}.
+#' @param layer_order Optional character vector of layer names to use and their
+#'   order in the animation. Defaults to all layers in the order returned by
+#'   \code{layers_ml(net)}.
+#' @param layout Character; animation layout mode passed to
+#'   \code{ndtv::compute.animation()}. One of \code{"kamadakawai"}, \code{"mds"},
+#'   \code{"force"}, \code{"fr"}, or \code{"circle"}. The synonyms \code{"force"}
+#'   and \code{"fr"} are mapped internally to \code{"kamadakawai"}. Minor typos
+#'   are tolerated and corrected when possible.
+#' @param slice.par A named list controlling time slicing (mirrors \pkg{ndtv}):
+#'   \describe{
+#'     \item{\code{start}}{Numeric start time for the first slice (default 0).}
+#'     \item{\code{end}}{Optional numeric end time. If \code{NULL} (default), it
+#'       is set to \code{start + (K - 1) * interval}, where \code{K} is the
+#'       number of layers.}
+#'     \item{\code{interval}}{Width between successive slice onsets (default 1).}
+#'     \item{\code{aggregate.dur}}{Duration of each slice (default 1).}
+#'     \item{\code{rule}}{Aggregation rule for edges within a slice (default
+#'       \code{"any"}).}
+#'   }
+#' @param directed Logical; whether to build directed \pkg{network} objects for
+#'   each slice (default \code{FALSE}). Note that most visual narratives benefit
+#'   from undirected layouts even if the underlying graph is directed.
+#' @param actor_normalize Character vector of normalization steps used to match
+#'   \code{communities$actor} to network vertex names. Defaults to
+#'   \code{c("strip_version","trim","tolower")}. Supported steps are:
+#'   \code{"strip_version"}, \code{"trim"}, \code{"tolower"}, \code{"toupper"},
+#'   \code{"rm_dash"}, \code{"rm_punct"}, \code{"alnum"}.
+#' @param results_dir Output directory for the HTML file. Defaults to
+#'   \code{getOption("mlnet.results_dir","omicsDNA_results")}.
+#' @param html_file Optional filename for the HTML animation. If relative, it is
+#'   created under \code{results_dir}. If \code{NULL}, a timestamped name is
+#'   generated (e.g., \code{"multiNet_animation_YYYY-mm-dd_HHMMSS.html"}).
+#' @param vertex.cex Numeric vertex size passed to \code{render.d3movie()}.
+#'   Default \code{0.9}.
+#' @param displaylabels Logical; show vertex labels in the animation
+#'   (\code{TRUE} by default). For large graphs, consider \code{FALSE}.
+#' @param edge.col Edge colour (can include alpha), e.g. \code{"#55555555"}.
+#' @param bg Background colour for the movie device (default \code{"white"}).
+#' @param launchBrowser Logical; open the resulting HTML file in the browser
+#'   after writing (default \code{TRUE}).
+#' @param seed Optional integer seed for reproducible layouts.
+#' @param verbose Logical; print progress messages (default \code{TRUE}).
+#'
+#' @return
+#' Invisibly returns a list with:
+#' \itemize{
+#'   \item \code{nd}: the \code{networkDynamic} object containing all slices;
+#'   \item \code{layers}: the character vector of layers used (in order);
+#'   \item \code{html_file}: the absolute path to the saved animation;
+#'   \item \code{anim}: the result of \code{ndtv::compute.animation()}.
+#' }
+#' The function also writes an interactive HTML file to \code{results_dir}.
+#'
+#' @section Interpretation guide:
+#' \itemize{
+#'   \item \emph{Stable positions and colours} across adjacent slices suggest
+#'         persistent communities or roles.
+#'   \item \emph{Nodes changing colour} (with \code{communities} supplied)
+#'         indicate community reassignments; cohesive colour blocks splitting or
+#'         merging reflect structural transitions.
+#'   \item \emph{Isolates appearing/disappearing} signal entry/exit of actors in
+#'         specific layers rather than total removal from the study.
+#' }
+#'
+#' @section Troubleshooting:
+#' \itemize{
+#'   \item \strong{“invalid color name 'ndtv_col'”} — occurs when colours are not
+#'         stored under the dynamic attribute \code{"vertex.col"} that
+#'         \pkg{ndtv} expects. This function writes to \code{"vertex.col"}
+#'         internally to avoid that error.
+#'   \item \strong{No layers found} — ensure \code{net} responds to
+#'         \code{multinet::layers_ml()} and that \code{layer_order}, if supplied,
+#'         matches existing layer names exactly (after normalization).
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' ## Minimal animation (no colouring), all layers in default order
+#' anim <- animate_multiNet(net)
+#'
+#' ## With per-slice colours from community assignments (detectCom output)
+#' anim <- animate_multiNet(
+#'   net,
+#'   communities = comm,                   # has actor, layer, com (or cid)
+#'   layout      = "kamadakawai",
+#'   slice.par   = list(start = 0, interval = 1, aggregate.dur = 1),
+#'   seed        = 1
+#' )
+#'
+#' ## Restrict to a subset / custom order of layers and save with a custom name
+#' anim <- animate_multiNet(
+#'   net,
+#'   layer_order = c("E1","E2","M1","M2"),
+#'   html_file   = "my_movie.html",
+#'   displaylabels = FALSE
+#' )
+#' }
+#'
+#' @seealso
+#' \code{\link[ndtv]{compute.animation}}, \code{\link[ndtv]{render.d3movie}},
+#' \code{\link[networkDynamic]{networkDynamic}}, and the pipeline functions
+#' \code{detectCom()} (community detection) and \code{plotCom()} (static plots).
+#'
+#' @importFrom ndtv compute.animation render.d3movie
+#' @importFrom network network.initialize set.vertex.attribute add.edges
+#' @importFrom networkDynamic networkDynamic
+#' @export
 animate_multiNet <- function(
     net,
     communities     = NULL,

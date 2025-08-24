@@ -1,4 +1,4 @@
-#' Filmstrip of multilayer snapshots (shows in RStudio + saves to file)
+#' Filmstrip of multilayer snapshots (shows in RStudio + saves to file):
 #'
 #' Builds one `network` per layer from your multinet object, computes a single
 #' stable layout from the union graph (so positions are consistent across panels),

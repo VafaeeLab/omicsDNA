@@ -1,4 +1,4 @@
-#' Detect communities on a multilayer network via a layer‑collapsed supra‑graph
+#' Detect communities on a multilayer network via a layer‑collapsed supra‑graph:
 #'
 #' @description
 #' This function performs community detection on a **single, undirected supra‑graph**

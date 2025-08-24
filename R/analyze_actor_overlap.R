@@ -1,4 +1,4 @@
-#' Actor (gene) overlap across layers via Jaccard similarity (with heatmap)
+#' Actor overlap across layers via Jaccard similarity (with heatmap):
 #'
 #' @description
 #' Quantify how similar layers are in terms of their **actor (gene) sets** by

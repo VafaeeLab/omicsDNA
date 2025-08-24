@@ -1,4 +1,4 @@
-#' Edge/Vertex Activity Timelines (Gantt-style) for multilayer networks
+#' Edge/Vertex Activity Timelines (Gantt-style) for multilayer networks:
 #'
 #' @description
 #' Build a temporal network from a multilayer \pkg{multinet} object and plot

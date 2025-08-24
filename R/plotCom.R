@@ -1,4 +1,4 @@
-#' Plot multilayer communities with an interactive preview and file exports
+#' Plot multilayer communities with an interactive preview and file exports:
 #'
 #' @description
 #' This routine visualises community assignments on a multilayer network and

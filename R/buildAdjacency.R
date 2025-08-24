@@ -1,4 +1,4 @@
-#' Build correlation‑filtered adjacency matrices by group
+#' Build correlation‑filtered adjacency matrices by group:
 #'
 #' Construct one or more feature‑by‑feature networks for each group of samples
 #' by correlating feature profiles across samples in that group and keeping only

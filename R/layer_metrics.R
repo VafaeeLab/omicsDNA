@@ -1,5 +1,5 @@
 
-#' Compute per‑layer network and node metrics, and save results to a run folder
+#' Compute per‑layer network and node metrics, and save results to a run folder:
 #'
 #' @description
 #' Builds an \pkg{igraph} graph for each layer of a \pkg{multinet} object,

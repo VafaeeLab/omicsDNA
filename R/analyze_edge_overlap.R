@@ -1,4 +1,4 @@
-#' Edge overlap across layers via Jaccard similarity (with heatmap)
+#' Edge overlap across layers via Jaccard similarity (with heatmap):
 #'
 #' @description
 #' Quantify how similar layers are in terms of their **undirected edge sets** by

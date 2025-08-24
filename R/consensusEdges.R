@@ -1,4 +1,4 @@
-#' Consensus edges across repetitions (works with tidy data, edge lists, or adjacencies)
+#' Consensus edges across repetitions (works with tidy data, edge lists, or adjacencies):
 #'
 #' Identify edges that reproducibly occur across repeated networks within each
 #' layer (e.g., age group, condition), then summarise their weights across

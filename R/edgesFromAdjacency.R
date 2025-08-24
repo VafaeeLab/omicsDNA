@@ -1,4 +1,4 @@
-#' Turn adjacency matrices (single or nested) into tidy edge lists
+#' Turn adjacency matrices (single or nested) into tidy edge lists:
 #'
 #' Convert one adjacency matrix, a list of matrices, or a nested list of matrices
 #' into data frame(s) of edges with columns `from`, `to`, and `weight`. Works with

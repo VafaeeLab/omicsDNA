@@ -1,4 +1,4 @@
-#' Animate multilayer networks to GIF/MP4 (one layer = one frame)
+#' Animate multilayer networks to GIF/MP4 (one layer = one frame):
 #'
 #' @description
 #' Builds a consistent 2D layout from the union of all layers (so node positions

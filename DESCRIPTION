@@ -15,4 +15,11 @@ Imports:
     multinet,
     igraph,
     ggplot2,
-    WGCNA
+    WGCNA,
+    ndtv,
+    network,
+    networkDynamic,
+    rlang,
+    stats,
+    utils,
+    methods

@@ -1,4 +1,4 @@
-#' Attach actor- and edge-level attributes to a multilayer network, with coverage reporting
+#' Attach actor- and edge-level attributes to a multilayer network, with coverage reporting:
 #'
 #' @description
 #' This procedure enriches an existing `multinet::ml.network` with **actor** (node)
