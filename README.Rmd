@@ -120,7 +120,7 @@ filmstrip_multiNet(net, communities = comm, layout = "kamadakawai",
 
 ---
 
-## 🧪 Methods (concise)
+## 🧪 Methods
 
 * **Correlation networks (per layer):** Pairwise correlations within group; keep edges if `|r| ≥ corr_threshold` & `p ≤ pval_cutoff`. With `resample=TRUE`, repeat on balanced draws and later use **consensus**.
 * **Consensus edges:** Retain edges present in ≥ `prop_present` of repeats; summarise weights.
