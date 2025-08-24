@@ -102,7 +102,7 @@
 #' If `write_csv = TRUE`, the absolute file path is attached as `attr(x, "file")`.
 #'
 #' @examples
-#' \dontrun{
+#' \{
 #' # 1) lncRNAs across all layers, undirected (wide) + save under results dir
 #' lnc_list  <- unique(subset(comm_annot, GeneType == "lncRNA")$actor)
 #' all_layers <- multinet::layers_ml(net)
