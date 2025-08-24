@@ -1,257 +1,288 @@
 
 ---
 
-output: github\_document
-editor\_options:
-chunk\_output\_type: inline
-
+```yaml
 ---
+output: github_document
+---
+```
 
 # omicsDNA <img src="man/figures/logo.png" align="right" height="120"/>
 
-`omicsDNA` is an R package for **multilayer network analysis** of grouped/conditioned data (e.g., age groups, disease stages). It helps you **build per‑group networks**, **stabilise** edges via resampling, **assemble** a multilayer object, **detect communities**, **quantify structure**, and **visualise changes**—with reproducible, timestamped outputs for easy reporting. Although we demonstrate with gene expression, the framework is **domain‑agnostic** (“features” can be genes, proteins, sensors, survey items, etc.).&#x20;
+**omicsDNA** is an R package for constructing, stabilizing, and interpreting **multilayer networks** from grouped data (e.g., gene expression by age group or condition). It supports **robust edge selection**, **community detection on a supra‑graph**, **layer‑wise metrics**, **overlap analysis**, **feature‑aware summaries**, and **dynamic visualizations** (filmstrips, HTML animations, GIFs, timelines).
+
+> Although examples refer to omics, the design is **domain‑agnostic**: “features” can be genes, proteins, survey items, sensors, or behaviors.
 
 ---
 
-## 🔍 What does `omicsDNA` do?
+## 🔍 What does omicsDNA do?
 
-* Build **correlation networks per layer** with optional resampling/consensus.
-* Assemble a **multilayer network** and add node/edge annotations.
-* Detect **communities/modules** on a supra‑graph; map them back to layers.
-* Quantify **layer‑wise structure** and **cross‑layer overlaps** (actors & edges).
-* Summarise **feature classes** within/between communities.
-* Produce **static and dynamic** visualisations (filmstrip, interactive animation).&#x20;
+* Builds **per‑group adjacency matrices** and converts them to **edge lists**.
+* Stabilizes edges via **resampling + consensus**.
+* Assembles a **multilayer** network object and **annotates** nodes/edges.
+* Detects **communities** (Louvain/Infomap/clique; ABACUS if available).
+* Quantifies structure with **layer‑wise node & graph metrics**.
+* Compares layers via **actor/edge overlaps (Jaccard)** and **difference plots**.
+* Summarizes **feature classes** (e.g., lncRNA/TF) across modules and layers.
+* Visualizes dynamics as **filmstrips**, **HTML animations**, **GIFs**, and **activity timelines**.
 
 ---
 
 ## 📦 Installation
 
 ```r
-# Install from GitHub (development version)
+# Install devtools if needed
 install.packages("devtools")
-devtools::install_github("VafaeeLab/omicsDNA")
 
-# Optional: set a project-wide results folder once per session
-options(mlnet.results_dir = "~/omicsDNA_results")
+# Install from GitHub (main repo)
+devtools::install_github("VafaeeLab/omicsDNA")
+# or from your fork (example)
+# devtools::install_github("mehranpiran/omicsDNA")
 ```
 
-> If your RStudio Server has limited system libraries (e.g., for `sf/GDAL`), you can still use all **ndtv/networkDynamic** visualisations; no system‑level GDAL is required for those.
+> Optional visualisation deps (used defensively):
+>
+> * **ndtv**, **networkDynamic** for HTML animations, filmstrips, and timelines
+> * **gganimate**, **gifski** for GIF export (no admin rights needed)
+>   The package falls back gracefully if these are absent.
 
 ---
 
-## ⚡ Quick start
+## 🚀 Quick Start (minimal)
 
 ```r
 library(omicsDNA)
 
-# 0) Inputs
-#  - expression_mat: numeric matrix (features x samples)
-#  - metaData: data.frame with sample->group mapping (e.g., AgeGroup)
-#  - genes_info: feature metadata (e.g., GeneName, GeneType)
-#  - feature_ids: optional subset of features to include
-set.seed(1)
+# 0) Set a results folder (timestamps are added to outputs)
+options(mlnet.results_dir = "omicsDNA_results")
 
-# 1) Build per-group adjacency (optionally with resampling)
+# 1) Build per-group networks from a feature x sample matrix
 adj <- buildAdjacency(
-  expression_mat = expression_mat,
-  metaData       = metaData,
-  group_col      = "AgeGroup",
-  feature_ids    = rownames(expression_mat),
-  cor_method     = "spearman",
-  corr_threshold = 0.6,
-  pval_cutoff    = 0.05,
-  resample       = TRUE,    # repeat on balanced draws
-  n_repeats      = 50
+  X           = expr_matrix,           # features x samples
+  meta        = sample_metadata,       # includes grouping variable
+  group_col   = "Group",               # e.g., age group / condition
+  feature_ids = rownames(expr_matrix), # or a subset
+  method      = "spearman",
+  resample    = TRUE, n_repeats = 50,  # optional stability
+  min_per_grp = 3
 )
 
-# 2) Convert to edges; keep edges robust across repeats
-edges      <- edgesFromAdjacency(adj)
-edges_cons <- consensusEdges(edges, prop_present = 0.7)
+# 2) Convert to edge lists & keep robust edges across resamples
+edges   <- edgesFromAdjacency(adj)
+cons    <- consensusEdges(edges, prop_present = 0.7)  # retained if present in ≥70% repeats
 
-# 3) Assemble multilayer network and attach annotations
-net <- build_multiNet(edges_cons)
-net <- add_network_attributes(
-  net,
-  nodesMetadata  = genes_info,
-  featureID_col  = "GeneName",
-  nodeAttrCols   = c("GeneType")
-)
+# 3) Build multilayer object and annotate nodes
+net <- build_multiNet(cons)
+net <- add_network_attributes(net, nodesMetadata = genes_info,
+                              featureID_col = "GeneName",
+                              nodeAttrCols  = c("GeneType"))
 
-# 4) Communities on a supra-graph, then visualise
+# 4) Detect communities on a supra‑graph and visualize them
 comm <- detectCom(net, method = "louvain", edgeWeight = "count",
-                  min.layers = 1, min.actors = 10, seed = 1)
-
+                  min.actors = 15, min.layers = 2, seed = 1)
 plotCom(net, comm, layout = "multiforce", gravity = 0.3,
-        show_in_rstudio = TRUE, save_plot = TRUE, save_df = TRUE)
+        save_plot = TRUE, save_df = TRUE)
 
-# 5) Structure, overlaps, and summaries
-LM   <- layer_metrics(net)                             # per-layer stats
-Aov  <- analyze_actor_overlap(net, reorder = TRUE)     # actor Jaccard
-Eov  <- analyze_edge_overlap(net,  reorder = TRUE)     # edge Jaccard
+# 5) Metrics & overlaps
+LM   <- layer_metrics(net)                       # run-folder with summary + node metrics
+Ajac <- analyze_actor_overlap(net, reorder=TRUE) # heatmap + matrix
+Ejac <- analyze_edge_overlap(net,  reorder=TRUE) # heatmap + matrix
 
-comm_annot <- annotateCom(comm, genes_info, "GeneName", "GeneType", write_csv = TRUE)
-summ_TF    <- sumComFeat(comm_annot, feature_type = "TF", write_csv = TRUE)
+# 6) Feature-aware summaries
+comm_annot <- annotateCom(comm, genes_info, featureID_col = "GeneName", attribute = "GeneType")
+summ_lnc   <- sumComFeat(comm_annot, feature_type = "lncRNA")
+deg_lnc    <- get_FeatureDeg(net, featureList = with(comm_annot, actor[GeneType == "lncRNA"]))
 
-# 6) Dynamics (choose one)
-# (a) Interactive HTML animation (ndtv/networkDynamic)
-animate_multiNet(net, communities = comm, layout = "kamadakawai", seed = 1)
-
-# (b) Static filmstrip grid (PNG/PDF)
-filmstrip_multiNet(net, communities = comm, layout = "kamadakawai",
-                   ncol = 4, format = "png", seed = 1)
+# 7) Dynamics
+animate_multiNet(net, communities = comm)           # HTML animation
+filmstrip_multiNet(net, communities = comm)         # static grid
+plotActivityTimeline(net, type = "vertex")          # timeline (lifespan)
+# animate_multiNet_gifski(net, communities = comm)  # GIF (if gganimate/gifski available)
 ```
 
 ---
 
-## 🧭 Typical analysis flow (and why)
+## 🧭 Typical questions you can answer
 
-1. **Build & stabilise**: `buildAdjacency()` → `edgesFromAdjacency()` → `consensusEdges()`
-   *Focus on reproducible edges; avoid over‑fitting to a single sample split.*&#x20;
-2. **Assemble & annotate**: `build_multiNet()` → `add_network_attributes()`
-   *Carry forward feature/edge attributes you’ll interpret later.*&#x20;
-3. **Detect & map communities**: `detectCom()` → `plotCom()`
-   *Find global modules on a supra‑graph; inspect per‑layer realisations.*&#x20;
-4. **Quantify structure & similarity**: `layer_metrics()`, overlaps
-   *Relate communities to density, fragmentation, and cross‑layer wiring.*&#x20;
-5. **Feature‑aware results**: `annotateCom()`, `sumComFeat()`, `get_FeatureDeg()`
-   *Connect modules to feature classes (e.g., TF/lncRNA) and centrality.*&#x20;
-6. **Communicate change over layers**: `animate_multiNet()` / `filmstrip_multiNet()` / `plotActivityTimeline()`
-   *Make dynamics legible for manuscripts and talks.*
+* Which feature pairs are **consistently** co‑varying within each group?
+* Which **communities** (modules) are robust across layers?
+* How **similar** are layers by actors and edges?
+* Which actors are **central** in a given layer?
+* Do layers with **more samples** have more communities?
+* How do specific **feature classes** (e.g., lncRNA, TF) distribute across modules/layers?
+* Where do layers **differ most** (edges gained/lost)?
 
 ---
 
-## 🧪 Methods
+## 🧩 Pipeline overview
 
-* **Correlation networks (per layer):** Pairwise correlations within group; keep edges if `|r| ≥ corr_threshold` & `p ≤ pval_cutoff`. With `resample=TRUE`, repeat on balanced draws and later use **consensus**.
-* **Consensus edges:** Retain edges present in ≥ `prop_present` of repeats; summarise weights.
-* **Multilayer assembly:** Wrap one igraph per layer in `multinet::ml.network`.
-* **Community detection:** Build a **supra‑graph** across chosen layers; parallel edges are aggregated by **count** or **sum**; support **Louvain**, **Infomap**, **k‑clique union**, and **ABACUS** (when available).
-* **Overlaps & metrics:** Jaccard for actors/edges; standard centralities; path‑based summaries with guards for disconnected graphs.
-* **Dynamics:** `networkDynamic`/`ndtv` for animations, timelines, and filmstrips.&#x20;
-
----
-
-## 📊 What the results tell you
-
-* **Consensus edges:** Robust wiring; high `prop_present` ≈ stable relationships.
-* **Communities:** Size → breadth of co‑variation; span across layers → cross‑layer stability vs. specificity.
-* **Layer metrics:** Density, components, APL/diameter contextualise module patterns.
-* **Overlaps:** Actor vs. edge Jaccard disentangle participation from wiring similarity.
-* **Feature summaries:** Which classes dominate which modules; degree patterns show class‑specific centrality.&#x20;
+1. **Build & stabilize** → `buildAdjacency()` → `edgesFromAdjacency()` → `consensusEdges()`
+2. **Assemble & annotate** → `build_multiNet()` → `add_network_attributes()`
+3. **Communities** → `detectCom()` → `plotCom()`
+4. **Metrics & overlaps** → `layer_metrics()` → `analyze_actor_overlap()` / `analyze_edge_overlap()`
+5. **Feature summaries** → `annotateCom()` → `sumComFeat()` → `get_FeatureDeg()`
+6. **Dynamics** → `animate_multiNet()` / `filmstrip_multiNet()` / `plotActivityTimeline()` / `animate_multiNet_gifski()`
+7. **Layer differences** → `grid_layer_diffs()` / `plot_layer_diff()`
 
 ---
 
-## 🧩 Function map (20 updated functions)
+## 📚 Function reference (grouped)
 
-### Build & assemble
+### 1) Build & Stabilize
 
-| Function                   | Purpose                                                         |
-| -------------------------- | --------------------------------------------------------------- |
-| `buildAdjacency()`         | Create per‑group adjacency matrices (with optional resampling). |
-| `edgesFromAdjacency()`     | Convert matrices/lists to tidy edge tables.                     |
-| `consensusEdges()`         | Keep edges robust across repeats; summarise weights.            |
-| `build_multiNet()`         | Assemble `multinet::ml.network` from per‑layer edges.           |
-| `add_network_attributes()` | Attach node/edge attributes (robust ID matching).               |
+| Function               | Purpose                                                              |
+| ---------------------- | -------------------------------------------------------------------- |
+| `buildAdjacency()`     | Compute per‑group correlation networks (optionally with resampling). |
+| `edgesFromAdjacency()` | Convert matrices (incl. nested lists) to tidy edge tables.           |
+| `consensusEdges()`     | Keep edges robust to resampling (by proportion or count).            |
 
-### Community detection & reporting
+### 2) Assemble & Annotate
 
-| Function      | Purpose                                                              |
-| ------------- | -------------------------------------------------------------------- |
-| `detectCom()` | Communities on a supra‑graph (Louvain/Infomap/k‑clique/ABACUS).      |
-| `plotCom()`   | Multilayer community plot (+ save long `(actor, layer, cid)` table). |
+| Function                   | Purpose                                              |
+| -------------------------- | ---------------------------------------------------- |
+| `build_multiNet()`         | Wrap per‑layer edges into a multilayer object.       |
+| `add_network_attributes()` | Attach node/edge attributes with robust ID matching. |
 
-### Structure, overlaps, sampling
+### 3) Communities
 
-| Function                  | Purpose                                                 |
-| ------------------------- | ------------------------------------------------------- |
-| `layer_metrics()`         | Node‑level & layer‑level metrics; saves a run folder.   |
-| `analyze_actor_overlap()` | Jaccard overlap of actor sets between layers + heatmap. |
-| `analyze_edge_overlap()`  | Jaccard overlap of edge sets between layers + heatmap.  |
-| `com_vs_samples()`        | Relate #communities per layer to #samples per group.    |
+| Function      | Purpose                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `detectCom()` | Community detection on a **supra‑graph** (Louvain/Infomap/clique; ABACUS if available). |
+| `plotCom()`   | Plot multilayer communities; also saves `(actor, layer, cid)` table.                    |
 
-### Feature‑aware summaries
+### 4) Metrics & Overlaps
 
-| Function           | Purpose                                                             |
-| ------------------ | ------------------------------------------------------------------- |
-| `annotateCom()`    | Add a feature attribute (e.g., `GeneType`) to community rows.       |
-| `sumComFeat()`     | Summaries by actor, by community, and counts per community × layer. |
-| `get_FeatureDeg()` | Degrees for any feature list across layers (wide/long).             |
+| Function                  | Purpose                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| `layer_metrics()`         | Node‑ and layer‑level metrics; saves run folder with CSV/XLSX.     |
+| `analyze_actor_overlap()` | Jaccard overlap of actor sets across layers (heatmap + matrix).    |
+| `analyze_edge_overlap()`  | Jaccard overlap of edges across layers (heatmap + matrix).         |
+| `com_vs_samples()`        | Relate per‑layer community counts to sample sizes (scatter + OLS). |
 
-### Dynamics & visualisation
+### 5) Feature‑Focused Analyses
 
-| Function                 | Purpose                                                     |
-| ------------------------ | ----------------------------------------------------------- |
-| `animate_multiNet()`     | Interactive HTML animation (one slice per layer; ndtv).     |
-| `filmstrip_multiNet()`   | Static grid (one panel per layer) with stable layout.       |
-| `animate_multiNet_mp4()` | MP4/GIF via `gganimate`/`gifski` (fallback; optional).      |
-| `plotActivityTimeline()` | Vertex/edge “lifespan” timeline (Gantt‑like).               |
-| `grid_layer_diffs()`     | Multi‑panel “diffs” grid across layers (publication‑ready). |
-| `plot_layer_diff()`      | Side‑by‑side layer comparison with in/out/keep edge sets.   |
+| Function           | Purpose                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------- |
+| `annotateCom()`    | Merge actor attributes (e.g., GeneType) into community tables.                         |
+| `sumComFeat()`     | Summaries restricted to feature types (by actor / by community / counts by CID×layer). |
+| `get_FeatureDeg()` | Degrees across layers for any feature list (actors added as isolates if absent).       |
 
-> These tables reflect the updated pipeline and nomenclature adopted across the codebase.&#x20;
+### 6) Dynamics: Quick Recipes
+
+| Function                    | Purpose                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `animate_multiNet()`        | Interactive **HTML** animation of the multilayer network over layers (ndtv). |
+| `filmstrip_multiNet()`      | Static **grid** (“filmstrip”) with one panel per layer (PNG/PDF).            |
+| `plotActivityTimeline()`    | **Timeline** (Gantt‑style) of vertex/edge lifespans across layers.           |
+| `animate_multiNet_gifski()` | **GIF** export of layer‑by‑layer networks (gganimate + gifski).              |
+| `grid_layer_diffs()`        | Matrix of **pairwise layer difference** plots (big‑picture view).            |
+| `plot_layer_diff()`         | Focused plot of **edges gained/lost** between **two** layers.                |
 
 ---
 
-## 🖼️ Dynamics: quick recipes
+## 🧠 Methods (concise)
 
-**Interactive animation (HTML)**
+* **Per‑group networks**: correlations (Spearman/Pearson), filters on |r| and *p*.
+* **Consensus**: retain edges appearing in ≥ proportion (or count) of resamples; summarize weight.
+* **Multilayer object**: one igraph per layer, wrapped into a `multinet` container.
+* **Communities**: build a **single undirected supra‑graph**; aggregate duplicates by **count** or **sum**, run Louvain/Infomap or a **k‑clique union**; ABACUS if available.
+* **Metrics**: degree, betweenness, eigenvector, closeness, PageRank, clustering coefficient, coreness; layer density, components, average path length, diameter; degree distribution stats (mean, SD, median, min/max, CV, skew).
+* **Overlaps**: Jaccard for actors/edges.
+* **Dynamics**: layouts stabilized across slices for filmstrip/animation; activity timelines show “lifespans”.
+
+---
+
+## 🧪 Interpreting outputs
+
+* **Consensus edges**: high presence proportion ⇒ robust wiring; good candidates for interpretation.
+* **Community size & span**: large CIDs suggest broad co‑variation; multi‑layer span hints at shared programs; layer‑specific CIDs point to condition‑specific processes.
+* **Layer metrics**: density/components/APL/diameter contextualize how “connected” each layer is.
+* **Overlaps**: actor overlap ≈ participation similarity; edge overlap ≈ wiring similarity.
+* **Feature summaries**: reveal which feature classes dominate modules or act as hubs.
+* **Dynamics**: filmstrips/animations expose periods of re‑wiring, module splitting/merging; timelines separate **stable** vs **transient** elements.
+
+---
+
+## 🧩 Worked mini‑example (pseudo‑code)
 
 ```r
-animate_multiNet(
-  net,
-  communities   = comm,             # data.frame: actor, layer, com/cid
-  layout        = "kamadakawai",
-  slice.par     = list(start = 0, interval = 1, aggregate.dur = 1),
-  displaylabels = TRUE,
-  vertex.cex    = 0.9,
-  seed          = 1
-)
-# => omicsDNA_results/multiNet_animation_<timestamp>.html
-```
+# Build → stabilize
+adj   <- buildAdjacency(X=expr_matrix, meta=sample_metadata, group_col="Group",
+                        feature_ids=rownames(expr_matrix), method="spearman",
+                        resample=TRUE, n_repeats=50)
+edges <- edgesFromAdjacency(adj)
+cons  <- consensusEdges(edges, prop_present=0.7)
 
-**Filmstrip (PNG/PDF)**
+# Assemble → annotate
+net <- build_multiNet(cons)
+net <- add_network_attributes(net, nodesMetadata=genes_info,
+                              featureID_col="GeneName", nodeAttrCols="GeneType")
 
-```r
-filmstrip_multiNet(
-  net,
-  communities = comm,
-  layout      = "kamadakawai",
-  ncol        = 4,                   # e.g., 8 layers -> 2x4
-  format      = "png",
-  seed        = 1
-)
-# => omicsDNA_results/multiNet_filmstrip_<timestamp>.png
-```
+# Communities → viz
+comm <- detectCom(net, method="louvain", edgeWeight="count",
+                  min.actors=15, min.layers=2, seed=1)
+plotCom(net, comm, layout="multiforce", gravity=0.3)
 
-**Activity timeline (lifespans)**
+# Metrics & overlaps
+LM   <- layer_metrics(net)
+Ajac <- analyze_actor_overlap(net, reorder=TRUE)
+Ejac <- analyze_edge_overlap(net,  reorder=TRUE)
 
-```r
-plotActivityTimeline(
-  net,
-  type     = "vertex",               # or "edge"
-  at       = NULL,                   # auto: one slice per layer
-  label.cex= 0.8
-)
+# Feature‑aware summaries
+comm_annot <- annotateCom(comm, genes_info, featureID_col="GeneName", attribute="GeneType")
+summ_TF    <- sumComFeat(comm_annot, feature_type="TF")
+deg_TF     <- get_FeatureDeg(net, featureList=with(comm_annot, actor[GeneType=="TF"]))
+
+# Dynamics
+animate_multiNet(net, communities=comm, seed=1)
+filmstrip_multiNet(net, communities=comm, ncol=4, seed=1)
+plotActivityTimeline(net, type="edge")
+# animate_multiNet_gifski(net, communities=comm, fps=2) # if gganimate/gifski available
 ```
 
 ---
 
-## ✅ Best practices
+## 🗂️ Outputs & saving conventions
 
-* **Reproducibility:** set a seed; leave the default **timestamped filenames**; results land in `getOption("mlnet.results_dir","omicsDNA_results")`.
-* **Thresholding:** start around `corr_threshold = 0.6–0.7`, `pval_cutoff = 0.05`; use `consensusEdges()` to guard against instability.
-* **Sampling:** check `com_vs_samples()` to see whether community counts track sample sizes.
-* **Interpretation:** use **edge overlap** for wiring, **actor overlap** for participation; relate to `layer_metrics()` for structure.&#x20;
+Most functions write into `getOption("mlnet.results_dir", "omicsDNA_results")` with **timestamped** names.
+Some create a **run folder** (e.g., `layer_metrics_<YYYY-mm-dd_HHMMSS>/`), others write a single RDS/CSV/PNG/PDF/HTML/GIF.
+Return objects often carry `"file"` or `"files"` attributes with absolute paths.
+
+Set once per session or in `.Rprofile`:
+
+```r
+options(mlnet.results_dir = "omicsDNA_results")
+```
 
 ---
 
-## 🙋 Feedback & contributions
+## 💡 Tips & cautions
 
-Issues and pull requests are welcome. Please open them on GitHub and include:
+* **Correlation ≠ causation**; interpret communities as co‑variation modules.
+* **Multiple testing**: resampling + consensus helps empirically control false positives.
+* **Sample imbalance**: check `com_vs_samples()` to guard against density artifacts.
+* **ID hygiene**: joins use robust normalization (strip version, trim, lower‑case).
+* **Reproducibility**: set `seed` for `detectCom()`, dynamic plots, and any resampling.
 
-* a short reproducible example (if applicable),
-* your `sessionInfo()`,
-* and the function names you used.
+---
+
+## 🔁 Old → new function names (compatibility)
+
+| Old name                         | New name                    |
+| -------------------------------- | --------------------------- |
+| `generate_adjacency_matrices()`  | `buildAdjacency()`          |
+| `build_DNA()`                    | `build_multiNet()`          |
+| `add_DNA_attributes()` / similar | `add_network_attributes()`  |
+| `plot_filtered_ABACUS_network()` | `detectCom()` + `plotCom()` |
+
+> Older wrappers continue to work where possible, but the **new API** above is recommended.
+
+---
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome!
+Please include a minimal reproducible example and session info when reporting bugs.
 
 ---
 
@@ -261,8 +292,22 @@ MIT © VafaeeLab
 
 ---
 
-### Citation
+## 📣 Citation
 
-If you use `omicsDNA` in published work, please cite the package and describe the multilayer workflow briefly (build → consensus → assemble → detect → quantify → visualise) so readers can reproduce your pipeline.&#x20;
+If you use **omicsDNA** in your work, please cite this repository and the specific methods you rely on (e.g., Louvain/Infomap; ndtv/networkDynamic; gganimate/gifski).
+
+```text
+VafaeeLab. omicsDNA: Multilayer Network Analysis for Omics (and Beyond).
+https://github.com/VafaeeLab/omicsDNA
+```
 
 ---
+
+### Session info (optional)
+
+```r
+sessionInfo()
+```
+
+---
+
