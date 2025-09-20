@@ -1,3 +1,6 @@
+
+
+
 # ---- small helper for consistent key matching (unchanged) -------------------
 .normalize_keys <- function(x, steps = c("strip_version","trim","tolower")) {
   x <- as.character(x)
@@ -17,7 +20,7 @@
 }
 
 # ---------------------------------------------------------------------------
-# 13) Summarize community membership for any feature type (short name)
+# 18 - Summarize community membership for any feature type (short name)
 # ---------------------------------------------------------------------------
 
 #' Summarise community membership for selected feature types (pure data‑frame workflow)

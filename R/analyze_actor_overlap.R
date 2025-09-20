@@ -1,4 +1,10 @@
-#' Actor overlap across layers via Jaccard similarity (with heatmap):
+
+
+#------------------------------------------------------
+# 14 - Actor (Nodes) overlap across layers (Jaccard + heatmap)
+#------------------------------------------------------
+
+#' Actor (gene) overlap across layers via Jaccard similarity (with heatmap)
 #'
 #' @description
 #' Quantify how similar layers are in terms of their **actor (gene) sets** by
@@ -128,10 +134,11 @@ analyze_actor_overlap <- function(net,
     ggplot2::coord_equal() +
     ggplot2::theme_minimal() +
     ggplot2::labs(x = "Layers", y = "Layers", fill = "Jaccard") +
-    ggplot2::ggtitle("Actors (genes) overlap between layers") +
+    ggplot2::ggtitle("Actors overlap between layers") +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1))
 
   if (print_plot) print(plt)
   attr(mat, "plot") <- plt
   mat
 }
+

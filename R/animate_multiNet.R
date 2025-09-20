@@ -1,4 +1,10 @@
-#' Animate a multilayer network across layers using \pkg{ndtv}:
+
+
+# --------------------------------------------------------
+# 20 - Animate multi-layer networks
+# --------------------------------------------------------
+
+#' Animate a multilayer network across layers using \pkg{ndtv}
 #'
 #' @description
 #' \code{animate_multiNet()} converts a multilayer network (built with

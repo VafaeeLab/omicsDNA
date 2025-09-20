@@ -1,5 +1,4 @@
 
-
 # --- helpers (same as before, safe) ------------------------------------------
 .normalize_keys <- function(x, steps = c("strip_version","trim","tolower")) {
   x <- as.character(x)
@@ -19,10 +18,10 @@
 }
 
 # ---------------------------------------------------------------------------
-# 12 - annotateCom: shorter name, comprehensive docs, robust saving
+# 17 - annotateCom: shorter name, comprehensive docs, robust saving
 # ---------------------------------------------------------------------------
 
-#' Annotate multilayer community rows with a node attribute (pure data-frame join):
+#' Annotate multilayer community rows with a node attribute (pure data-frame join)
 #'
 #' @description
 #' Add a node attribute (e.g., a gene annotation such as `"GeneType"`) to a
@@ -220,3 +219,4 @@ annotateCom <- function(
 
   out
 }
+

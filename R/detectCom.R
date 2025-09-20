@@ -1,4 +1,9 @@
-#' Detect communities on a multilayer network via a layer‑collapsed supra‑graph:
+
+# ---------------------------------------
+# 11 - detectCom
+# ---------------------------------------
+
+#' Detect communities on a multilayer network via a layer‑collapsed supra‑graph
 #'
 #' @description
 #' This function performs community detection on a **single, undirected supra‑graph**
@@ -422,3 +427,4 @@ detectCom <- function(net,
   attr(communities, "files") <- files
   communities
 }
+

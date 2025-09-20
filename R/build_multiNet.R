@@ -1,4 +1,9 @@
-#' Build a multilayer network from per‑layer edge tables or adjacency matrices:
+
+# ------------------------------------------------------------------------------
+# 4 - Build a multi-layer network from per-layer edge tables or adjacency matrices
+# ------------------------------------------------------------------------------
+
+#' Build a multilayer network from per‑layer edge tables or adjacency matrices
 #'
 #' @description
 #' This routine constructs a multilayer network—one layer per group/condition—
@@ -441,3 +446,4 @@ build_multiNet <- function(
 
   net
 }
+

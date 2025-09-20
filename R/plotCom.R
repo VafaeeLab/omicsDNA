@@ -1,4 +1,9 @@
-#' Plot multilayer communities with an interactive preview and file exports:
+
+# ---------------------------------------
+# 12 - plotCom
+# ---------------------------------------
+
+#' Plot multilayer communities with an interactive preview and file exports
 #'
 #' @description
 #' This routine visualises community assignments on a multilayer network and
@@ -386,3 +391,4 @@ plotCom <- function(net,
                    layers  = layersToPlot)
   return(invisible(res))
 }
+

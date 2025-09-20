@@ -1,4 +1,9 @@
-#' Build correlation‑filtered adjacency matrices by group:
+
+# -----------------------------------------------------------------------------
+# 1 - Build adjacency matrices
+# -----------------------------------------------------------------------------
+
+#' Build correlation‑filtered adjacency matrices by group
 #'
 #' Construct one or more feature‑by‑feature networks for each group of samples
 #' by correlating feature profiles across samples in that group and keeping only
@@ -27,7 +32,8 @@
 #' 3. Compute correlations and p‑values with `WGCNA::corAndPvalue()` when **WGCNA** is
 #'    installed; otherwise fall back to `Hmisc::rcorr()`. Diagonals are set to 0 (corr) and 1 (p).
 #' 4. Form the adjacency by zeroing entries that fail either filter:
-#'    `abs(corr) < corr_threshold` **or** `p > pval_cutoff`.
+#'    `abs(corr) < corr_threshold` **or** `p > pval_cutoff` (where `p` can be **adjusted**
+#'    according to `pval_adjust`).
 #' 5. Expand to the full `feature_ids × feature_ids` grid; missing features remain zero.
 #'
 #' **Resampling**
@@ -49,7 +55,7 @@
 #'
 #' **Persistence**
 #' - When `save_rds = TRUE`, the object is written to
-#'   `<out_dir>/<file_prefix>_(single|boot)_YYYYMMDD-HHMMSS.rds` and also returned.
+#'   `<out_dir>/<file_prefix>_(list|boot)_YYYYMMDD-HHMMSS.rds` and also returned.
 #'   The absolute file path is attached as `attr(result, "rds_file")`.
 #'
 #' @param dataMatrix Numeric matrix/data.frame; **features in rows**, **samples in columns**.
@@ -61,6 +67,10 @@
 #' @param sample_col Name of the sample ID column in `sample_metadata`. Default `"sample"`.
 #' @param feature_id_col Column name of IDs in `feature_metadata` (reserved; currently unused).
 #' @param cor_method Correlation type: `"spearman"` or `"pearson"`. Default `"spearman"`.
+#' @param pval_adjust Method for multiple testing correction of correlation p-values.
+#'   Options: "none" (default; use raw p-values), "fdr" (false discovery rate),
+#'   "BH" (Benjamini–Hochberg), or "bonferroni". **Synonyms** "bh" and "bf" are accepted.
+#'   The cutoff in `pval_cutoff` will be applied to the adjusted values if this is not "none".
 #' @param pval_cutoff P‑value cutoff for keeping an edge. Default `0.05`.
 #' @param corr_threshold Absolute correlation threshold for keeping an edge. Default `0.7`.
 #' @param resample Logical; enable balanced draws per group. Default `TRUE`.
@@ -72,6 +82,10 @@
 #' @param file_prefix Basename for saved files (no extension). Default `"adjacency"`.
 #' @param compress Compression passed to `saveRDS()`: `TRUE/FALSE` or `"xz"`, `"gzip"`, `"bzip2"`.
 #'   Default `"xz"`.
+#' @param group_order Optional character vector giving the desired order of groups/layers
+#'   in the returned list. Any groups not present in `sample_metadata[[group_col]]` are
+#'   ignored; any extra groups found in the metadata but not listed in `group_order`
+#'   will be appended after the specified order. Default `NULL` = keep the natural order.
 #'
 #' @return A list of adjacency matrices as described under **Output shape**. The return
 #' object carries `attr(x, "rds_file")` with the saved file path (or `NULL` if `save_rds = FALSE`).
@@ -100,6 +114,21 @@
 #' )
 #' lapply(adj, dim)  # one matrix per group
 #'
+#' # Use adjusted p-values (BH) and explicit group order (B then A)
+#' adj_bh <- buildAdjacency(
+#'   dataMatrix        = X,
+#'   sample_metadata   = meta,
+#'   feature_ids       = rownames(X),
+#'   group_col         = "group",
+#'   sample_col        = "sample",
+#'   pval_adjust       = "BH",            # also accepts "bh"
+#'   pval_cutoff       = 0.1,
+#'   resample          = FALSE,
+#'   group_order       = c("B","A"),
+#'   save_rds          = FALSE,
+#'   verbose           = FALSE
+#' )
+#'
 #' @seealso \code{\link{edgesFromAdjacency}} to convert adjacency matrices to edge lists.
 #' @export
 buildAdjacency <- function(
@@ -111,6 +140,7 @@ buildAdjacency <- function(
     sample_col         = "sample",
     feature_id_col     = "feature_id",
     cor_method         = c("spearman", "pearson"),
+    pval_adjust        = c("none","fdr","BH","bonferroni"),
     pval_cutoff        = 0.05,
     corr_threshold     = 0.7,
     resample           = TRUE,
@@ -120,9 +150,29 @@ buildAdjacency <- function(
     save_rds           = TRUE,
     out_dir            = file.path(getwd(), "omicsDNA_results"),
     file_prefix        = "adjacency",
-    compress           = "xz"
+    compress           = "xz",
+    group_order        = NULL
 ) {
+
   cor_method <- match.arg(cor_method)
+
+  # ---- resolve p-value adjustment method (accept synonyms) ----
+  # If user didn't pass a scalar string, default to "none" (first element).
+  pval_adjust <- if (length(pval_adjust) > 1L) pval_adjust[1L] else pval_adjust
+  method_key  <- tolower(pval_adjust)
+  allowed     <- c("none","fdr","bh","bonferroni","bf")
+  if (!method_key %in% allowed) {
+    stop("Invalid `pval_adjust`. Choose one of: ", paste(allowed, collapse = ", "))
+  }
+  adj_method <- switch(method_key,
+                       "none"       = "none",
+                       "fdr"        = "fdr",
+                       "bh"         = "BH",
+                       "bonferroni" = "bonferroni",
+                       "bf"         = "bonferroni")
+  if (verbose && adj_method != "none") {
+    message("Using adjusted p-values: method = ", adj_method)
+  }
 
   # ---- coerce to numeric matrix ----
   M <- as.matrix(dataMatrix)
@@ -150,6 +200,22 @@ buildAdjacency <- function(
   groups <- unique(as.character(sample_metadata[[group_col]]))
   groups <- groups[!is.na(groups)]
   if (!length(groups)) stop("No groups found in `sample_metadata` column ", group_col, ".")
+
+  # ---- apply explicit group order if requested ----
+  if (!is.null(group_order)) {
+    go <- as.character(group_order)
+    # Keep only requested groups that exist in the data, in the requested order
+    in_both <- intersect(go, groups)
+    # Append any remaining groups that were not listed by the user (preserve their original order)
+    remainder <- setdiff(groups, in_both)
+    groups <- c(in_both, remainder)
+    if (verbose) {
+      miss <- setdiff(go, groups)
+      if (length(miss)) message("buildAdjacency: group_order contained ", length(miss),
+                                " group(s) not present and they were ignored: ",
+                                paste(miss, collapse = ", "))
+    }
+  }
 
   # ---- correlation + p-values helper (samples x features) ----
   .cor_with_p <- function(X) {
@@ -221,7 +287,19 @@ buildAdjacency <- function(
     cor_mat <- cp$cor; p_mat <- cp$p
     diag(cor_mat) <- 0; diag(p_mat) <- 1
 
-    keep <- (abs(cor_mat) >= corr_threshold) & (p_mat <= pval_cutoff)
+    # ---- Adjust p-values if requested (unique tests only; mirror to full matrix) ----
+    p_use <- p_mat
+    if (adj_method != "none") {
+      ut <- upper.tri(p_use, diag = FALSE)
+      # p.adjust handles NA by returning NA; we'll treat NA as not passing the cutoff
+      p_use[ut] <- p.adjust(p_use[ut], method = adj_method)
+      # mirror to lower triangle to keep symmetry
+      p_use[lower.tri(p_use, diag = FALSE)] <- t(p_use)[lower.tri(p_use, diag = FALSE)]
+      diag(p_use) <- 1
+    }
+
+    keep <- (abs(cor_mat) >= corr_threshold) & (p_use <= pval_cutoff)
+    keep[is.na(keep)] <- FALSE  # ensure NA comparisons don't pass
     adj  <- cor_mat; adj[!keep] <- 0
 
     # expand to full feature_ids order
@@ -255,9 +333,9 @@ buildAdjacency <- function(
   if (isTRUE(save_rds)) {
     if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
     stamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
-    kind  <- if (resample) "boot" else "single"
+    tag   <- if (resample) "bootstrap" else "no_bootstrap"
     prefix <- if (is.null(file_prefix) || !nzchar(file_prefix)) "adjacency" else file_prefix
-    rds_path <- file.path(out_dir, sprintf("%s_%s_%s.rds", prefix, kind, stamp))
+    rds_path <- file.path(out_dir, sprintf("%s_%s_%s.rds", prefix, tag, stamp))
     comp <- if (isTRUE(compress) || isFALSE(compress)) compress else as.character(compress)
     saveRDS(result, rds_path, compress = comp)
     if (verbose) message("💾 Saved adjacency to: ", rds_path)

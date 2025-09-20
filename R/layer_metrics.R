@@ -1,5 +1,8 @@
+#------------------------------------------------------
+# 16 - Layer-wise network metrics + saving (run folder style)
+#------------------------------------------------------
 
-#' Compute per‑layer network and node metrics, and save results to a run folder:
+#' Compute per‑layer network and node metrics, and save results to a run folder
 #'
 #' @description
 #' Builds an \pkg{igraph} graph for each layer of a \pkg{multinet} object,
@@ -199,7 +202,7 @@ layer_metrics <- function(net,
     if (igraph::vcount(g) > 0) {
       deg  <- igraph::degree(g, mode = "all")
       bet  <- suppressWarnings(igraph::betweenness(g, directed = directed, normalized = TRUE))
-      eigv <- tryCatch(igraph::eigen_centrality(g, directed = directed, scale = TRUE)$vector,
+      eigv <- tryCatch(igraph::eigen_centrality(g, directed = directed)$vector,
                        error = function(e) rep(NA_real_, igraph::vcount(g)))
       clo  <- suppressWarnings(igraph::closeness(g, mode = "all"))
       clo[!is.finite(clo)] <- 0
@@ -237,7 +240,7 @@ layer_metrics <- function(net,
     n_nodes <- igraph::vcount(g); n_edges <- igraph::ecount(g)
     dens    <- if (n_nodes > 1) igraph::edge_density(g, loops = FALSE) else NA_real_
     comps   <- if (n_nodes > 0) igraph::components(g, mode = "weak")$no else 0
-    apl     <- tryCatch(igraph::average.path.length(g, directed = directed, unconnected = TRUE),
+    apl     <- tryCatch(igraph::mean_distance(g, directed = directed, unconnected = TRUE),
                         error = function(e) NA_real_)
     diam    <- tryCatch(igraph::diameter(g, directed = directed, unconnected = TRUE),
                         error = function(e) NA_real_)

@@ -1,4 +1,5 @@
 
+
 # ---- helper (same as your other utilities) ----------------------------------
 .normalize_keys <- function(x, steps = c("strip_version","trim","tolower")) {
   x <- as.character(x)
@@ -16,10 +17,10 @@
   }
   x
 }
-# ---------------------------------------------------------------------------
-# 14) Degrees for any feature list across layers
-# ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 19 - Degrees for any feature list across layers
+# ---------------------------------------------------------------------------
 
 #' Degrees for a selected feature set across layers (robust, \pkg{igraph}-based)
 #'
@@ -102,7 +103,7 @@
 #' If `write_csv = TRUE`, the absolute file path is attached as `attr(x, "file")`.
 #'
 #' @examples
-#' \{
+#' \dontrun{
 #' # 1) lncRNAs across all layers, undirected (wide) + save under results dir
 #' lnc_list  <- unique(subset(comm_annot, GeneType == "lncRNA")$actor)
 #' all_layers <- multinet::layers_ml(net)

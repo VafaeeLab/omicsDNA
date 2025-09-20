@@ -1,4 +1,9 @@
-#' Attach actor- and edge-level attributes to a multilayer network, with coverage reporting:
+
+#------------------------------------------------------
+# 9 - Add network-level attributes
+#------------------------------------------------------
+
+#' Attach actor- and edge-level attributes to a multilayer network, with coverage reporting
 #'
 #' @description
 #' This procedure enriches an existing `multinet::ml.network` with **actor** (node)
@@ -591,3 +596,4 @@ add_network_attributes <- function(
 
   invisible(net)
 }
+

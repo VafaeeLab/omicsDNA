@@ -1,4 +1,9 @@
-#' Animate multilayer networks to GIF/MP4 (one layer = one frame):
+
+# -------------------------------------------------
+# 25 - Animate multi-layer networks to GIF/MP4
+# -------------------------------------------------
+
+#' Animate multilayer networks to GIF/MP4 (one layer = one frame)
 #'
 #' @description
 #' Builds a consistent 2D layout from the union of all layers (so node positions
@@ -292,3 +297,4 @@ animate_multiNet_mp4 <- function(
   invisible(list(file = normalizePath(file, winslash = "/", mustWork = FALSE),
                  layers = layers, anim = anim))
 }
+
