@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style type="text/css">
+@font-face {
+font-family: octicons-link;
+src: url(data:font/woff;charset=utf-8;base64,d09GRgABAAAAAAZwABAAAAAACFQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABEU0lHAAAGaAAAAAgAAAAIAAAAAUdTVUIAAAZcAAAACgAAAAoAAQAAT1MvMgAAAyQAAABJAAAAYFYEU3RjbWFwAAADcAAAAEUAAACAAJThvmN2dCAAAATkAAAABAAAAAQAAAAAZnBnbQAAA7gAAACyAAABCUM+8IhnYXNwAAAGTAAAABAAAAAQABoAI2dseWYAAAFsAAABPAAAAZwcEq9taGVhZAAAAsgAAAA0AAAANgh4a91oaGVhAAADCAAAABoAAAAkCA8DRGhtdHgAAAL8AAAADAAAAAwGAACfbG9jYQAAAsAAAAAIAAAACABiATBtYXhwAAACqAAAABgAAAAgAA8ASm5hbWUAAAToAAABQgAAAlXu73sOcG9zdAAABiwAAAAeAAAAME3QpOBwcmVwAAAEbAAAAHYAAAB/aFGpk3jaTY6xa8JAGMW/O62BDi0tJLYQincXEypYIiGJjSgHniQ6umTsUEyLm5BV6NDBP8Tpts6F0v+k/0an2i+itHDw3v2+9+DBKTzsJNnWJNTgHEy4BgG3EMI9DCEDOGEXzDADU5hBKMIgNPZqoD3SilVaXZCER3/I7AtxEJLtzzuZfI+VVkprxTlXShWKb3TBecG11rwoNlmmn1P2WYcJczl32etSpKnziC7lQyWe1smVPy/Lt7Kc+0vWY/gAgIIEqAN9we0pwKXreiMasxvabDQMM4riO+qxM2ogwDGOZTXxwxDiycQIcoYFBLj5K3EIaSctAq2kTYiw+ymhce7vwM9jSqO8JyVd5RH9gyTt2+J/yUmYlIR0s04n6+7Vm1ozezUeLEaUjhaDSuXHwVRgvLJn1tQ7xiuVv/ocTRF42mNgZGBgYGbwZOBiAAFGJBIMAAizAFoAAABiAGIAznjaY2BkYGAA4in8zwXi+W2+MjCzMIDApSwvXzC97Z4Ig8N/BxYGZgcgl52BCSQKAA3jCV8CAABfAAAAAAQAAEB42mNgZGBg4f3vACQZQABIMjKgAmYAKEgBXgAAeNpjYGY6wTiBgZWBg2kmUxoDA4MPhGZMYzBi1AHygVLYQUCaawqDA4PChxhmh/8ODDEsvAwHgMKMIDnGL0x7gJQCAwMAJd4MFwAAAHjaY2BgYGaA4DAGRgYQkAHyGMF8NgYrIM3JIAGVYYDT+AEjAwuDFpBmA9KMDEwMCh9i/v8H8sH0/4dQc1iAmAkALaUKLgAAAHjaTY9LDsIgEIbtgqHUPpDi3gPoBVyRTmTddOmqTXThEXqrob2gQ1FjwpDvfwCBdmdXC5AVKFu3e5MfNFJ29KTQT48Ob9/lqYwOGZxeUelN2U2R6+cArgtCJpauW7UQBqnFkUsjAY/kOU1cP+DAgvxwn1chZDwUbd6CFimGXwzwF6tPbFIcjEl+vvmM/byA48e6tWrKArm4ZJlCbdsrxksL1AwWn/yBSJKpYbq8AXaaTb8AAHja28jAwOC00ZrBeQNDQOWO//sdBBgYGRiYWYAEELEwMTE4uzo5Zzo5b2BxdnFOcALxNjA6b2ByTswC8jYwg0VlNuoCTWAMqNzMzsoK1rEhNqByEyerg5PMJlYuVueETKcd/89uBpnpvIEVomeHLoMsAAe1Id4AAAAAAAB42oWQT07CQBTGv0JBhagk7HQzKxca2sJCE1hDt4QF+9JOS0nbaaYDCQfwCJ7Au3AHj+LO13FMmm6cl7785vven0kBjHCBhfpYuNa5Ph1c0e2Xu3jEvWG7UdPDLZ4N92nOm+EBXuAbHmIMSRMs+4aUEd4Nd3CHD8NdvOLTsA2GL8M9PODbcL+hD7C1xoaHeLJSEao0FEW14ckxC+TU8TxvsY6X0eLPmRhry2WVioLpkrbp84LLQPGI7c6sOiUzpWIWS5GzlSgUzzLBSikOPFTOXqly7rqx0Z1Q5BAIoZBSFihQYQOOBEdkCOgXTOHA07HAGjGWiIjaPZNW13/+lm6S9FT7rLHFJ6fQbkATOG1j2OFMucKJJsxIVfQORl+9Jyda6Sl1dUYhSCm1dyClfoeDve4qMYdLEbfqHf3O/AdDumsjAAB42mNgYoAAZQYjBmyAGYQZmdhL8zLdDEydARfoAqIAAAABAAMABwAKABMAB///AA8AAQAAAAAAAAAAAAAAAAABAAAAAA==) format('woff');
+}
+body {
+-webkit-text-size-adjust: 100%;
+text-size-adjust: 100%;
+color: #333;
+font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, freesans, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+font-size: 16px;
+line-height: 1.6;
+word-wrap: break-word;
+}
+a {
+background-color: transparent;
+}
+a:active,
+a:hover {
+outline: 0;
+}
+strong {
+font-weight: bold;
+}
+h1 {
+font-size: 2em;
+margin: 0.67em 0;
+}
+img {
+border: 0;
+}
+hr {
+box-sizing: content-box;
+height: 0;
+}
+pre {
+overflow: auto;
+}
+code,
+kbd,
+pre {
+font-family: monospace, monospace;
+font-size: 1em;
+}
+input {
+color: inherit;
+font: inherit;
+margin: 0;
+}
+html input[disabled] {
+cursor: default;
+}
+input {
+line-height: normal;
+}
+input[type="checkbox"] {
+box-sizing: border-box;
+padding: 0;
+}
+table {
+border-collapse: collapse;
+border-spacing: 0;
+}
+td,
+th {
+padding: 0;
+}
+* {
+box-sizing: border-box;
+}
+input {
+font: 13px / 1.4 Helvetica, arial, nimbussansl, liberationsans, freesans, clean, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+a {
+color: #4078c0;
+text-decoration: none;
+}
+a:hover,
+a:active {
+text-decoration: underline;
+}
+hr {
+height: 0;
+margin: 15px 0;
+overflow: hidden;
+background: transparent;
+border: 0;
+border-bottom: 1px solid #ddd;
+}
+hr:before {
+display: table;
+content: "";
+}
+hr:after {
+display: table;
+clear: both;
+content: "";
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+margin-top: 15px;
+margin-bottom: 15px;
+line-height: 1.1;
+}
+h1 {
+font-size: 30px;
+}
+h2 {
+font-size: 21px;
+}
+h3 {
+font-size: 16px;
+}
+h4 {
+font-size: 14px;
+}
+h5 {
+font-size: 12px;
+}
+h6 {
+font-size: 11px;
+}
+blockquote {
+margin: 0;
+}
+ul,
+ol {
+padding: 0;
+margin-top: 0;
+margin-bottom: 0;
+}
+ol ol,
+ul ol {
+list-style-type: lower-roman;
+}
+ul ul ol,
+ul ol ol,
+ol ul ol,
+ol ol ol {
+list-style-type: lower-alpha;
+}
+dd {
+margin-left: 0;
+}
+code {
+font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+font-size: 12px;
+}
+pre {
+margin-top: 0;
+margin-bottom: 0;
+font: 12px Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+.select::-ms-expand {
+opacity: 0;
+}
+.octicon {
+font: normal normal normal 16px/1 octicons-link;
+display: inline-block;
+text-decoration: none;
+text-rendering: auto;
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
+-webkit-user-select: none;
+-moz-user-select: none;
+-ms-user-select: none;
+user-select: none;
+}
+.octicon-link:before {
+content: '\f05c';
+}
+.markdown-body:before {
+display: table;
+content: "";
+}
+.markdown-body:after {
+display: table;
+clear: both;
+content: "";
+}
+.markdown-body>*:first-child {
+margin-top: 0 !important;
+}
+.markdown-body>*:last-child {
+margin-bottom: 0 !important;
+}
+a:not([href]) {
+color: inherit;
+text-decoration: none;
+}
+.anchor {
+display: inline-block;
+padding-right: 2px;
+margin-left: -18px;
+}
+.anchor:focus {
+outline: none;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+margin-top: 1em;
+margin-bottom: 16px;
+font-weight: bold;
+line-height: 1.4;
+}
+h1 .octicon-link,
+h2 .octicon-link,
+h3 .octicon-link,
+h4 .octicon-link,
+h5 .octicon-link,
+h6 .octicon-link {
+color: #000;
+vertical-align: middle;
+visibility: hidden;
+}
+h1:hover .anchor,
+h2:hover .anchor,
+h3:hover .anchor,
+h4:hover .anchor,
+h5:hover .anchor,
+h6:hover .anchor {
+text-decoration: none;
+}
+h1:hover .anchor .octicon-link,
+h2:hover .anchor .octicon-link,
+h3:hover .anchor .octicon-link,
+h4:hover .anchor .octicon-link,
+h5:hover .anchor .octicon-link,
+h6:hover .anchor .octicon-link {
+visibility: visible;
+}
+h1 {
+padding-bottom: 0.3em;
+font-size: 2.25em;
+line-height: 1.2;
+border-bottom: 1px solid #eee;
+}
+h1 .anchor {
+line-height: 1;
+}
+h2 {
+padding-bottom: 0.3em;
+font-size: 1.75em;
+line-height: 1.225;
+border-bottom: 1px solid #eee;
+}
+h2 .anchor {
+line-height: 1;
+}
+h3 {
+font-size: 1.5em;
+line-height: 1.43;
+}
+h3 .anchor {
+line-height: 1.2;
+}
+h4 {
+font-size: 1.25em;
+}
+h4 .anchor {
+line-height: 1.2;
+}
+h5 {
+font-size: 1em;
+}
+h5 .anchor {
+line-height: 1.1;
+}
+h6 {
+font-size: 1em;
+color: #777;
+}
+h6 .anchor {
+line-height: 1.1;
+}
+p,
+blockquote,
+ul,
+ol,
+dl,
+table,
+pre {
+margin-top: 0;
+margin-bottom: 16px;
+}
+hr {
+height: 4px;
+padding: 0;
+margin: 16px 0;
+background-color: #e7e7e7;
+border: 0 none;
+}
+ul,
+ol {
+padding-left: 2em;
+}
+ul ul,
+ul ol,
+ol ol,
+ol ul {
+margin-top: 0;
+margin-bottom: 0;
+}
+li>p {
+margin-top: 16px;
+}
+dl {
+padding: 0;
+}
+dl dt {
+padding: 0;
+margin-top: 16px;
+font-size: 1em;
+font-style: italic;
+font-weight: bold;
+}
+dl dd {
+padding: 0 16px;
+margin-bottom: 16px;
+}
+blockquote {
+padding: 0 15px;
+color: #777;
+border-left: 4px solid #ddd;
+}
+blockquote>:first-child {
+margin-top: 0;
+}
+blockquote>:last-child {
+margin-bottom: 0;
+}
+table {
+display: block;
+width: 100%;
+overflow: auto;
+word-break: normal;
+word-break: keep-all;
+}
+table th {
+font-weight: bold;
+}
+table th,
+table td {
+padding: 6px 13px;
+border: 1px solid #ddd;
+}
+table tr {
+background-color: #fff;
+border-top: 1px solid #ccc;
+}
+table tr:nth-child(2n) {
+background-color: #f8f8f8;
+}
+img {
+max-width: 100%;
+box-sizing: content-box;
+background-color: #fff;
+}
+code {
+padding: 0;
+padding-top: 0.2em;
+padding-bottom: 0.2em;
+margin: 0;
+font-size: 85%;
+background-color: rgba(0,0,0,0.04);
+border-radius: 3px;
+}
+code:before,
+code:after {
+letter-spacing: -0.2em;
+content: "\00a0";
+}
+pre>code {
+padding: 0;
+margin: 0;
+font-size: 100%;
+word-break: normal;
+white-space: pre;
+background: transparent;
+border: 0;
+}
+.highlight {
+margin-bottom: 16px;
+}
+.highlight pre,
+pre {
+padding: 16px;
+overflow: auto;
+font-size: 85%;
+line-height: 1.45;
+background-color: #f7f7f7;
+border-radius: 3px;
+}
+.highlight pre {
+margin-bottom: 0;
+word-break: normal;
+}
+pre {
+word-wrap: normal;
+}
+pre code {
+display: inline;
+max-width: initial;
+padding: 0;
+margin: 0;
+overflow: initial;
+line-height: inherit;
+word-wrap: normal;
+background-color: transparent;
+border: 0;
+}
+pre code:before,
+pre code:after {
+content: normal;
+}
+kbd {
+display: inline-block;
+padding: 3px 5px;
+font-size: 11px;
+line-height: 10px;
+color: #555;
+vertical-align: middle;
+background-color: #fcfcfc;
+border: solid 1px #ccc;
+border-bottom-color: #bbb;
+border-radius: 3px;
+box-shadow: inset 0 -1px 0 #bbb;
+}
+.pl-c {
+color: #969896;
+}
+.pl-c1,
+.pl-s .pl-v {
+color: #0086b3;
+}
+.pl-e,
+.pl-en {
+color: #795da3;
+}
+.pl-s .pl-s1,
+.pl-smi {
+color: #333;
+}
+.pl-ent {
+color: #63a35c;
+}
+.pl-k {
+color: #a71d5d;
+}
+.pl-pds,
+.pl-s,
+.pl-s .pl-pse .pl-s1,
+.pl-sr,
+.pl-sr .pl-cce,
+.pl-sr .pl-sra,
+.pl-sr .pl-sre {
+color: #183691;
+}
+.pl-v {
+color: #ed6a43;
+}
+.pl-id {
+color: #b52a1d;
+}
+.pl-ii {
+background-color: #b52a1d;
+color: #f8f8f8;
+}
+.pl-sr .pl-cce {
+color: #63a35c;
+font-weight: bold;
+}
+.pl-ml {
+color: #693a17;
+}
+.pl-mh,
+.pl-mh .pl-en,
+.pl-ms {
+color: #1d3e81;
+font-weight: bold;
+}
+.pl-mq {
+color: #008080;
+}
+.pl-mi {
+color: #333;
+font-style: italic;
+}
+.pl-mb {
+color: #333;
+font-weight: bold;
+}
+.pl-md {
+background-color: #ffecec;
+color: #bd2c00;
+}
+.pl-mi1 {
+background-color: #eaffea;
+color: #55a532;
+}
+.pl-mdr {
+color: #795da3;
+font-weight: bold;
+}
+.pl-mo {
+color: #1d3e81;
+}
+kbd {
+display: inline-block;
+padding: 3px 5px;
+font: 11px Consolas, "Liberation Mono", Menlo, Courier, monospace;
+line-height: 10px;
+color: #555;
+vertical-align: middle;
+background-color: #fcfcfc;
+border: solid 1px #ccc;
+border-bottom-color: #bbb;
+border-radius: 3px;
+box-shadow: inset 0 -1px 0 #bbb;
+}
+.task-list-item {
+list-style-type: none;
+}
+.task-list-item+.task-list-item {
+margin-top: 3px;
+}
+.task-list-item input {
+margin: 0 0.35em 0.25em -1.6em;
+vertical-align: middle;
+}
+:checked+.radio-label {
+z-index: 1;
+position: relative;
+border-color: #4078c0;
+}
+.sourceLine {
+display: inline-block;
+}
+code .kw { color: #000000; }
+code .dt { color: #ed6a43; }
+code .dv { color: #009999; }
+code .bn { color: #009999; }
+code .fl { color: #009999; }
+code .ch { color: #009999; }
+code .st { color: #183691; }
+code .co { color: #969896; }
+code .ot { color: #0086b3; }
+code .al { color: #a61717; }
+code .fu { color: #63a35c; }
+code .er { color: #a61717; background-color: #e3d2d2; }
+code .wa { color: #000000; }
+code .cn { color: #008080; }
+code .sc { color: #008080; }
+code .vs { color: #183691; }
+code .ss { color: #183691; }
+code .im { color: #000000; }
+code .va {color: #008080; }
+code .cf { color: #000000; }
+code .op { color: #000000; }
+code .bu { color: #000000; }
+code .ex { color: #000000; }
+code .pp { color: #999999; }
+code .at { color: #008080; }
+code .do { color: #969896; }
+code .an { color: #008080; }
+code .cv { color: #008080; }
+code .in { color: #008080; }
+</style>
+<style>
+body {
+box-sizing: border-box;
+min-width: 200px;
+max-width: 980px;
+margin: 0 auto;
+padding: 45px;
+padding-top: 0px;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<p>Absolutely — I’ll paste the files inline so you can copy‑paste them
+directly.</p>
+<blockquote>
+<p><strong>Provenance.</strong> The updates below are assembled from
+your latest <code>OmicsDNA_v8</code> script and your previous README
+content.</p>
+</blockquote>
+<hr />
+<h2 id="page_facing_up-readmermd">📄 README.Rmd</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="an">title:</span><span class="co"> &quot;omicsDNA&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="an">output:</span></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="co">  github_document:</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="co">    toc: true</span></span>
+<span id="cb1-6"><a href="#cb1-6" tabindex="-1"></a><span class="co">    toc_depth: 3</span></span>
+<span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="an">editor_options:</span></span>
+<span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="co">  chunk_output_type: console</span></span>
+<span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="co">---</span></span>
+<span id="cb1-10"><a href="#cb1-10" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" tabindex="-1"></a><span class="co">&lt;!-- Updated from your OmicsDNA_v8 script + prior README. :contentReference[oaicite:2]{index=2} :contentReference[oaicite:3]{index=3} --&gt;</span></span>
+<span id="cb1-12"><a href="#cb1-12" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" tabindex="-1"></a><span class="fu"># omicsDNA &lt;img src=&quot;man/figures/logo.png&quot; align=&quot;right&quot; height=&quot;120&quot;/&gt;</span></span>
+<span id="cb1-14"><a href="#cb1-14" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" tabindex="-1"></a>*A multilayer network toolkit for grouped omics (and other high-dimensional) data.*</span>
+<span id="cb1-16"><a href="#cb1-16" tabindex="-1"></a></span>
+<span id="cb1-17"><a href="#cb1-17" tabindex="-1"></a><span class="in">`omicsDNA`</span> builds **layered networks** from grouped data (e.g., age groups, disease stages), stabilises edges via resampling + consensus, assembles a **multilayer** object, detects and visualises **communities**, quantifies **layer-wise structure**, compares **overlaps**, and produces **static** and **dynamic** visualisations with reproducible, timestamped outputs. Although examples use gene expression, the workflow is **domain-agnostic**. :contentReference<span class="co">[</span><span class="ot">oaicite:4</span><span class="co">]</span>{index=4}</span>
+<span id="cb1-18"><a href="#cb1-18" tabindex="-1"></a></span>
+<span id="cb1-19"><a href="#cb1-19" tabindex="-1"></a>---</span>
+<span id="cb1-20"><a href="#cb1-20" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" tabindex="-1"></a><span class="fu">## 🔍 What does `omicsDNA` do?</span></span>
+<span id="cb1-22"><a href="#cb1-22" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" tabindex="-1"></a><span class="ss">- </span>Build **correlation networks per layer** with optional resampling and **consensus**;  </span>
+<span id="cb1-24"><a href="#cb1-24" tabindex="-1"></a><span class="ss">- </span>Assemble a **multilayer** network and **annotate** actors/edges;  </span>
+<span id="cb1-25"><a href="#cb1-25" tabindex="-1"></a><span class="ss">- </span>Detect **communities/modules** on a supra-graph; map them back to layers;  </span>
+<span id="cb1-26"><a href="#cb1-26" tabindex="-1"></a><span class="ss">- </span>Quantify **layer structure** (nodes, edges, density, centralities, paths);  </span>
+<span id="cb1-27"><a href="#cb1-27" tabindex="-1"></a><span class="ss">- </span>Compare **actor/edge overlaps** across layers;  </span>
+<span id="cb1-28"><a href="#cb1-28" tabindex="-1"></a><span class="ss">- </span>Summarise **feature classes** (e.g., lncRNA/TF) within/between communities;  </span>
+<span id="cb1-29"><a href="#cb1-29" tabindex="-1"></a><span class="ss">- </span>Generate **dynamic** (HTML/GIF/MP4) and **static** (filmstrip, timelines) visuals. :contentReference<span class="co">[</span><span class="ot">oaicite:5</span><span class="co">]</span>{index=5}</span>
+<span id="cb1-30"><a href="#cb1-30" tabindex="-1"></a></span>
+<span id="cb1-31"><a href="#cb1-31" tabindex="-1"></a>---</span>
+<span id="cb1-32"><a href="#cb1-32" tabindex="-1"></a></span>
+<span id="cb1-33"><a href="#cb1-33" tabindex="-1"></a><span class="fu">## 🆕 What’s new / expanded in this update</span></span>
+<span id="cb1-34"><a href="#cb1-34" tabindex="-1"></a></span>
+<span id="cb1-35"><a href="#cb1-35" tabindex="-1"></a><span class="ss">- </span>**Single‑cell support:** `sc_buildAdjacency()` builds per–cell‑type adjacency matrices directly from a **Seurat** object (no pseudobulk). :contentReference<span class="co">[</span><span class="ot">oaicite:6</span><span class="co">]</span>{index=6}</span>
+<span id="cb1-36"><a href="#cb1-36" tabindex="-1"></a><span class="ss">- </span>**Richer consensus:** `consensusEdges()` now supports `min_reps`, `as_list`, and **XLSX**/CSV/RDS outputs. :contentReference<span class="co">[</span><span class="ot">oaicite:7</span><span class="co">]</span>{index=7}</span>
+<span id="cb1-37"><a href="#cb1-37" tabindex="-1"></a><span class="ss">- </span>**Community detection:** <span class="in">`detectCom()`</span> gains <span class="in">`&quot;clique&quot;`</span> (k‑clique union), <span class="in">`&quot;abacus&quot;`</span> (if available), and summary CSVs; robust layer mapping &amp; filters (<span class="in">`min.actors`</span>, <span class="in">`min.layers`</span>). :contentReference<span class="co">[</span><span class="ot">oaicite:8</span><span class="co">]</span>{index=8}</span>
+<span id="cb1-38"><a href="#cb1-38" tabindex="-1"></a><span class="ss">- </span>**Feature summaries:** <span class="in">`sumComFeat()`</span> now handles case‑insensitive matching, actor ID normalisation, and multi‑CSV outputs. :contentReference<span class="co">[</span><span class="ot">oaicite:9</span><span class="co">]</span>{index=9}</span>
+<span id="cb1-39"><a href="#cb1-39" tabindex="-1"></a><span class="ss">- </span>**Change visualisation:** <span class="in">`plot_layer_diff()`</span> and <span class="in">`grid_layer_diffs()`</span> for pairwise and multi‑panel layer differences (new/lost/common edges). :contentReference<span class="co">[</span><span class="ot">oaicite:10</span><span class="co">]</span>{index=10}</span>
+<span id="cb1-40"><a href="#cb1-40" tabindex="-1"></a><span class="ss">- </span>**Dynamics:** <span class="in">`plotActivityTimeline()`</span> (Gantt‑style lifespans). <span class="in">`animate_multiNet()`</span> (HTML). Optional MP4/GIF via <span class="in">`animate_multiNet_mp4()`</span>. :contentReference<span class="co">[</span><span class="ot">oaicite:11</span><span class="co">]</span>{index=11} :contentReference<span class="co">[</span><span class="ot">oaicite:12</span><span class="co">]</span>{index=12}</span>
+<span id="cb1-41"><a href="#cb1-41" tabindex="-1"></a><span class="ss">- </span>**Enrichment:** <span class="in">`gp_enrich_multinet()`</span> (g:Profiler across layers), <span class="in">`go_enrichment_report()`</span> (GO with clusterProfiler), and <span class="in">`gsea_msigdbr_layer_pairs()`</span> (MSigDB + fgsea across layer pairs). :contentReference<span class="co">[</span><span class="ot">oaicite:13</span><span class="co">]</span>{index=13} :contentReference<span class="co">[</span><span class="ot">oaicite:14</span><span class="co">]</span>{index=14} :contentReference<span class="co">[</span><span class="ot">oaicite:15</span><span class="co">]</span>{index=15}</span>
+<span id="cb1-42"><a href="#cb1-42" tabindex="-1"></a></span>
+<span id="cb1-43"><a href="#cb1-43" tabindex="-1"></a>---</span>
+<span id="cb1-44"><a href="#cb1-44" tabindex="-1"></a></span>
+<span id="cb1-45"><a href="#cb1-45" tabindex="-1"></a><span class="fu">## 📦 Installation</span></span>
+<span id="cb1-46"><a href="#cb1-46" tabindex="-1"></a></span>
+<span id="cb1-47"><a href="#cb1-47" tabindex="-1"></a><span class="in">```r</span></span>
+<span id="cb1-48"><a href="#cb1-48" tabindex="-1"></a><span class="co"># Development version</span></span>
+<span id="cb1-49"><a href="#cb1-49" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="st">&quot;devtools&quot;</span>)</span>
+<span id="cb1-50"><a href="#cb1-50" tabindex="-1"></a>devtools<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;VafaeeLab/omicsDNA&quot;</span>)</span>
+<span id="cb1-51"><a href="#cb1-51" tabindex="-1"></a></span>
+<span id="cb1-52"><a href="#cb1-52" tabindex="-1"></a><span class="co"># Optional (dynamic visuals)</span></span>
+<span id="cb1-53"><a href="#cb1-53" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="fu">c</span>(<span class="st">&quot;ndtv&quot;</span>,<span class="st">&quot;networkDynamic&quot;</span>))   <span class="co"># HTML animations/filmstrips</span></span>
+<span id="cb1-54"><a href="#cb1-54" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="fu">c</span>(<span class="st">&quot;gifski&quot;</span>,<span class="st">&quot;gganimate&quot;</span>,<span class="st">&quot;png&quot;</span>,<span class="st">&quot;av&quot;</span>))  <span class="co"># GIF/MP4 exporters (optional)</span></span></code></pre></div>
+<p>Set a default results directory (recommended):</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">options</span>(<span class="at">mlnet.results_dir =</span> <span class="st">&quot;~/omicsDNA_results&quot;</span>)</span></code></pre></div>
+<hr />
+<h2 id="zap-quick-start">⚡ Quick start</h2>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">library</span>(omicsDNA)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a><span class="co"># Inputs:</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a><span class="co">#  - expression_mat: numeric matrix (features x samples)</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="co">#  - metaData: data.frame with sample-&gt;group mapping (e.g., AgeGroup)</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co">#  - genes_info: feature annotations (e.g., GeneName, GeneType)</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co"># 1) Build adjacency per group (optional resampling)</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>adj <span class="ot">&lt;-</span> <span class="fu">buildAdjacency</span>(</span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="at">dataMatrix      =</span> expression_mat,</span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="at">sample_metadata =</span> metaData,</span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>  <span class="at">group_col       =</span> <span class="st">&quot;AgeGroup&quot;</span>,</span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>  <span class="at">feature_ids     =</span> <span class="fu">rownames</span>(expression_mat),</span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>  <span class="at">cor_method      =</span> <span class="st">&quot;spearman&quot;</span>,</span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>  <span class="at">corr_threshold  =</span> <span class="fl">0.6</span>,</span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>  <span class="at">pval_cutoff     =</span> <span class="fl">0.05</span>,</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>  <span class="at">resample        =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>  <span class="at">n_repeats       =</span> <span class="dv">50</span></span>
+<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>)</span>
+<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a></span>
+<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a><span class="co"># 2) Edges + consensus (expanded)</span></span>
+<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>edges <span class="ot">&lt;-</span> <span class="fu">edgesFromAdjacency</span>(adj)</span>
+<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>cons  <span class="ot">&lt;-</span> <span class="fu">consensusEdges</span>(</span>
+<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>  edges,</span>
+<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>  <span class="at">prop_present =</span> <span class="fl">0.7</span>,</span>
+<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>  <span class="co"># new: can also do min_reps, write CSV/XLSX, and save RDS</span></span>
+<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>  <span class="at">write_csv  =</span> <span class="cn">TRUE</span>, <span class="at">write_xlsx =</span> <span class="cn">TRUE</span>, <span class="at">save_to_rds =</span> <span class="cn">TRUE</span></span>
+<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a>)</span>
+<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a></span>
+<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a><span class="co"># 3) Assemble multilayer + annotate</span></span>
+<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>net <span class="ot">&lt;-</span> <span class="fu">build_multiNet</span>(cons)</span>
+<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a>net <span class="ot">&lt;-</span> <span class="fu">add_network_attributes</span>(</span>
+<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a>  net,</span>
+<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a>  <span class="at">nodesMetadata =</span> genes_info,</span>
+<span id="cb3-36"><a href="#cb3-36" tabindex="-1"></a>  <span class="at">featureID_col =</span> <span class="st">&quot;GeneName&quot;</span>,</span>
+<span id="cb3-37"><a href="#cb3-37" tabindex="-1"></a>  <span class="at">nodeAttrCols  =</span> <span class="fu">c</span>(<span class="st">&quot;GeneType&quot;</span>)</span>
+<span id="cb3-38"><a href="#cb3-38" tabindex="-1"></a>)</span>
+<span id="cb3-39"><a href="#cb3-39" tabindex="-1"></a></span>
+<span id="cb3-40"><a href="#cb3-40" tabindex="-1"></a><span class="co"># 4) Communities (supra-graph) + visual</span></span>
+<span id="cb3-41"><a href="#cb3-41" tabindex="-1"></a>comm <span class="ot">&lt;-</span> <span class="fu">detectCom</span>(net, <span class="at">method =</span> <span class="st">&quot;louvain&quot;</span>, <span class="at">edgeWeight =</span> <span class="st">&quot;count&quot;</span>,</span>
+<span id="cb3-42"><a href="#cb3-42" tabindex="-1"></a>                  <span class="at">min.actors =</span> <span class="dv">15</span>, <span class="at">min.layers =</span> <span class="dv">2</span>, <span class="at">seed =</span> <span class="dv">1</span>)</span>
+<span id="cb3-43"><a href="#cb3-43" tabindex="-1"></a><span class="fu">plotCom</span>(net, comm, <span class="at">layout =</span> <span class="st">&quot;multiforce&quot;</span>, <span class="at">gravity =</span> <span class="fl">0.3</span>,</span>
+<span id="cb3-44"><a href="#cb3-44" tabindex="-1"></a>        <span class="at">show_in_rstudio =</span> <span class="cn">TRUE</span>, <span class="at">save_plot =</span> <span class="cn">TRUE</span>, <span class="at">save_df =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-45"><a href="#cb3-45" tabindex="-1"></a></span>
+<span id="cb3-46"><a href="#cb3-46" tabindex="-1"></a><span class="co"># 5) Structure, overlaps, sampling sanity</span></span>
+<span id="cb3-47"><a href="#cb3-47" tabindex="-1"></a>LM  <span class="ot">&lt;-</span> <span class="fu">layer_metrics</span>(net)</span>
+<span id="cb3-48"><a href="#cb3-48" tabindex="-1"></a>Aov <span class="ot">&lt;-</span> <span class="fu">analyze_actor_overlap</span>(net, <span class="at">reorder =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-49"><a href="#cb3-49" tabindex="-1"></a>Eov <span class="ot">&lt;-</span> <span class="fu">analyze_edge_overlap</span>(net, <span class="at">reorder =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-50"><a href="#cb3-50" tabindex="-1"></a>cs  <span class="ot">&lt;-</span> <span class="fu">com_vs_samples</span>(comm, <span class="at">num_samples =</span> <span class="fu">table</span>(metaData<span class="sc">$</span>AgeGroup))</span>
+<span id="cb3-51"><a href="#cb3-51" tabindex="-1"></a></span>
+<span id="cb3-52"><a href="#cb3-52" tabindex="-1"></a><span class="co"># 6) Feature-aware summaries (expanded)</span></span>
+<span id="cb3-53"><a href="#cb3-53" tabindex="-1"></a>commA  <span class="ot">&lt;-</span> <span class="fu">annotateCom</span>(comm, genes_info, <span class="st">&quot;GeneName&quot;</span>, <span class="st">&quot;GeneType&quot;</span>, <span class="at">write_csv =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-54"><a href="#cb3-54" tabindex="-1"></a>summTF <span class="ot">&lt;-</span> <span class="fu">sumComFeat</span>(commA, <span class="at">feature_type =</span> <span class="st">&quot;TF&quot;</span>, <span class="at">ignore_case =</span> <span class="cn">TRUE</span>, <span class="at">write_csv =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-55"><a href="#cb3-55" tabindex="-1"></a>degTF  <span class="ot">&lt;-</span> <span class="fu">get_FeatureDeg</span>(net, <span class="at">featureList =</span> <span class="fu">subset</span>(commA, GeneType <span class="sc">==</span> <span class="st">&quot;TF&quot;</span>)<span class="sc">$</span>actor)</span>
+<span id="cb3-56"><a href="#cb3-56" tabindex="-1"></a></span>
+<span id="cb3-57"><a href="#cb3-57" tabindex="-1"></a><span class="co"># 7) Dynamics (pick any)</span></span>
+<span id="cb3-58"><a href="#cb3-58" tabindex="-1"></a><span class="fu">animate_multiNet</span>(net, <span class="at">communities =</span> comm, <span class="at">seed =</span> <span class="dv">1</span>)             <span class="co"># HTML (ndtv)</span></span>
+<span id="cb3-59"><a href="#cb3-59" tabindex="-1"></a><span class="fu">filmstrip_multiNet</span>(net, <span class="at">communities =</span> comm, <span class="at">ncol =</span> <span class="dv">4</span>, <span class="at">seed =</span> <span class="dv">1</span>) <span class="co"># PNG/PDF</span></span>
+<span id="cb3-60"><a href="#cb3-60" tabindex="-1"></a><span class="fu">plotActivityTimeline</span>(net, <span class="at">type =</span> <span class="st">&quot;edge&quot;</span>)                         <span class="co"># Gantt lifespans</span></span></code></pre></div>
+<blockquote>
+<p>The steps above mirror the typical flow in the previous README, with
+additions noted inline.</p>
+</blockquote>
+<hr />
+<h2 id="compass-typical-analysis-flow">🧭 Typical analysis flow</h2>
+<ol style="list-style-type: decimal">
+<li><strong>Build &amp; stabilise:</strong>
+<code>buildAdjacency()</code> → <code>edgesFromAdjacency()</code> →
+<code>consensusEdges()</code></li>
+<li><strong>Assemble &amp; annotate:</strong>
+<code>build_multiNet()</code> →
+<code>add_network_attributes()</code></li>
+<li><strong>Detect &amp; visualise:</strong> <code>detectCom()</code> →
+<code>plotCom()</code></li>
+<li><strong>Quantify &amp; compare:</strong>
+<code>layer_metrics()</code>, <code>analyze_actor_overlap()</code>,
+<code>analyze_edge_overlap()</code></li>
+<li><strong>Feature‑aware:</strong> <code>annotateCom()</code>,
+<code>sumComFeat()</code>, <code>get_FeatureDeg()</code></li>
+<li><strong>Communicate change:</strong>
+<code>animate_multiNet()</code>, <code>filmstrip_multiNet()</code>,
+<code>plotActivityTimeline()</code>, <code>plot_layer_diff()</code>,
+<code>grid_layer_diffs()</code></li>
+</ol>
+<hr />
+<h2 id="test_tube-methods-concise">🧪 Methods (concise)</h2>
+<ul>
+<li><strong>Per‑layer correlations:</strong> keep edges if
+<code>|r| ≥ corr_threshold</code> &amp; <code>p ≤ pval_cutoff</code>.
+With resampling, repeat on balanced draws.</li>
+<li><strong>Consensus:</strong> retain edges present in ≥
+<code>prop_present</code> (or <code>min_reps</code>) of repeats;
+summarise weights across reps; write <strong>CSV/XLSX/RDS</strong> as
+needed.</li>
+<li><strong>Multilayer assembly:</strong> per‑layer igraphs combined in
+<code>multinet::ml.network</code>.</li>
+<li><strong>Communities:</strong> supra‑graph aggregated by
+<strong>count</strong>/<strong>sum</strong>; methods: Louvain, Infomap,
+<strong>k‑clique</strong> union, <strong>ABACUS</strong> (if available);
+filter by <strong>min.actors</strong>/<strong>min.layers</strong> with
+summary CSVs.</li>
+<li><strong>Structure/overlaps:</strong> degree, betweenness,
+eigenvector, closeness, PageRank, clustering, coreness; Jaccard for
+actors/edges; path summaries with guards.</li>
+</ul>
+<hr />
+<h2 id="jigsaw-function-map-current-api">🧩 Function map (current
+API)</h2>
+<h3 id="build--assemble">Build &amp; assemble</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>buildAdjacency()</code></td>
+<td>Create per‑group adjacency matrices (optional resampling).</td>
+</tr>
+<tr>
+<td><code>sc_buildAdjacency()</code></td>
+<td><strong>Single‑cell</strong>: Seurat → per‑cell‑type adjacency (no
+pseudobulk).</td>
+</tr>
+<tr>
+<td><code>edgesFromAdjacency()</code></td>
+<td>Convert matrices/lists to tidy edge tables.</td>
+</tr>
+<tr>
+<td><code>consensusEdges()</code></td>
+<td>Keep edges robust across repeats; summarise weights;
+CSV/XLSX/RDS.</td>
+</tr>
+<tr>
+<td><code>build_multiNet()</code></td>
+<td>Assemble <code>multinet::ml.network</code> from per‑layer
+edges.</td>
+</tr>
+<tr>
+<td><code>add_network_attributes()</code></td>
+<td>Attach node/edge attributes (robust ID matching).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="community-detection--reporting">Community detection &amp;
+reporting</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>detectCom()</code></td>
+<td>Communities on a supra‑graph
+(Louvain/Infomap/<strong>k‑clique</strong>/<strong>ABACUS</strong>).</td>
+</tr>
+<tr>
+<td><code>plotCom()</code></td>
+<td>Multilayer community plot (+ save long
+<code>(actor, layer, com/cid)</code> table).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="structure-overlaps-sampling">Structure, overlaps, sampling</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>layer_metrics()</code></td>
+<td>Node‑ &amp; layer‑level metrics; saves a run folder.</td>
+</tr>
+<tr>
+<td><code>analyze_actor_overlap()</code></td>
+<td>Jaccard overlap of actor sets + heatmap.</td>
+</tr>
+<tr>
+<td><code>analyze_edge_overlap()</code></td>
+<td>Jaccard overlap of edge sets + heatmap.</td>
+</tr>
+<tr>
+<td><code>com_vs_samples()</code></td>
+<td>Relate #communities per layer to #samples per group.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="feature-aware-summaries">Feature-aware summaries</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>annotateCom()</code></td>
+<td>Add a feature attribute (e.g., <code>GeneType</code>) to community
+rows.</td>
+</tr>
+<tr>
+<td><code>sumComFeat()</code></td>
+<td>Summaries by actor / by community / counts per community × layer
+(CSV bundle).</td>
+</tr>
+<tr>
+<td><code>get_FeatureDeg()</code></td>
+<td>Degrees for any feature list across layers (wide/long).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dynamics--comparative-visuals">Dynamics &amp; comparative
+visuals</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>animate_multiNet()</code></td>
+<td>Interactive HTML animation (<code>ndtv</code>).</td>
+</tr>
+<tr>
+<td><code>animate_multiNet_mp4()</code></td>
+<td>MP4/GIF via <code>gganimate</code>/<code>gifski</code>.</td>
+</tr>
+<tr>
+<td><code>filmstrip_multiNet()</code></td>
+<td>Static grid (one panel per layer).</td>
+</tr>
+<tr>
+<td><code>plotActivityTimeline()</code></td>
+<td>Vertex/edge “lifespans” (Gantt‑style spells).</td>
+</tr>
+<tr>
+<td><code>plot_layer_diff()</code></td>
+<td>Pairwise layer‑difference plot (new/lost/common edges).</td>
+</tr>
+<tr>
+<td><code>grid_layer_diffs()</code></td>
+<td>Multi‑panel grid of <strong>layer differences</strong>
+(publication‑ready).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="enrichment--functional-analysis">Enrichment &amp; functional
+analysis</h3>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gp_enrich_multinet()</code></td>
+<td>g:Profiler enrichment <strong>per layer</strong> +
+summary/term‑overlap networks.</td>
+</tr>
+<tr>
+<td><code>go_enrichment_report()</code></td>
+<td>GO enrichment (single set <strong>or</strong> per‑layer) with
+clusterProfiler; PDFs &amp; CSVs.</td>
+</tr>
+<tr>
+<td><code>gsea_msigdbr_layer_pairs()</code></td>
+<td><strong>GSEA</strong> across <strong>layer pairs</strong> using
+MSigDB + fgsea; dotplots, cNET, term networks.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="clapper-dynamics--change-quick-recipes">🎬 Dynamics &amp;
+change: quick recipes</h2>
+<p><strong>Interactive animation (HTML; per‑slice community
+colours)</strong></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>anim <span class="ot">&lt;-</span> <span class="fu">animate_multiNet</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  net,</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="at">communities   =</span> comm,             <span class="co"># data.frame: actor, layer, com/cid</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="at">layout        =</span> <span class="st">&quot;kamadakawai&quot;</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>  <span class="at">slice.par     =</span> <span class="fu">list</span>(<span class="at">start =</span> <span class="dv">0</span>, <span class="at">interval =</span> <span class="dv">1</span>, <span class="at">aggregate.dur =</span> <span class="dv">1</span>),</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">displaylabels =</span> <span class="cn">TRUE</span>, <span class="at">vertex.cex =</span> <span class="fl">0.9</span>, <span class="at">seed =</span> <span class="dv">1</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>)</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="co"># =&gt; omicsDNA_results/multiNet_animation_&lt;timestamp&gt;.html</span></span></code></pre></div>
+<p><strong>Static filmstrip (PNG/PDF; one panel per layer)</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>fs <span class="ot">&lt;-</span> <span class="fu">filmstrip_multiNet</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  net, <span class="at">communities =</span> comm, <span class="at">layout =</span> <span class="st">&quot;kamadakawai&quot;</span>,</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">ncol =</span> <span class="dv">4</span>, <span class="at">format =</span> <span class="st">&quot;png&quot;</span>, <span class="at">width =</span> <span class="dv">12</span>, <span class="at">height =</span> <span class="dv">8</span>, <span class="at">dpi =</span> <span class="dv">300</span>, <span class="at">seed =</span> <span class="dv">1</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>)</span></code></pre></div>
+<p><strong>Activity timelines (lifespans of edges/vertices)</strong></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>timeline_edges  <span class="ot">&lt;-</span> <span class="fu">plotActivityTimeline</span>(net, <span class="at">type =</span> <span class="st">&quot;edge&quot;</span>,   <span class="at">show_in_rstudio =</span> <span class="cn">TRUE</span>, <span class="at">save_plot =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>timeline_actors <span class="ot">&lt;-</span> <span class="fu">plotActivityTimeline</span>(net, <span class="at">type =</span> <span class="st">&quot;vertex&quot;</span>, <span class="at">show_in_rstudio =</span> <span class="cn">TRUE</span>, <span class="at">save_plot =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
+<p><strong>Pairwise &amp; grid differences</strong></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">plot_layer_diff</span>(net, <span class="at">L1 =</span> <span class="st">&quot;E1&quot;</span>, <span class="at">L2 =</span> <span class="st">&quot;E2&quot;</span>, <span class="at">layout =</span> <span class="st">&quot;fr&quot;</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>                <span class="at">edge_alpha =</span> <span class="fl">0.7</span>, <span class="at">vertex_cex =</span> <span class="fl">0.7</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">grid_layer_diffs</span>(net, <span class="at">ncol =</span> <span class="dv">4</span>, <span class="at">file =</span> <span class="st">&quot;diffs_all_pairs.png&quot;</span>)</span></code></pre></div>
+<hr />
+<h2 id="dna-singlecell-adjacency-seurat--layers">🧬 Single‑cell
+adjacency (Seurat → layers)</h2>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># Build one adjacency matrix per cell type directly from a Seurat object</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>adj_sc <span class="ot">&lt;-</span> <span class="fu">sc_buildAdjacency</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>  seurat_obj,</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>  <span class="at">cell_type_col       =</span> <span class="st">&quot;cell_type&quot;</span>,</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>  <span class="at">assay               =</span> <span class="st">&quot;RNA&quot;</span>,</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>  <span class="at">slot                =</span> <span class="st">&quot;data&quot;</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a>  <span class="at">feature_ids         =</span> <span class="fu">VariableFeatures</span>(seurat_obj),</span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a>  <span class="at">max_cells_per_type  =</span> <span class="dv">1000</span>,</span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a>  <span class="at">cor_method          =</span> <span class="st">&quot;spearman&quot;</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a>  <span class="at">pval_adjust         =</span> <span class="st">&quot;fdr&quot;</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" tabindex="-1"></a>  <span class="at">pval_cutoff         =</span> <span class="fl">0.05</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" tabindex="-1"></a>  <span class="at">corr_threshold      =</span> <span class="fl">0.25</span></span>
+<span id="cb8-13"><a href="#cb8-13" tabindex="-1"></a>)</span>
+<span id="cb8-14"><a href="#cb8-14" tabindex="-1"></a><span class="co"># next: edgesFromAdjacency(adj_sc) → consensusEdges(...) → build_multiNet(...)</span></span></code></pre></div>
+<blockquote>
+<p>Computes correlations <strong>across cells</strong> per cell type;
+keeps edges by combined correlation &amp; p‑value thresholds; returns a
+list of same‑ordered adjacency matrices.</p>
+</blockquote>
+<hr />
+<h2 id="brain-enrichment-examples">🧠 Enrichment examples</h2>
+<p><strong>g:Profiler per layer over a multilayer network</strong></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">gp_enrich_multinet</span>(</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>  net,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>  <span class="at">organism          =</span> <span class="st">&quot;hsapiens&quot;</span>,</span>
+<span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a>  <span class="at">sources           =</span> <span class="fu">c</span>(<span class="st">&quot;GO:BP&quot;</span>,<span class="st">&quot;GO:MF&quot;</span>,<span class="st">&quot;GO:CC&quot;</span>,<span class="st">&quot;REAC&quot;</span>),</span>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a>  <span class="at">layer_order       =</span> multinet<span class="sc">::</span><span class="fu">layers_ml</span>(net),</span>
+<span id="cb9-6"><a href="#cb9-6" tabindex="-1"></a>  <span class="at">significant       =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-7"><a href="#cb9-7" tabindex="-1"></a>  <span class="at">user_threshold    =</span> <span class="fl">0.05</span>,</span>
+<span id="cb9-8"><a href="#cb9-8" tabindex="-1"></a>  <span class="at">show_terms        =</span> <span class="dv">12</span>,          <span class="co"># dotplot + concept network cap</span></span>
+<span id="cb9-9"><a href="#cb9-9" tabindex="-1"></a>  <span class="at">per_layer_subdirs =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" tabindex="-1"></a>  <span class="at">format            =</span> <span class="st">&quot;png&quot;</span>,</span>
+<span id="cb9-11"><a href="#cb9-11" tabindex="-1"></a>  <span class="at">show_in_rstudio   =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb9-12"><a href="#cb9-12" tabindex="-1"></a>  <span class="at">ton_show          =</span> <span class="cn">TRUE</span>, <span class="at">ton_top_terms =</span> <span class="dv">10</span></span>
+<span id="cb9-13"><a href="#cb9-13" tabindex="-1"></a>)</span>
+<span id="cb9-14"><a href="#cb9-14" tabindex="-1"></a><span class="co"># Inspect the run manifest:</span></span>
+<span id="cb9-15"><a href="#cb9-15" tabindex="-1"></a><span class="fu">read.csv</span>(res<span class="sc">$</span>summary_file, <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p><strong>GO (clusterProfiler): single set and per‑layer</strong></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="do">## Single set</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a>genes <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;RHCG&quot;</span>,<span class="st">&quot;SPRR1A&quot;</span>,<span class="st">&quot;SPRR2A&quot;</span>,<span class="st">&quot;SPRR3&quot;</span>,<span class="st">&quot;KRT13&quot;</span>,<span class="st">&quot;KRT4&quot;</span>,<span class="st">&quot;CRNN&quot;</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a>go1 <span class="ot">&lt;-</span> <span class="fu">go_enrichment_report</span>(<span class="at">genes =</span> genes, <span class="at">OrgDb =</span> org.Hs.eg.db, <span class="at">ont =</span> <span class="st">&quot;BP&quot;</span>,</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a>                            <span class="at">file_prefix =</span> <span class="st">&quot;demo_GO_BP&quot;</span>, <span class="at">show_in_rstudio =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb10-5"><a href="#cb10-5" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" tabindex="-1"></a><span class="do">## Per layer (each layer&#39;s vertex set)</span></span>
+<span id="cb10-7"><a href="#cb10-7" tabindex="-1"></a>go2 <span class="ot">&lt;-</span> <span class="fu">go_enrichment_report</span>(<span class="at">net =</span> net, <span class="at">OrgDb =</span> org.Hs.eg.db, <span class="at">ont =</span> <span class="st">&quot;BP&quot;</span>,</span>
+<span id="cb10-8"><a href="#cb10-8" tabindex="-1"></a>                            <span class="at">layer_order   =</span> multinet<span class="sc">::</span><span class="fu">layers_ml</span>(net),</span>
+<span id="cb10-9"><a href="#cb10-9" tabindex="-1"></a>                            <span class="at">universe_mode =</span> <span class="st">&quot;union&quot;</span>,</span>
+<span id="cb10-10"><a href="#cb10-10" tabindex="-1"></a>                            <span class="at">one_pdf =</span> <span class="cn">TRUE</span>, <span class="at">file_prefix =</span> <span class="st">&quot;GO_BP_byLayer&quot;</span>)</span>
+<span id="cb10-11"><a href="#cb10-11" tabindex="-1"></a>go2<span class="sc">$</span>combined_pdf</span></code></pre></div>
+<p><strong>GSEA across layer pairs (MSigDB + fgsea)</strong></p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a>gsea <span class="ot">&lt;-</span> <span class="fu">gsea_msigdbr_layer_pairs</span>(</span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  net,</span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="at">layer_order =</span> multinet<span class="sc">::</span><span class="fu">layers_ml</span>(net),</span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>  <span class="co"># scores_by_layer is optional; by default it will try to extract per-layer scores from net&#39;s vertex attrs</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a>  <span class="at">top_n      =</span> <span class="dv">10</span>,</span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>  <span class="at">format     =</span> <span class="st">&quot;png&quot;</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>  <span class="at">show_in_rstudio =</span> <span class="cn">TRUE</span></span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>)</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a><span class="co"># Check outputs in options(&#39;mlnet.results_dir&#39;)</span></span></code></pre></div>
+<hr />
+<h2 id="bar_chart-interpretation-highlights">📊 Interpretation
+highlights</h2>
+<ul>
+<li><strong>Consensus edges</strong> → robust wiring; high
+<code>prop_present</code> / <code>min_reps</code> ≈ stability.</li>
+<li><strong>Communities</strong> → size &amp; span quantify breadth and
+cross‑layer stability.</li>
+<li><strong>Layer metrics</strong> → density/components/APL/diameter
+contextualise modules.</li>
+<li><strong>Overlaps</strong> → actor vs edge Jaccard separates
+participation vs wiring similarity.</li>
+<li><strong>Timelines</strong> → stable vs transient vertices/edges;
+late emergence.</li>
+</ul>
+<hr />
+<h2 id="id_-saving-conventions--reproducibility">🗂 Saving conventions
+&amp; reproducibility</h2>
+<ul>
+<li>Most functions write to
+<code>getOption(&quot;mlnet.results_dir&quot;,&quot;omicsDNA_results&quot;)</code> with
+<strong>timestamps</strong>; many return a
+<code>file</code>/<code>files</code> attribute.</li>
+<li>Set a seed before stochastic steps (resampling, layouts,
+communities):</li>
+</ul>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span></code></pre></div>
+<hr />
+<h2 id="raising_hand-feedback--contributions">🙋 Feedback &amp;
+contributions</h2>
+<p>Issues and pull requests are welcome. Please provide a minimal
+example and <code>sessionInfo()</code> where possible.</p>
+<hr />
+<h2 id="page_facing_up-license">📄 License</h2>
+<p>MIT © VafaeeLab</p>
+<pre><code>---
+
+## 📄 README.txt
+
+```text
+omicsDNA — A multilayer network toolkit for grouped omics (and other high-dimensional) data.
+
+Core capabilities:
+- Build correlation networks per layer (optional resampling + consensus)
+- Assemble a multilayer network; annotate actors/edges
+- Detect communities on a supra-graph; map back to layers
+- Quantify layer structure; compare actor/edge overlaps
+- Summarise feature classes (e.g., lncRNA/TF)
+- Static &amp; dynamic visuals (filmstrip, timelines, HTML/GIF/MP4)
+
+Installation
+------------
+R:
+  install.packages(&quot;devtools&quot;)
+  devtools::install_github(&quot;VafaeeLab/omicsDNA&quot;)
+Optional:
+  install.packages(c(&quot;ndtv&quot;,&quot;networkDynamic&quot;,&quot;gifski&quot;,&quot;gganimate&quot;,&quot;png&quot;,&quot;av&quot;))
+
+Tip: options(mlnet.results_dir = &quot;~/omicsDNA_results&quot;)
+
+Quick start
+-----------
+library(omicsDNA); set.seed(1)
+
+# Build per-group adjacency
+adj &lt;- buildAdjacency(expression_mat, metaData, group_col=&quot;AgeGroup&quot;,
+                      cor_method=&quot;spearman&quot;, corr_threshold=0.6, pval_cutoff=0.05,
+                      resample=TRUE, n_repeats=50)
+
+# Edges + consensus (expanded outputs)
+edges &lt;- edgesFromAdjacency(adj)
+cons  &lt;- consensusEdges(edges, prop_present=0.7,
+                        write_csv=TRUE, write_xlsx=TRUE, save_to_rds=TRUE)
+
+# Multilayer + annotate
+net &lt;- build_multiNet(cons)
+net &lt;- add_network_attributes(net, nodesMetadata=genes_info,
+                              featureID_col=&quot;GeneName&quot;, nodeAttrCols=&quot;GeneType&quot;)
+
+# Communities + plot
+comm &lt;- detectCom(net, method=&quot;louvain&quot;, edgeWeight=&quot;count&quot;,
+                  min.actors=15, min.layers=2, seed=1)
+plotCom(net, comm, layout=&quot;multiforce&quot;, gravity=0.3,
+        show_in_rstudio=TRUE, save_plot=TRUE, save_df=TRUE)
+
+# Structure &amp; overlaps
+LM &lt;- layer_metrics(net)
+Aov &lt;- analyze_actor_overlap(net, reorder=TRUE)
+Eov &lt;- analyze_edge_overlap(net, reorder=TRUE)
+
+# Feature-aware summaries (expanded)
+commA  &lt;- annotateCom(comm, genes_info, &quot;GeneName&quot;, &quot;GeneType&quot;, write_csv=TRUE)
+summTF &lt;- sumComFeat(commA, feature_type=&quot;TF&quot;, ignore_case=TRUE, write_csv=TRUE)
+degTF  &lt;- get_FeatureDeg(net, featureList=subset(commA, GeneType==&quot;TF&quot;)$actor)
+
+# Dynamics
+animate_multiNet(net, communities=comm, seed=1)
+filmstrip_multiNet(net, communities=comm, ncol=4, seed=1)
+plotActivityTimeline(net, type=&quot;edge&quot;)
+
+Single-cell (Seurat) → per–cell-type adjacency
+----------------------------------------------
+adj_sc &lt;- sc_buildAdjacency(seurat_obj,
+  cell_type_col=&quot;cell_type&quot;, assay=&quot;RNA&quot;, slot=&quot;data&quot;,
+  feature_ids=VariableFeatures(seurat_obj),
+  max_cells_per_type=1000, cor_method=&quot;spearman&quot;,
+  pval_adjust=&quot;fdr&quot;, pval_cutoff=0.05, corr_threshold=0.25)
+
+Enrichment &amp; functional analysis
+--------------------------------
+# g:Profiler per layer
+res_gp &lt;- gp_enrich_multinet(net, organism=&quot;hsapiens&quot;,
+           sources=c(&quot;GO:BP&quot;,&quot;GO:MF&quot;,&quot;GO:CC&quot;,&quot;REAC&quot;),
+           layer_order=multinet::layers_ml(net),
+           significant=TRUE, user_threshold=0.05,
+           show_terms=12, per_layer_subdirs=TRUE, format=&quot;png&quot;)
+read.csv(res_gp$summary_file, stringsAsFactors=FALSE)
+
+# GO (clusterProfiler)
+genes &lt;- c(&quot;RHCG&quot;,&quot;SPRR1A&quot;,&quot;SPRR2A&quot;,&quot;SPRR3&quot;,&quot;KRT13&quot;,&quot;KRT4&quot;,&quot;CRNN&quot;)
+go1 &lt;- go_enrichment_report(genes=genes, OrgDb=org.Hs.eg.db, ont=&quot;BP&quot;,
+                            file_prefix=&quot;demo_GO_BP&quot;, show_in_rstudio=TRUE)
+go2 &lt;- go_enrichment_report(net=net, OrgDb=org.Hs.eg.db, ont=&quot;BP&quot;,
+                            layer_order=multinet::layers_ml(net),
+                            universe_mode=&quot;union&quot;, one_pdf=TRUE,
+                            file_prefix=&quot;GO_BP_byLayer&quot;)
+
+# GSEA across layer pairs (MSigDB + fgsea)
+gsea &lt;- gsea_msigdbr_layer_pairs(net,
+          layer_order=multinet::layers_ml(net), top_n=10,
+          format=&quot;png&quot;, show_in_rstudio=TRUE)
+
+Change &amp; dynamics visuals
+-------------------------
+plot_layer_diff(net, L1=&quot;E1&quot;, L2=&quot;E2&quot;, layout=&quot;fr&quot;,
+                edge_alpha=0.7, vertex_cex=0.7)
+
+grid_layer_diffs(net, ncol=4, file=&quot;diffs_all_pairs.png&quot;)
+
+timeline_edges  &lt;- plotActivityTimeline(net, type=&quot;edge&quot;,   show_in_rstudio=TRUE, save_plot=TRUE)
+timeline_actors &lt;- plotActivityTimeline(net, type=&quot;vertex&quot;, show_in_rstudio=TRUE, save_plot=TRUE)
+
+Interpretation highlights
+-------------------------
+- Consensus edges → robust wiring; high prop_present / min_reps ≈ stability
+- Communities → size &amp; span quantify breadth and cross-layer stability
+- Layer metrics → density/components/APL/diameter contextualise modules
+- Overlaps → actor vs edge Jaccard separates participation vs wiring similarity
+- Timelines → stable vs transient vertices/edges; late emergence
+
+Reproducibility
+---------------
+- Outputs are timestamped under options(&#39;mlnet.results_dir&#39;,&#39;omicsDNA_results&#39;)
+- Use set.seed(1) before stochastic steps
+
+License
+-------
+MIT © VafaeeLab</code></pre>
+<hr />
+<p>If you’d like me to trim or reorganize sections for CRAN/GitHub
+badges or add a changelog, say the word and I’ll inline those too.</p>
+
+</body>
+</html>
