@@ -2,7 +2,7 @@
 % Please edit documentation in R/annotateCom.R
 \name{annotateCom}
 \alias{annotateCom}
-\title{Annotate multilayer community rows with a node attribute (pure data-frame join):}
+\title{Annotate multilayer community rows with a node attribute (pure data-frame join)}
 \usage{
 annotateCom(
   communities,

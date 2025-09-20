@@ -2,7 +2,7 @@
 % Please edit documentation in R/filmstrip_multiNet.R
 \name{filmstrip_multiNet}
 \alias{filmstrip_multiNet}
-\title{Filmstrip of multilayer snapshots (shows in RStudio + saves to file):}
+\title{Filmstrip of multilayer snapshots with a single, stable layout}
 \usage{
 filmstrip_multiNet(
   net,
@@ -17,6 +17,9 @@ filmstrip_multiNet(
   dpi = 300,
   format = c("png", "pdf"),
   vertex.cex = 0.9,
+  label.cex = 0.6,
+  cex = NULL,
+  label.col = "black",
   displaylabels = TRUE,
   edge.col = "#55555555",
   bg = "white",
@@ -29,44 +32,132 @@ filmstrip_multiNet(
 )
 }
 \arguments{
-\item{net}{A multilayer network usable with multinet::layers_ml() and edges_ml().}
+\item{net}{A multilayer network usable with \code{multinet::layers_ml()} and
+\code{multinet::edges_ml()}.}
 
-\item{communities}{Optional data.frame with \code{actor}, \code{layer}, and \code{com} or \code{cid}.}
+\item{communities}{Optional data frame with vertex community assignment per
+layer. Must contain columns \code{actor}, \code{layer}, and either \code{com} \strong{or} \code{cid}
+(the latter will be converted to a string community label).}
 
-\item{layer_order}{Optional explicit order of layers; default = order from layers_ml(net).}
+\item{layer_order}{Optional character vector specifying the subset and order
+of layers to display. Default \code{NULL} = all layers in the order returned by
+\code{layers_ml(net)}.}
 
-\item{layout}{One of c("kamadakawai","mds","force","fr","circle"); "force"/"fr" map to "kamadakawai".}
+\item{layout}{One of \code{c("kamadakawai","mds","force","fr","circle")}. \code{"force"}
+and \code{"fr"} are convenient aliases to \code{"kamadakawai"}. Default \code{"kamadakawai"}.}
 
-\item{actor_normalize}{Normalization steps for matching community actors to network actors.}
+\item{actor_normalize}{Character vector of simple normalisers applied when
+matching community \code{actor} IDs to network vertices. Any subset of
+\code{c("strip_version","trim","tolower","toupper","rm_dash","rm_punct","alnum")}.
+Default \code{c("strip_version","trim","tolower")}.}
 
-\item{ncol, nrow}{Grid dimensions; if both NULL a near-square grid is chosen.}
+\item{ncol, nrow}{Grid dimensions. If both are \code{NULL}, a near‑square grid is
+chosen automatically.}
 
-\item{width, height}{Figure size (inches) for the saved file. @param dpi PNG resolution.}
+\item{width, height}{Size of the saved figure (in inches). Default \verb{12 × 8}.}
 
-\item{format}{"png" or "pdf" (for saving).}
+\item{dpi}{Resolution for PNG output. Ignored for PDF. Default \code{300}.}
 
-\item{vertex.cex}{Node size multiplier. @param displaylabels Show vertex labels?}
+\item{format}{File format for saving: \code{"png"} or \code{"pdf"}. Default \code{"png"}.}
 
-\item{edge.col}{Edge colour (single hex/name) for every panel.}
+\item{vertex.cex}{Numeric multiplier for vertex symbol size (passed to
+\code{plot.network()} as \code{vertex.cex}). Default \code{0.9}.}
 
-\item{bg}{Background colour. @param slice.par Kept for API symmetry (unused here).}
+\item{label.cex}{Numeric multiplier for \strong{label} size (passed to
+\code{plot.network()} as \code{label.cex}). Default \code{0.6}.}
 
-\item{seed}{Optional RNG seed for the layout. @param results_dir Output directory for the file.}
+\item{cex}{Soft‑deprecated alias for \code{label.cex}. If supplied, it overrides
+\code{label.cex} and a message is emitted. Default \code{NULL}.}
 
-\item{file}{Optional filename; if relative it is placed in \code{results_dir}. Auto‑named if NULL.}
+\item{label.col}{Single colour for labels. Default \code{"black"}.}
 
-\item{show_in_rstudio}{Logical; draw to the Plots pane before saving. Default TRUE.}
+\item{displaylabels}{Logical; whether to draw vertex labels. Default \code{TRUE}.}
 
-\item{verbose}{Print progress.}
+\item{edge.col}{Edge colour (single hex/name) for every panel, with optional
+transparency (e.g. \code{"#55555555"}). Default \code{"#55555555"}.}
+
+\item{bg}{Background colour for the page. Default \code{"white"}.}
+
+\item{slice.par}{Kept for API symmetry (currently unused). Default is a list
+with harmless placeholders.}
+
+\item{seed}{Optional random seed for reproducible layout coordinates.}
+
+\item{results_dir}{Output directory for the saved file. Default
+\code{getOption("mlnet.results_dir","omicsDNA_results")}.}
+
+\item{file}{Optional output filename; if relative, it is placed inside
+\code{results_dir}. If \code{NULL}, a timestamped name is generated.}
+
+\item{show_in_rstudio}{Logical; if \code{TRUE}, draw into the current device (e.g.
+RStudio Plots) and then copy the exact page to file. If \code{FALSE}, draw
+off‑screen directly to the file device. Default \code{TRUE}.}
+
+\item{verbose}{Logical; print progress messages. Default \code{TRUE}.}
 }
 \value{
-(Invisibly) list with \code{layers}, \code{coords} (matrix), \code{file} (abs path).
+(Invisibly) a list with:
+\itemize{
+\item \code{layers} – character vector of layers drawn (in panel order);
+\item \code{coords} – numeric matrix of vertex coordinates (rows named by actor);
+\item \code{file} – absolute path of the saved image (PNG/PDF).
+}
 }
 \description{
-Builds one \code{network} per layer from your multinet object, computes a single
-stable layout from the union graph (so positions are consistent across panels),
-and draws a grid of panels (one per layer). If \code{communities} is provided
-(\code{actor}, \code{layer}, and \code{com} or \code{cid}), vertices are coloured by community
-per slice. When \code{show_in_rstudio = TRUE}, the filmstrip is drawn to the
-current device (RStudio Plots pane), and then copied to PNG/PDF.
+This function renders a \emph{filmstrip} of a multilayer network—one panel per
+layer—using a \strong{single set of vertex coordinates} computed on the union of
+all layers. The result is a small multiples display in which spatial position
+is comparable across layers (conditions, ages, time points), making visual
+differences easier to interpret.
+
+If a community assignment is provided (a data frame with columns \code{actor},
+\code{layer}, and either \code{com} or \code{cid}), vertices in each panel are coloured by
+their community membership for that layer. Colours are drawn from
+\strong{RColorBrewer} when available, otherwise a perceptible HCL palette is used.
+
+The function can draw into the current device (e.g., the RStudio Plots pane)
+\emph{and} save the same page to file. Layouts are computed with \strong{igraph}; panels
+are drawn with \strong{network} so that label and point aesthetics are familiar to
+many R network users.
+}
+\details{
+\strong{Stable coordinates.} We build an \emph{undirected} union graph from all edges in
+the selected layers, compute a single layout once (Kamada–Kawai by default),
+and reuse those coordinates for every panel. This prevents the common “nodes
+jumping around” problem across slices.
+
+\strong{Label size.} The visible label size is controlled by \code{label.cex} (passed to
+\code{plot.network()} as \code{label.cex}). A soft‑deprecated alias \code{cex} is accepted and
+mapped to \code{label.cex} to keep older scripts working.
+
+\strong{Robust I/O.} The function is defensive about column names in
+\code{multinet::edges_ml()} and will detect reasonable synonyms for endpoints and
+layer columns. If both \code{from_layer}/\code{to_layer} are present, we show only
+\strong{intra‑layer} edges (\code{from_layer == to_layer}) and store that layer name.
+}
+\examples{
+\dontrun{
+fs <- filmstrip_multiNet(
+  net,
+  communities     = comm,                 # data.frame: actor, layer, com/cid
+  layer_order     = c("E1","E2","M1","M2"),
+  layout          = "kamadakawai",
+  ncol            = 4,
+  vertex.cex      = 0.8,                  # node size
+  label.cex       = 0.12,                 # label size (use this, not `cex`)
+  displaylabels   = TRUE,
+  edge.col        = "#55555555",
+  format          = "png",
+  width           = 12, height = 8, dpi = 300,
+  seed            = 1,
+  show_in_rstudio = TRUE,
+  verbose         = TRUE
+)
+fs$file  # path to the saved image
+}
+
+}
+\seealso{
+\code{\link[multinet]{layers_ml}}, \code{\link[multinet]{edges_ml}},
+\code{\link[igraph]{layout_with_kk}}, \code{\link[network]{plot.network}}
 }

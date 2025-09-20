@@ -2,7 +2,7 @@
 % Please edit documentation in R/com_vs_samples.R
 \name{com_vs_samples}
 \alias{com_vs_samples}
-\title{Relate community counts to sample sizes across layers (with a quick scatter):}
+\title{Relate community counts to sample sizes across layers (with a quick scatter)}
 \usage{
 com_vs_samples(communities, num_samples)
 }

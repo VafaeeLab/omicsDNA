@@ -2,7 +2,7 @@
 % Please edit documentation in R/build_multiNet.R
 \name{build_multiNet}
 \alias{build_multiNet}
-\title{Build a multilayer network from per‑layer edge tables or adjacency matrices:}
+\title{Build a multilayer network from per‑layer edge tables or adjacency matrices}
 \usage{
 build_multiNet(
   edgeListPerLayer,

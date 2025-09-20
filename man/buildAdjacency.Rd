@@ -2,7 +2,7 @@
 % Please edit documentation in R/buildAdjacency.R
 \name{buildAdjacency}
 \alias{buildAdjacency}
-\title{Build correlation‑filtered adjacency matrices by group:}
+\title{Build correlation‑filtered adjacency matrices by group}
 \usage{
 buildAdjacency(
   dataMatrix,
@@ -13,6 +13,7 @@ buildAdjacency(
   sample_col = "sample",
   feature_id_col = "feature_id",
   cor_method = c("spearman", "pearson"),
+  pval_adjust = c("none", "fdr", "BH", "bonferroni"),
   pval_cutoff = 0.05,
   corr_threshold = 0.7,
   resample = TRUE,
@@ -22,7 +23,8 @@ buildAdjacency(
   save_rds = TRUE,
   out_dir = file.path(getwd(), "omicsDNA_results"),
   file_prefix = "adjacency",
-  compress = "xz"
+  compress = "xz",
+  group_order = NULL
 )
 }
 \arguments{
@@ -42,6 +44,11 @@ missing features are zero‑padded in outputs so dimensions are consistent. IDs 
 \item{feature_id_col}{Column name of IDs in \code{feature_metadata} (reserved; currently unused).}
 
 \item{cor_method}{Correlation type: \code{"spearman"} or \code{"pearson"}. Default \code{"spearman"}.}
+
+\item{pval_adjust}{Method for multiple testing correction of correlation p-values.
+Options: "none" (default; use raw p-values), "fdr" (false discovery rate),
+"BH" (Benjamini–Hochberg), or "bonferroni". \strong{Synonyms} "bh" and "bf" are accepted.
+The cutoff in \code{pval_cutoff} will be applied to the adjusted values if this is not "none".}
 
 \item{pval_cutoff}{P‑value cutoff for keeping an edge. Default \code{0.05}.}
 
@@ -63,6 +70,11 @@ missing features are zero‑padded in outputs so dimensions are consistent. IDs 
 
 \item{compress}{Compression passed to \code{saveRDS()}: \code{TRUE/FALSE} or \code{"xz"}, \code{"gzip"}, \code{"bzip2"}.
 Default \code{"xz"}.}
+
+\item{group_order}{Optional character vector giving the desired order of groups/layers
+in the returned list. Any groups not present in \code{sample_metadata[[group_col]]} are
+ignored; any extra groups found in the metadata but not listed in \code{group_order}
+will be appended after the specified order. Default \code{NULL} = keep the natural order.}
 }
 \value{
 A list of adjacency matrices as described under \strong{Output shape}. The return
@@ -100,7 +112,8 @@ share identical dimensions and ordering.
 \item Compute correlations and p‑values with \code{WGCNA::corAndPvalue()} when \strong{WGCNA} is
 installed; otherwise fall back to \code{Hmisc::rcorr()}. Diagonals are set to 0 (corr) and 1 (p).
 \item Form the adjacency by zeroing entries that fail either filter:
-\code{abs(corr) < corr_threshold} \strong{or} \code{p > pval_cutoff}.
+\code{abs(corr) < corr_threshold} \strong{or} \code{p > pval_cutoff} (where \code{p} can be \strong{adjusted}
+according to \code{pval_adjust}).
 \item Expand to the full \verb{feature_ids × feature_ids} grid; missing features remain zero.
 }
 
@@ -130,7 +143,7 @@ named sub‑list of groups (\verb{out[[repeat]][[group]]}).
 \strong{Persistence}
 \itemize{
 \item When \code{save_rds = TRUE}, the object is written to
-\verb{<out_dir>/<file_prefix>_(single|boot)_YYYYMMDD-HHMMSS.rds} and also returned.
+\verb{<out_dir>/<file_prefix>_(list|boot)_YYYYMMDD-HHMMSS.rds} and also returned.
 The absolute file path is attached as \code{attr(result, "rds_file")}.
 }
 }
@@ -152,6 +165,21 @@ adj <- buildAdjacency(
   verbose           = FALSE
 )
 lapply(adj, dim)  # one matrix per group
+
+# Use adjusted p-values (BH) and explicit group order (B then A)
+adj_bh <- buildAdjacency(
+  dataMatrix        = X,
+  sample_metadata   = meta,
+  feature_ids       = rownames(X),
+  group_col         = "group",
+  sample_col        = "sample",
+  pval_adjust       = "BH",            # also accepts "bh"
+  pval_cutoff       = 0.1,
+  resample          = FALSE,
+  group_order       = c("B","A"),
+  save_rds          = FALSE,
+  verbose           = FALSE
+)
 
 }
 \seealso{

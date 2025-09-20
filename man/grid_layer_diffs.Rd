@@ -2,30 +2,92 @@
 % Please edit documentation in R/grid_layer_diffs.R
 \name{grid_layer_diffs}
 \alias{grid_layer_diffs}
-\title{Grid of consecutive layer differences (E1→E2, E2→E3, …)}
+\title{Grid of consecutive layer differences (E1→E2, E2→E3, …) with timestamped outputs}
 \usage{
 grid_layer_diffs(
   net,
   layer_order = NULL,
   ncol = 3,
   results_dir = getOption("mlnet.results_dir", "omicsDNA_results"),
-  file = NULL,
+  grid_file = NULL,
+  grid_format = c("png", "pdf", "jpg"),
   width = 12,
   height = 10,
-  dpi = 300
+  dpi = 300,
+  pair_format = c("png", "pdf", "jpg"),
+  pair_file_prefix = "diff_pair",
+  panel_width = 6,
+  panel_height = 5,
+  dpi_panel = dpi,
+  combined_csv_file = NULL,
+  weight_attr = c("weight", "w", "value", "prop_present"),
+  weight_aggregate = c("sum", "mean", "median", "first"),
+  bg = "white",
+  ...
 )
 }
 \arguments{
-\item{net}{multinet object.}
+\item{net}{A multilayer network (usable with \code{multinet::layers_ml()}).}
 
-\item{layer_order}{Optional explicit order; default = multinet::layers_ml(net).}
+\item{layer_order}{Optional explicit layer order (e.g., \code{names(cons_list)}).
+Defaults to \code{multinet::layers_ml(net)}.}
 
-\item{ncol}{Number of columns in the grid.}
+\item{ncol}{Integer; number of columns in the grid layout.}
 
-\item{results_dir, }{file Optional PNG output. If file = NULL, draws to the current device.}
+\item{results_dir}{Output directory for all artifacts. Default:
+\code{getOption("mlnet.results_dir","omicsDNA_results")}.}
 
-\item{width, height, dpi}{Image size when saving.}
+\item{grid_file}{Optional base filename for the grid figure (e.g., \code{"diffs_all_pairs.png"}).
+If relative, it is created under \code{results_dir}. A timestamp is appended
+before the extension. If \code{NULL}, a timestamped name is auto‑generated.}
+
+\item{grid_format}{Format for the grid figure: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
+Default \code{"png"}.}
+
+\item{width, height, dpi}{Device size and resolution for the grid figure (\code{dpi} ignored for PDF).}
+
+\item{pair_format}{Format for \strong{per‑pair} figures: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
+Default \code{"png"}.}
+
+\item{pair_file_prefix}{Basename prefix for per‑pair files (e.g., \code{"diff_pair"}).
+Files are named \code{"<prefix>_<L1>_vs_<L2>_<timestamp>.<ext>"} under \code{results_dir}.}
+
+\item{panel_width, panel_height, dpi_panel}{Geometry used when rendering panel PNGs for the grid
+(and per‑pair PNGs). \code{dpi_panel} is ignored for PDF.}
+
+\item{combined_csv_file}{Optional base filename for the combined CSV (e.g.,
+\code{"diff_edges_all_pairs.csv"}). If relative, it is created under \code{results_dir}.
+A timestamp is appended before \code{.csv}. If \code{NULL}, a default name is used.}
+
+\item{weight_attr}{Candidate edge attribute names for weights (forwarded to \code{plot_layer_diff()}).}
+
+\item{weight_aggregate}{How to combine duplicates per edge when weights exist (forwarded to \code{plot_layer_diff()}).
+One of \code{"sum","mean","median","first"}. Default \code{"sum"}.}
+
+\item{bg}{Background color for grid and JPEG conversions. Default \code{"white"}.}
+
+\item{...}{Additional aesthetics forwarded to \code{plot_layer_diff()} (layout, colors, sizes, labels, seed, etc.).}
+}
+\value{
+(Invisibly) a list with:
+\itemize{
+\item \code{pairs} — \code{data.frame} of consecutive pairs (\code{L1}, \code{L2});
+\item \code{pair_files} — named character vector of per‑pair file paths (names \code{"L1_vs_L2"});
+\item \code{grid_file} — absolute path to the timestamped grid figure;
+\item \code{combined_csv} — absolute path to the timestamped combined CSV;
+\item \code{edges} — combined tidy \code{data.frame} across all pairs;
+\item \code{counts} — per‑pair summary (\code{only_<L1>}, \code{only_<L2>}, \code{common}, \code{total}).
+}
 }
 \description{
-Grid of consecutive layer differences (E1→E2, E2→E3, …)
+Builds a grid of \strong{consecutive} layer difference plots from a multilayer network
+(e.g., E1→E2, E2→M1, …), saves \strong{one per‑pair figure} in a user‑selected format
+(\code{"png"}, \code{"pdf"}, \code{"jpg"}) \strong{with a timestamped name}, and writes a
+\strong{single combined CSV} stacking edges for all pairs (including per‑layer weights).
+A \strong{grid figure} summarizing all pairs is also saved with a timestamped filename.
+}
+\details{
+The grid is assembled from PNG panels; if \code{pair_format != "png"}, an additional
+temporary PNG per pair is rendered for layout, while the per‑pair image is saved in
+the requested format.
 }

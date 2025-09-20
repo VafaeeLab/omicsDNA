@@ -2,7 +2,7 @@
 % Please edit documentation in R/analyze_actor_overlap.R
 \name{analyze_actor_overlap}
 \alias{analyze_actor_overlap}
-\title{Actor overlap across layers via Jaccard similarity (with heatmap):}
+\title{Actor (gene) overlap across layers via Jaccard similarity (with heatmap)}
 \usage{
 analyze_actor_overlap(
   net,

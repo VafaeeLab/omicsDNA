@@ -2,7 +2,8 @@
 % Please edit documentation in R/plot_layer_diff.R
 \name{plot_layer_diff}
 \alias{plot_layer_diff}
-\title{Plot differences between two layers on a shared layout:}
+\title{Plot differences between two multilayer slices with a shared layout
+and export a tidy CSV that includes the correct per-layer edge weights.}
 \usage{
 plot_layer_diff(
   net,
@@ -10,38 +11,95 @@ plot_layer_diff(
   L2,
   layout = c("fr", "kk", "mds", "lgl", "graphopt"),
   directed = FALSE,
+  col_only_L1 = "#e74c3c",
+  col_only_L2 = "#1f9d55",
+  col_common = "#95a5a6",
   edge_alpha = 0.7,
-  vertex_cex = 0.6,
+  edge_width_only = 1.8,
+  edge_width_common = 1.2,
+  vertex_size = 4,
+  vertex_col = "grey85",
+  vertex_frame_col = NA,
+  vertex_label = FALSE,
+  label_cex = 0.6,
+  label_col = "black",
+  label_family = NULL,
+  label_font = 1,
+  show_legend = TRUE,
+  legend_pos = "topleft",
+  legend_cex = 0.9,
+  title = NULL,
+  bg = "white",
+  seed = NULL,
   results_dir = getOption("mlnet.results_dir", "omicsDNA_results"),
   file = NULL,
+  format = c("png", "pdf"),
   width = 9,
   height = 7,
-  dpi = 300
+  dpi = 300,
+  save_edge_csv = TRUE,
+  csv_file = NULL,
+  weight_attr = c("weight", "w", "value"),
+  weight_aggregate = c("sum", "mean", "median", "first")
 )
 }
 \arguments{
-\item{net}{multinet object (usable with multinet::edges_ml()).}
+\item{net}{multinet object (usable with \code{as.list(net)} and
+\code{multinet::layers_ml()}).}
 
-\item{L1, L2}{Character layer ids to compare.}
+\item{L1, L2}{Character layer identifiers to compare.}
 
-\item{layout}{Name of igraph layout to use on the union ("fr","kk","mds","lgl","graphopt").}
+\item{layout}{igraph layout for the union graph: one of
+\code{"fr"}, \code{"kk"}, \code{"mds"}, \code{"lgl"}, \code{"graphopt"}.}
 
-\item{directed}{Logical; build directed graphs? Default FALSE.}
+\item{directed}{Logical; if \code{TRUE}, treat edges as directed. Default \code{FALSE}.}
 
-\item{edge_alpha}{Numeric in \link{0,1}; edge transparency.}
+\item{col_only_L1, col_only_L2, col_common}{Edge colours for categories.}
 
-\item{vertex_cex}{Vertex point size.}
+\item{edge_alpha}{Edge transparency \link{0,1}.}
 
-\item{results_dir}{Where to save when file is relative.}
+\item{edge_width_only, edge_width_common}{Numeric edge widths for only/common.}
 
-\item{file}{Optional filename to save (PNG). If NULL, just draws to the current device.}
+\item{vertex_size, vertex_col, vertex_frame_col}{Vertex style.}
 
-\item{width, height, dpi}{PNG device size (inches) and resolution when saving.}
+\item{vertex_label}{FALSE/TRUE/character vector for labels; label_* control fonts.}
+
+\item{show_legend, legend_pos, legend_cex}{Legend style.}
+
+\item{title}{Optional plot title; if NULL a summary is used. @param bg background.}
+
+\item{seed}{Optional integer seed for layout.}
+
+\item{results_dir, file, format, width, height, dpi}{Output controls for figure.}
+
+\item{save_edge_csv, csv_file}{Whether/where to write the edge CSV.}
+
+\item{weight_attr}{Candidate edge attribute names to use as weights.}
+
+\item{weight_aggregate}{How to combine duplicates (\code{"sum"}, \code{"mean"},
+\code{"median"}, \code{"first"}).}
 }
 \value{
-Invisibly returns a list with igraphs and counts.
+Invisibly: list(g_union, g1, g2, counts, edges, file, csv_file)
 }
 \description{
-Shows edges present only in layer A (red), only in layer B (green),
-and edges common to both (grey). Positions are computed on the union graph.
+Compares two layers \code{L1} and \code{L2} from a \pkg{multinet} object by
+computing a layout on the \emph{union} graph and colouring edges by category:
+edges present only in \code{L1}, only in \code{L2}, or in both (common).
+A tidy CSV is written with columns \code{from}, \code{to}, \code{category},
+\code{weight_L1}, \code{weight_L2}. The weights are pulled from the per-layer
+igraphs stored inside the multilayer object (via \code{as.list(net)}), so
+they match exactly what you built with \code{build_multiNet()}.
+}
+\details{
+\itemize{
+\item If a weight attribute exists on layer edges (default name \code{"weight"}),
+those values are used. You can specify alternatives via \code{weight_attr}.
+\item Duplicate edges in a layer (if any) are aggregated with \code{weight_aggregate}.
+\item For undirected comparisons (\code{directed=FALSE}), edge keys use
+\code{min(from,to)}–\code{max(from,to)} canonicalization; for directed,
+keys are \code{"from->to"}.
+\item The CSV \code{category} values are \code{only_<L1>}, \code{common},
+\code{only_<L2>} to match your requested naming.
+}
 }

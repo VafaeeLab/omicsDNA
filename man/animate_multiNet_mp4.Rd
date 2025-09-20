@@ -2,7 +2,7 @@
 % Please edit documentation in R/animate_multiNet_mp4.R
 \name{animate_multiNet_mp4}
 \alias{animate_multiNet_mp4}
-\title{Animate multilayer networks to GIF/MP4 (one layer = one frame):}
+\title{Animate multilayer networks to GIF/MP4 (one layer = one frame)}
 \usage{
 animate_multiNet_mp4(
   net,

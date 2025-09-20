@@ -2,7 +2,7 @@
 % Please edit documentation in R/analyze_edge_overlap.R
 \name{analyze_edge_overlap}
 \alias{analyze_edge_overlap}
-\title{Edge overlap across layers via Jaccard similarity (with heatmap):}
+\title{Edge overlap across layers via Jaccard similarity (with heatmap)}
 \usage{
 analyze_edge_overlap(
   net,

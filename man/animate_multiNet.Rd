@@ -2,7 +2,7 @@
 % Please edit documentation in R/animate_multiNet.R
 \name{animate_multiNet}
 \alias{animate_multiNet}
-\title{Animate a multilayer network across layers using \pkg{ndtv}:}
+\title{Animate a multilayer network across layers using \pkg{ndtv}}
 \usage{
 animate_multiNet(
   net,

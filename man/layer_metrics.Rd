@@ -2,7 +2,7 @@
 % Please edit documentation in R/layer_metrics.R
 \name{layer_metrics}
 \alias{layer_metrics}
-\title{Compute per‑layer network and node metrics, and save results to a run folder:}
+\title{Compute per‑layer network and node metrics, and save results to a run folder}
 \usage{
 layer_metrics(
   net,

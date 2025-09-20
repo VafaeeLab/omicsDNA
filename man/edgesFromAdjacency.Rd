@@ -2,7 +2,7 @@
 % Please edit documentation in R/edgesFromAdjacency.R
 \name{edgesFromAdjacency}
 \alias{edgesFromAdjacency}
-\title{Turn adjacency matrices (single or nested) into tidy edge lists:}
+\title{Turn adjacency matrices (single or nested) into tidy edge lists}
 \usage{
 edgesFromAdjacency(
   x,

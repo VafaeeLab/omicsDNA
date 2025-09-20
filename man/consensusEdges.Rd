@@ -2,7 +2,7 @@
 % Please edit documentation in R/consensusEdges.R
 \name{consensusEdges}
 \alias{consensusEdges}
-\title{Consensus edges across repetitions (works with tidy data, edge lists, or adjacencies):}
+\title{Consensus edges across repetitions (works with tidy data, edge lists, or adjacencies)}
 \usage{
 consensusEdges(
   edges,

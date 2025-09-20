@@ -2,7 +2,7 @@
 % Please edit documentation in R/detectCom.R
 \name{detectCom}
 \alias{detectCom}
-\title{Detect communities on a multilayer network via a layer‑collapsed supra‑graph:}
+\title{Detect communities on a multilayer network via a layer‑collapsed supra‑graph}
 \usage{
 detectCom(
   net,

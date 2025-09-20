@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_network_attributes.R
 \name{add_network_attributes}
 \alias{add_network_attributes}
-\title{Attach actor- and edge-level attributes to a multilayer network, with coverage reporting:}
+\title{Attach actor- and edge-level attributes to a multilayer network, with coverage reporting}
 \usage{
 add_network_attributes(
   net,

@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotCom.R
 \name{plotCom}
 \alias{plotCom}
-\title{Plot multilayer communities with an interactive preview and file exports:}
+\title{Plot multilayer communities with an interactive preview and file exports}
 \usage{
 plotCom(
   net,

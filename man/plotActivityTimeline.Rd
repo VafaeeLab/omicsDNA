@@ -2,7 +2,7 @@
 % Please edit documentation in R/plotActivityTimeline.R
 \name{plotActivityTimeline}
 \alias{plotActivityTimeline}
-\title{Edge/Vertex Activity Timelines (Gantt-style) for multilayer networks:}
+\title{Edge/Vertex Activity Timelines (Gantt-style) for multilayer networks}
 \usage{
 plotActivityTimeline(
   net,
