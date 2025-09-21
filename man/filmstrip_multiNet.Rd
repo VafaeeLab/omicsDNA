@@ -135,6 +135,17 @@ mapped to \code{label.cex} to keep older scripts working.
 layer columns. If both \code{from_layer}/\code{to_layer} are present, we show only
 \strong{intra‑layer} edges (\code{from_layer == to_layer}) and store that layer name.
 }
+\section{Practical notes}{
+
+\itemize{
+\item Panels are undirected for positioning (union layout), but your network can
+contain directed edges—the drawing simply suppresses arrows for clarity.
+\item If your network has very long labels, consider setting a smaller
+\code{label.cex}, hiding labels (\code{displaylabels = FALSE}), or exporting a larger
+image (\code{width}/\code{height}).
+}
+}
+
 \examples{
 \dontrun{
 fs <- filmstrip_multiNet(

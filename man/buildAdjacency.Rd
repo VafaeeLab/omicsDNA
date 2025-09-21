@@ -147,6 +147,15 @@ named sub‑list of groups (\verb{out[[repeat]][[group]]}).
 The absolute file path is attached as \code{attr(result, "rds_file")}.
 }
 }
+\section{Tips}{
+
+\itemize{
+\item Call \code{set.seed()} for reproducible resampling.
+\item For very large \code{feature_ids}, pre‑filter (e.g., top DE features) to keep the
+number of pairwise correlations manageable.
+}
+}
+
 \examples{
 # Minimal toy example (no resampling)
 set.seed(1)

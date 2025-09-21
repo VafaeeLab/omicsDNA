@@ -73,6 +73,18 @@ grey, aspect ratio is equal, and x‑axis labels are rotated for readability.
 Colours can be customised via \code{palette} (fed to \code{scale_fill_gradientn()}).
 }
 }
+\section{Notes and limitations}{
+
+\itemize{
+\item In the fallback path, the endpoint identification is \strong{heuristic} (first
+two character columns). If your edge table contains additional character
+columns (e.g., a textual layer label) before the endpoints, re‑order columns
+or pre‑process the table to avoid misidentification.
+\item Edges are treated as \strong{undirected}; for directed analyses, build directed
+keys explicitly upstream.
+}
+}
+
 \examples{
 \dontrun{
 # Compute and visualise edge overlap across all layers

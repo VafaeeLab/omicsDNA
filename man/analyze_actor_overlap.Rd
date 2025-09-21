@@ -73,6 +73,16 @@ in a light grey, and the plot is square (\code{coord_equal}). Colours can be
 customised via \code{palette} (passed to \code{scale_fill_gradientn()}).
 }
 }
+\section{Notes and limitations}{
+
+\itemize{
+\item The fallback path assumes \code{actors_ml()} returns either a character vector of
+actor IDs or a data frame with a column named \code{"actor"}.
+\item If both layers in a pair have zero actors (rare in practice), the Jaccard
+index is set to \code{NA} for that pair.
+}
+}
+
 \examples{
 \dontrun{
 # Compute and visualise actor overlap across all layers

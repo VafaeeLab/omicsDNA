@@ -191,6 +191,18 @@ If \code{save_report = TRUE}, both a machine-readable RDS and a human-readable T
 summary are written to \code{results_dir}.
 }
 }
+\section{Practical notes}{
+
+\itemize{
+\item Only \strong{intra-layer} edges are considered when the network stores two layer
+columns; cross-layer edges are ignored during attribute attachment.
+\item When mapping edge metadata, rows with endpoints that cannot be matched to
+actors in \code{net} are dropped (the count is reported).
+\item Attribute types are declared as \code{"numeric"} for numeric vectors and
+\code{"string"} otherwise; this affects how \code{multinet} stores values internally.
+}
+}
+
 \examples{
 \dontrun{
 # Attach actor attributes (using a simple normaliser pipeline)

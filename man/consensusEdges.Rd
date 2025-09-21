@@ -156,6 +156,17 @@ layer (e.g., age group, condition), then summarise their weights across
 repetitions. The procedure is domain‑agnostic and applies equally to
 co‑expression graphs, interaction networks, or infrastructure graphs.
 }
+\section{Practical tips}{
+
+\itemize{
+\item If you start from adjacencies obtained via resampling (e.g., bootstrap),
+pass the nested list of matrices directly; the function will label layers
+and repetitions deterministically from the list structure.
+\item When your repetitions are unlabelled, you can leave \code{rep_col} unset;
+the function will treat all rows as belonging to repetition \code{"1"}.
+}
+}
+
 \examples{
 \dontrun{
 ## Example 1: tidy edges with explicit layer/rep columns

@@ -163,6 +163,17 @@ the same basename is also produced. If \code{write_summary_csv = TRUE}, an
 additional CSV summarises each community’s size and layer span.
 }
 }
+\section{Practical notes}{
+
+\itemize{
+\item Cross‑layer edges (if present) are ignored; only intra‑layer edges contribute
+to the supra‑graph and to per‑layer mappings.
+\item If no weight column is detected, all edges are treated as weight \code{1}.
+\item The \code{"clique"} method may be computationally expensive for dense graphs or
+larger \code{clique.k} due to clique enumeration.
+}
+}
+
 \examples{
 \dontrun{
 # Louvain on all layers; edge weight = number of layers in which an edge appears

@@ -173,6 +173,19 @@ are created under \code{results_dir}). For CSV, the base name of \code{df_file}
 (without extension) is used under \code{results_dir}.
 }
 }
+\section{Practical notes}{
+
+\itemize{
+\item When \code{show_in_rstudio = TRUE} and \code{save_plot = TRUE}, the function clones
+the current plot to a file using \code{grDevices::dev.copy()}. To render only to
+an off‑screen file (without drawing in the Plots pane), set
+\code{show_in_rstudio = FALSE}.
+\item The function only plots actors that appear in the chosen layers of the
+network; assignments for absent actors/layers are dropped (reported when
+\code{verbose = TRUE}).
+}
+}
+
 \examples{
 \dontrun{
 # Minimal usage: preview in RStudio, save PNG and the long table as RDS

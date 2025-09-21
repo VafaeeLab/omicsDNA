@@ -181,6 +181,16 @@ GraphML file using \code{igraph::write_graph()}, with filenames prefixed by
 \code{graphml_prefix}, suffixed by the layer name and a timestamp.
 }
 }
+\section{Practical notes}{
+
+\itemize{
+\item Edge weights are coerced to numeric; non‑numeric values will produce \code{NA}
+weights, which are passed through to \code{igraph} unchanged.
+\item If your input list lacks names, synthetic layer names (\code{"layer1"}, \code{"layer2"}, …)
+are generated.
+}
+}
+
 \examples{
 \dontrun{
 ## From consensusEdges(..., as_list = TRUE):
