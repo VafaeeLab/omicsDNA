@@ -8,9 +8,9 @@ omicsDNA
     - [1) `buildAdjacency()` — group‑wise correlation → adjacency (with
       optional
       resampling)](#1-buildadjacency--groupwise-correlation--adjacency-with-optional-resampling)
-    - [1b) `sc_buildAdjacency()` — **single‑cell** Seurat →
+    - [1.1) `sc_buildAdjacency()` — **single‑cell** Seurat →
       per‑cell‑type
-      adjacency](#1b-sc_buildadjacency--singlecell-seurat--percelltype-adjacency)
+      adjacency](#11-sc_buildadjacency--singlecell-seurat--percelltype-adjacency)
     - [2) `edgesFromAdjacency()` — matrices (or lists of matrices) →
       edge
       tables](#2-edgesfromadjacency--matrices-or-lists-of-matrices--edge-tables)
@@ -137,7 +137,7 @@ adjacency <- buildAdjacency(
 # Later you can reload via: readRDS(attr(adjacency, "rds_file"))
 ```
 
-### 1b) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
+### 1.1) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
 
 ``` r
 ## \donttest{

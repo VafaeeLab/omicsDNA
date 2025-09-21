@@ -60,7 +60,7 @@ adjacency <- buildAdjacency(
 # Later you can reload via: readRDS(attr(adjacency, "rds_file"))
 ```
 
-### 1b) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
+### 1.1) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
 ```r
 ## \donttest{
 library(Seurat)
