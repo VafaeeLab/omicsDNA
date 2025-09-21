@@ -55,7 +55,7 @@
 #'   attribute `"plot"` containing the `ggplot` heatmap object (invisibly
 #'   printed when `print_plot = TRUE`).
 #'
-#' @section Notes and limitations
+#' @section Notes and limitations:
 #' - The fallback path assumes `actors_ml()` returns either a character vector of
 #'   actor IDs or a data frame with a column named `"actor"`.
 #' - If both layers in a pair have zero actors (rare in practice), the Jaccard

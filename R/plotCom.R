@@ -113,7 +113,7 @@
 #'   - `grid`: the panel grid used;
 #'   - `layers`: the layers actually plotted.
 #'
-#' @section Practical notes
+#' @section Practical notes:
 #' - When `show_in_rstudio = TRUE` and `save_plot = TRUE`, the function clones
 #'   the current plot to a file using `grDevices::dev.copy()`. To render only to
 #'   an off‑screen file (without drawing in the Plots pane), set

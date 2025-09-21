@@ -131,7 +131,7 @@
 #'   `attr(net, "edge_attach_report")`, containing concise summaries of the
 #'   attachment process.
 #'
-#' @section Practical notes
+#' @section Practical notes:
 #' - Only **intra-layer** edges are considered when the network stores two layer
 #'   columns; cross-layer edges are ignored during attribute attachment.
 #' - When mapping edge metadata, rows with endpoints that cannot be matched to

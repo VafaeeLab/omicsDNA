@@ -54,7 +54,7 @@
 #'   attribute `"plot"` containing the `ggplot` heatmap object (invisibly
 #'   printed when `print_plot = TRUE`).
 #'
-#' @section Notes and limitations
+#' @section Notes and limitations:
 #' - In the fallback path, the endpoint identification is **heuristic** (first
 #'   two character columns). If your edge table contains additional character
 #'   columns (e.g., a textual layer label) before the endpoints, re‑order columns

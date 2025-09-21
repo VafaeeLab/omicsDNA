@@ -130,7 +130,7 @@
 #'
 #' @return A `multinet::ml.network` object containing one layer per group/condition.
 #'
-#' @section Practical notes
+#' @section Practical notes:
 #' - Edge weights are coerced to numeric; non‑numeric values will produce `NA`
 #'   weights, which are passed through to `igraph` unchanged.
 #' - If your input list lacks names, synthetic layer names (`"layer1"`, `"layer2"`, …)

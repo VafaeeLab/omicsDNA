@@ -90,7 +90,7 @@
 #' @return A list of adjacency matrices as described under **Output shape**. The return
 #' object carries `attr(x, "rds_file")` with the saved file path (or `NULL` if `save_rds = FALSE`).
 #'
-#' @section Tips
+#' @section Tips:
 #' - Call `set.seed()` for reproducible resampling.
 #' - For very large `feature_ids`, pre‑filter (e.g., top DE features) to keep the
 #'   number of pairwise correlations manageable.

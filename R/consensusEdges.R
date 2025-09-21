@@ -106,7 +106,7 @@
 #' with columns `from`, `to`, `weight`, `n_present`, `n_repeats`, `prop_present`.
 #' If `as_list = FALSE`, a single tidy data frame with an additional `layer` column.
 #'
-#' @section Practical tips
+#' @section Practical tips:
 #' - If you start from adjacencies obtained via resampling (e.g., bootstrap),
 #'   pass the nested list of matrices directly; the function will label layers
 #'   and repetitions deterministically from the list structure.

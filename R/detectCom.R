@@ -113,7 +113,7 @@
 #'   - `"layer_span"`      — named integer vector of number of layers per community,
 #'   - `"files"`           — named list of output paths (if artefacts were written).
 #'
-#' @section Practical notes
+#' @section Practical notes:
 #' - Cross‑layer edges (if present) are ignored; only intra‑layer edges contribute
 #'   to the supra‑graph and to per‑layer mappings.
 #' - If no weight column is detected, all edges are treated as weight `1`.

@@ -86,7 +86,7 @@
 #'   \item `file` – absolute path of the saved image (PNG/PDF).
 #' }
 #'
-#' @section Practical notes
+#' @section Practical notes:
 #' - Panels are undirected for positioning (union layout), but your network can
 #'   contain directed edges—the drawing simply suppresses arrows for clarity.
 #' - If your network has very long labels, consider setting a smaller
