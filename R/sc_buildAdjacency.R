@@ -3,363 +3,442 @@
 #  1b - sc_buildAdjacency(): Seurat → per–cell type gene–gene adjacency
 # --------------------------------------------------------------------------------
 
-#' Build per–cell type gene–gene adjacency matrices from a Seurat object (no aggregation)
+#' Build single-cell (per cell-type) correlation-filtered adjacency matrices.
 #'
-#' @title Single‑cell coexpression adjacency per cell type (layers) from Seurat
+#' This helper constructs **one correlation network per cell type** from a Seurat
+#' object by thresholding pairwise gene–gene correlations using both an absolute
+#' correlation cutoff and a (optionally adjusted) p-value cutoff. It can perform
+#' **balanced resampling** (bootstrap-like) so each repeat draws the same number
+#' of cells per cell type, stabilising downstream edges/metrics. The output shape
+#' mirrors `omicsDNA::buildAdjacency()` (per-layer matrices, optionally repeated),
+#' so you can pipe results directly into `omicsDNA` edge extraction / consensus /
+#' multilayer assembly workflows. See the `omicsDNA` overview for the layered
+#' network workflow and typical end-to-end usage.  # (overview mirrors buildAdjacency)
 #'
-#' @description
-#' Given a \pkg{Seurat} object with one or more assays (e.g., \code{"RNA"}, \code{"SCT"},
-#' \code{"integrated"}), this function extracts an assay/slot matrix (default: \code{slot="data"}),
-#' pulls the cell metadata, and for each **cell type** (chosen via a metadata column) computes
-#' a gene–gene correlation matrix **across individual cells** of that type (no aggregation).
-#' Edges are kept when they satisfy both an absolute correlation threshold and a p‑value cutoff.
-#' The result is a list of adjacency matrices—one per cell type—sharing an identical gene order,
-#' ready to be used as layers in a multilayer network.
+#' @examples
+#' \donttest{
+#'   # Minimal single-cell example using Seurat's toy dataset
+#'   library(Seurat)
+#'   data("pbmc_small")
+#'
+#'   # Create a simple cell-type label for demonstration (use your real labels)
+#'   pbmc_small$celltype <- as.character(Idents(pbmc_small))
+#'
+#'   # Build one adjacency matrix per celltype (no resampling for speed)
+#'   adj_list <- sc_buildAdjacency(
+#'     seurat_obj          = pbmc_small,
+#'     assay               = DefaultAssay(pbmc_small),
+#'     slot                = "data",
+#'     cell_type_col       = "celltype",
+#'     cor_method          = "spearman",
+#'     corr_threshold      = 0.6,
+#'     pval_adjust         = "fdr",
+#'     pval_cutoff         = 0.1,
+#'     resample            = FALSE,
+#'     save_rds            = FALSE,
+#'     verbose             = TRUE
+#'   )
+#'
+#'   # Each element is a (genes x genes) adjacency for a cell type
+#'   str(adj_list, max.level = 1)
+#' }
 #'
 #' @details
-#' \strong{Assay and slot.}
-#' You can point to any assay present in the object (e.g., \code{"RNA"}, \code{"SCT"},
-#' \code{"integrated"}) and choose the slot to read (\code{"data"} is recommended).
-#' For typical Seurat workflows:
-#' \itemize{
-#'   \item \code{assay="RNA", slot="data"} → log‑normalized expression (sparse).
-#'   \item \code{assay="SCT", slot="data"} → SCT residuals (already normalized).
-#'   \item \code{assay="integrated", slot="data"} → corrected expression used for integration.
-#' }
+#' **What it does (per layer/cell type):**
+#' 1. Selects a fixed set of features (genes) shared across layers/repeats:
+#'    uses `feature_ids` if supplied; otherwise uses Seurat's `VariableFeatures()`
+#'    if present; otherwise picks the top-variance genes (`n_var_features`).
+#' 2. Optionally draws a **balanced** sample of cells per cell type
+#'    (`samples_per_group`) for each repeat (`n_repeats`).
+#' 3. Optionally filters bad samples/genes via `WGCNA::goodSamplesGenes()`
+#'    (if WGCNA is installed); logs removals when `verbose = TRUE`.
+#' 4. Computes pairwise gene–gene correlations and associated p-values using
+#'    **WGCNA** (`corAndPvalue`) when available, otherwise **Hmisc** (`rcorr`).
+#' 5. Adjusts the **upper-triangular** p-values only (to avoid double counting),
+#'    mirrors them to the lower triangle, and sets diagonals appropriately.
+#' 6. Builds an adjacency by keeping edges where `|correlation| ≥ corr_threshold`
+#'    **and** `p ≤ pval_cutoff` (after adjustment if requested); others are zeroed.
+#' 7. **Pads** back to the requested `feature_ids` order so every returned
+#'    matrix has identical dimensions, even if some features are absent in a layer.
 #'
-#' \strong{Cell types (layers).}
-#' The function reads \code{object@meta.data}. Set \code{cell_type_col} to the column
-#' that contains the cell‑type labels (these labels become the layer names). If omitted,
-#' the function tries common candidates (e.g., \code{"cell_type"}, \code{"celltype"},
-#' \code{"CellType"}, \code{"seurat_clusters"}), and errors if none is found.
+#' **Notes & tips**
+#' - **Reproducibility:** This function does not set a seed internally. For
+#'   reproducible resampling, call `set.seed(<integer>)` before running.
+#' - **Performance:** Correlation scales roughly with O(G^2) in the number of
+#'   genes `G`. Supplying a targeted `feature_ids` (or relying on variable
+#'   features) is strongly recommended for speed and memory.
+#' - **QC fallback:** If after QC there are too few cells or genes in a layer,
+#'   the function returns a zero matrix of the right shape and sets the
+#'   `"n_cells"` attribute accordingly.
 #'
-#' \strong{Gene universe.}
-#' Use \code{feature_ids} to fix the genes used across all layers. If \code{feature_ids} is
-#' \code{NULL}, the function (by default) uses \code{\link[Seurat]{VariableFeatures}} from
-#' the selected assay if available; otherwise it picks the top \code{n_features} genes by
-#' row variance (computed efficiently on sparse matrices). All adjacency matrices are then
-#' padded to this common gene universe and share the same row/column order.
+#' Mirrors `omicsDNA::buildAdjacency()` semantics and return shape (per-layer matrices,
+#' with optional repeated balanced draws). See the omicsDNA overview for the
+#' layered network workflow.
 #'
-#' \strong{Correlation & statistics.}
-#' Correlations are computed with \code{cor_method = "spearman"} (default), or
-#' \code{"pearson"}, or robust \code{"bicor"} (requires \pkg{WGCNA}). P‑values come from
-#' \pkg{WGCNA} (\code{corAndPvalue}) when available; otherwise the function falls back to
-#' \pkg{Hmisc} (\code{rcorr}) for Pearson/Spearman. Adjusted p‑values are supported via
-#' \code{pval_adjust = "fdr"|"BH"|"bonferroni"|"none"}.
-#'
-#' \strong{Scale considerations.}
-#' Computing correlations across cells is feasible provided you keep the gene set modest
-#' (e.g., 1–3k genes). For very large datasets, consider limiting cells per type using
-#' \code{max_cells_per_type}, or pass a curated \code{feature_ids}. Note that with large
-#' numbers of cells, **p‑values can be extremely small**; if you want to keep edges based
-#' on correlation only, set \code{pval_cutoff = 1}.
-#'
-#' @param seurat_obj A \pkg{Seurat} object.
-#' @param assay Character. Assay to use. If \code{NULL}, the function tries, in order,
-#'   \code{"integrated"}, \code{"SCT"}, \code{"RNA"}, then falls back to the first assay present.
-#' @param slot Character; which slot to read from the assay. One of \code{"data"},
-#'   \code{"scale.data"}, \code{"counts"}. Default \code{"data"}.
-#' @param cell_type_col Character; name of the metadata column with cell‑type labels.
-#'   If \code{NULL}, the function searches common candidates and errors if none are present.
-#' @param feature_ids Optional character vector of genes to include. If \code{NULL},
-#'   the function uses \code{VariableFeatures(seurat_obj[[assay]])} when available,
-#'   otherwise selects the top \code{n_features} by row variance.
-#' @param use_variable_features Logical; if \code{TRUE} and \code{feature_ids} is \code{NULL},
-#'   attempt to use \code{VariableFeatures}. Default \code{TRUE}.
-#' @param n_features Integer; when \code{feature_ids} is \code{NULL} and no variable features
-#'   are stored, pick this many top‑variance genes. Default \code{2000}.
-#' @param min_cells_per_type Integer; minimum number of cells required to build an adjacency
-#'   for a cell type. Types with fewer cells return a zero matrix. Default \code{20}.
-#' @param max_cells_per_type Optional integer; if provided and a cell type has more cells than this,
-#'   randomly subsample to this many cells to control time/memory. Default \code{NULL} (use all).
-#' @param cor_method Correlation method: \code{"spearman"} (default), \code{"pearson"},
-#'   or \code{"bicor"} (requires \pkg{WGCNA}).
-#' @param pval_adjust P‑value adjustment: \code{"fdr"}, \code{"BH"}, \code{"bonferroni"},
-#'   or \code{"none"}. Default \code{"fdr"}.
-#' @param pval_cutoff Numeric; (adjusted) p‑value cutoff for edges. Default \code{0.05}.
-#' @param corr_threshold Numeric; absolute correlation threshold for edges. Default \code{0.25}.
-#' @param layer_order Optional character vector to control the order of cell types in the output.
-#' @param verbose Logical; print progress messages. Default \code{TRUE}.
+#' @param seurat_obj A **Seurat/SeuratObject** containing your single-cell data.
+#'   Must have (i) an assay with a gene (rows) × cell (columns) matrix and
+#'   (ii) a `@meta.data` column with cell-type labels. The function supports both
+#'   `SeuratObject` and `Seurat` namespaces for `GetAssayData`, `DefaultAssay`,
+#'   and `VariableFeatures`.
+#' @param assay Character; which assay to read from. Defaults to
+#'   `DefaultAssay(seurat_obj)`. Ensure it matches the modality you want to
+#'   correlate (e.g., "RNA" for gene expression).
+#' @param slot Character; which slot to pull: `"data"`, `"counts"`, or
+#'   `"scale.data"`. Default `"data"`. Use `"data"` after normalization/log-
+#'   transform, `"counts"` for raw counts (less typical for correlations), or
+#'   `"scale.data"` if you pre-scaled/centered features.
+#' @param cell_type_col Character; name of the `@meta.data` column that holds
+#'   **cell-type (layer) labels**. Required unless `group_col` (alias) is used.
+#' @param group_col Character; **alias** for `cell_type_col`. If provided and
+#'   `cell_type_col` is `NULL`, the function uses this and prints a note.
+#' @param feature_ids Character vector of **gene IDs** (row names of the assay
+#'   matrix) to include. If `NULL`, the function tries `VariableFeatures()`;
+#'   if none are set, it picks the top-variance genes (see `n_var_features`).
+#'   Returned matrices are always ordered by this vector, padding missing genes
+#'   with zero rows/columns to ensure identical shapes across layers/repeats.
+#' @param n_var_features Integer; how many top-variance features to pick when
+#'   `VariableFeatures()` is absent. Default `2000`.
+#' @param cor_method Correlation method: `"spearman"` (rank-based; default) or
+#'   `"pearson"` (linear). Choose `"spearman"` for robustness to outliers and
+#'   nonlinearity; `"pearson"` for linear associations on scaled data.
+#' @param pval_adjust P-value adjustment method. Accepts `"none"`, `"fdr"`,
+#'   `"BH"`, `"bonferroni"`, `"bf"` (synonym for `"bonferroni"`). The method is
+#'   applied to the **upper triangle only** and mirrored. Default `"none"`.
+#' @param pval_cutoff Numeric; p-value cutoff **after** adjustment (if any).
+#'   Edges with p-values above this threshold are zeroed. Default `0.05`.
+#' @param corr_threshold Numeric; absolute correlation threshold. Only edges
+#'   with `|r| ≥ corr_threshold` survive. Default `0.7`.
+#' @param resample Logical; if `TRUE` (default), perform **balanced** sampling
+#'   of `samples_per_group` cells from each cell type, repeated `n_repeats` times.
+#'   If `FALSE`, use all available cells per cell type exactly once.
+#' @param samples_per_group Integer; **target** number of cells per cell type
+#'   in each repeat when `resample = TRUE`. If a cell type has fewer cells, the
+#'   function draws as many as available (no upsampling).
+#' @param n_repeats Integer; number of repeated draws when `resample = TRUE`.
+#'   Default `5`.
+#' @param min_cells_per_layer Integer; minimum number of cells required in a
+#'   cell type for attempting an adjacency. Layers with fewer cells return a
+#'   zero matrix of the correct shape. Default `20`.
+#' @param group_order Character vector; **alias** for `layer_order`. If used,
+#'   the function prints a note and applies it as `layer_order`.
+#' @param layer_order Character vector; desired **ordering of layers** (cell
+#'   types) in the output. Any unspecified layers are appended after the given
+#'   order.
+#' @param save_rds Logical; whether to save the return object to **RDS**
+#'   on disk. Default `TRUE`. The path is stored in the top-level attribute
+#'   `"rds_file"`.
+#' @param out_dir Directory where the RDS file is written when `save_rds = TRUE`.
+#'   Defaults to `file.path(getwd(), "omicsDNA_sc_results")`. Created if missing.
+#' @param file_prefix Basename (no extension) for the saved file. Default
+#'   `"sc_adjacency"`. A timestamp and a tag indicating resampling/no-resampling
+#'   are appended automatically.
+#' @param compress Compression for `saveRDS()`. Accepts logical (`TRUE`/`FALSE`)
+#'   or a method string (`"gzip"`, `"bzip2"`, `"xz"`). Default `"xz"` (smallest
+#'   size, slower write/read).
+#' @param verbose Logical; print progress/QC notes. Default `TRUE`.
 #'
 #' @return
-#' A named list of adjacency matrices \code{adj[[cell_type]] = matrix} (genes × genes), all with
-#' identical row/column order. Attributes:
-#' \itemize{
-#'   \item \code{attr(x, "gene_order")} — the gene order used across matrices.
-#'   \item \code{attr(x, "cell_types")} — the cell types included (order reflects output).
-#'   \item \code{attr(x, "assay")} and \code{attr(x, "slot")} — provenance.
-#' }
+#' If `resample = TRUE`: a **list of length `n_repeats`**, each element being a
+#' **named sub-list** of per-layer adjacency matrices (one matrix per cell type,
+#' ordered by `layer_order` if supplied).
+#' If `resample = FALSE`: a **single named list** of per-layer adjacency matrices.
 #'
-#' @section Tips:
-#' \itemize{
-#'   \item If you see “too few cells” messages, lower \code{min_cells_per_type} or merge rare types.
-#'   \item To keep only correlation‑based edges (ignore p‑values), set \code{pval_cutoff = 1}.
-#'   \item For very large cell counts, set \code{max_cells_per_type} (e.g., 5000–10000).
-#' }
+#' For every adjacency matrix:
+#' - dimension is `length(feature_ids) × length(feature_ids)` and row/column
+#'   names are exactly `feature_ids` (padded with zeros for missing genes).
+#' - diagonal is zero; nonzero entries are the (signed) correlation estimates.
+#' - attribute `"n_cells"` records how many cells contributed for that layer/repeat.
 #'
-#' @seealso \code{\link[Seurat]{GetAssayData}}, \code{\link[Seurat]{VariableFeatures}}
+#' The **top-level** return object has attribute `"rds_file"` with the saved path
+#' (or `NULL` if `save_rds = FALSE`).
 #'
-#' @importFrom Seurat GetAssayData VariableFeatures
-#' @importFrom stats p.adjust
-#' @examples
-#' \dontrun{
-#' library(Seurat)
-#' seu <- readRDS("my_seurat.rds")
+#' @seealso
+#' `omicsDNA::buildAdjacency()`, `omicsDNA::edgesFromAdjacency()`,
+#' `omicsDNA::consensusEdges()`, `omicsDNA::build_multiNet()`
 #'
-#' adj <- sc_buildAdjacency(
-#'   seurat_obj         = seu,
-#'   assay              = "SCT",        # or "RNA", "integrated", etc.
-#'   slot               = "data",
-#'   cell_type_col      = "celltype",   # choose your metadata column
-#'   feature_ids        = NULL,         # use VariableFeatures if present; else top-variance
-#'   use_variable_features = TRUE,
-#'   n_features         = 3000,
-#'   min_cells_per_type = 30,
-#'   max_cells_per_type = 8000,         # subsample if needed; NULL = use all
-#'   cor_method         = "spearman",
-#'   pval_adjust        = "fdr",
-#'   pval_cutoff        = 0.05,
-#'   corr_threshold     = 0.25,
-#'   layer_order        = c("T cell","B cell","NK","Myeloid","Endothelial"),
-#'   verbose            = TRUE
-#' )
+#' @references
+#' Langfelder P, Horvath S (2008) WGCNA: an R package for weighted correlation
+#' network analysis. *BMC Bioinformatics* 9, 559.
+#' Harrell FE Jr et al. (2024) Hmisc: Harrell Miscellaneous. R package version.
 #'
-#' names(adj)                 # cell types (layers)
-#' dim(adj[[1]])              # genes × genes (same order across layers)
-#' attr(adj, "gene_order")[1:10]
-#' }
+#' @note
+#' - For reproducible draws, set a seed (e.g., `set.seed(1)`) **before** calling.
+#' - The function prefers `WGCNA` for correlation + p-values and falls back to
+#'   `Hmisc` when `WGCNA` is not installed.
+#'
 #' @export
 sc_buildAdjacency <- function(
     seurat_obj,
-    assay               = NULL,
-    slot                = c("data","scale.data","counts"),
-    cell_type_col       = NULL,
-    feature_ids         = NULL,
-    use_variable_features = TRUE,
-    n_features          = 2000,
-    min_cells_per_type  = 20,
-    max_cells_per_type  = NULL,
-    cor_method          = c("spearman","pearson","bicor"),
-    pval_adjust         = c("fdr","BH","bonferroni","none"),
-    pval_cutoff         = 0.05,
-    corr_threshold      = 0.25,
-    layer_order         = NULL,
-    verbose             = TRUE
+    assay                 = NULL,
+    slot                  = c("data","counts","scale.data"),
+    cell_type_col         = NULL,
+    group_col             = NULL,      # alias
+    feature_ids           = NULL,
+    n_var_features        = 2000,
+    cor_method            = c("spearman","pearson"),
+    pval_adjust           = c("none","fdr","BH","bonferroni","bf"),
+    pval_cutoff           = 0.05,
+    corr_threshold        = 0.7,
+    resample              = TRUE,
+    samples_per_group     = 100,
+    n_repeats             = 5,
+    min_cells_per_layer   = 20,
+    group_order           = NULL,      # alias
+    layer_order           = NULL,
+    save_rds              = TRUE,
+    out_dir               = file.path(getwd(), "omicsDNA_sc_results"),
+    file_prefix           = "sc_adjacency",
+    compress              = "xz",
+    verbose               = TRUE
 ) {
-  # ---- deps ----
-  if (!requireNamespace("Seurat", quietly = TRUE))
-    stop("Please install Seurat.")
-  if (!requireNamespace("Matrix", quietly = TRUE))
-    stop("Please install Matrix.")
 
-  slot       <- match.arg(slot)
+  slot <- match.arg(slot)
   cor_method <- match.arg(cor_method)
-  pval_adjust<- match.arg(pval_adjust)
 
-  # ---- pick assay (priority: integrated → SCT → RNA → first) ----
-  assays_avail <- names(seurat_obj@assays)
-  if (is.null(assay)) {
-    assay <- if ("integrated" %in% assays_avail) "integrated" else
-      if ("SCT" %in% assays_avail) "SCT" else
-        if ("RNA" %in% assays_avail) "RNA" else assays_avail[1]
-    if (verbose) message("Assay auto-selected: ", assay)
+  # -- Resolve p-value adjustment (accept synonyms) --
+  pval_adjust <- if (length(pval_adjust) > 1L) pval_adjust[1L] else pval_adjust
+  method_key  <- tolower(pval_adjust)
+  allowed     <- c("none","fdr","bh","bonferroni","bf")
+  if (!method_key %in% allowed) {
+    stop("Invalid `pval_adjust`. Choose one of: ", paste(allowed, collapse=", "))
+  }
+  adj_method <- switch(method_key,
+                       "none"="none","fdr"="fdr","bh"="BH",
+                       "bonferroni"="bonferroni","bf"="bonferroni")
+  if (verbose && adj_method != "none") {
+    message("Using adjusted p-values: method = ", adj_method)
+  }
+
+  # -- Seurat helpers (support SeuratObject or Seurat) --
+  .haspkg <- function(pkg) requireNamespace(pkg, quietly = TRUE)
+  if (.haspkg("SeuratObject")) {
+    GetAssayData   <- SeuratObject::GetAssayData
+    DefaultAssay   <- SeuratObject::DefaultAssay
+    VariableFeat   <- SeuratObject::VariableFeatures
+  } else if (.haspkg("Seurat")) {
+    GetAssayData   <- Seurat::GetAssayData
+    DefaultAssay   <- Seurat::DefaultAssay
+    VariableFeat   <- Seurat::VariableFeatures
   } else {
-    if (!assay %in% assays_avail)
-      stop("Assay '", assay, "' not found. Available: ", paste(assays_avail, collapse = ", "))
+    stop("Please install 'SeuratObject' or 'Seurat'.")
   }
 
-  # ---- pull matrix and metadata ----
-  mat  <- Seurat::GetAssayData(seurat_obj, assay = assay, slot = slot)
-  meta <- seurat_obj@meta.data
-  if (is.null(colnames(mat)) || is.null(rownames(meta)))
-    stop("Assay matrix needs colnames (cells) and meta.data needs rownames (cells).")
-
-  # align metadata to matrix columns
-  common_cells <- intersect(colnames(mat), rownames(meta))
-  if (length(common_cells) < 3L)
-    stop("Fewer than 3 shared cells between assay and metadata.")
-  mat  <- mat[, common_cells, drop = FALSE]
-  meta <- meta[common_cells, , drop = FALSE]
-
-  # ---- choose cell-type column ----
+  # -- Assay and cell-type column resolution (alias messages) --
+  if (is.null(assay)) assay <- DefaultAssay(seurat_obj)
+  if (!is.null(group_col) && is.null(cell_type_col)) {
+    cell_type_col <- group_col
+    if (verbose) message("Using `group_col` as alias of `cell_type_col`: ", group_col)
+  }
   if (is.null(cell_type_col)) {
-    candidates <- c("cell_type","celltype","CellType","celltype_l1","celltype.l1",
-                    "major_cell_type","annotation","annot","seurat_clusters","cellType")
-    cell_type_col <- candidates[candidates %in% colnames(meta)][1]
-    if (is.na(cell_type_col))
-      stop("Please provide `cell_type_col` (no common candidates found in meta.data).")
-    if (verbose) message("cell_type_col auto-selected: ", cell_type_col)
-  } else if (!cell_type_col %in% colnames(meta)) {
-    stop("`cell_type_col` not found in meta.data: ", cell_type_col)
+    stop("Provide `cell_type_col` (or `group_col` alias) pointing to cell-type labels in @meta.data.")
   }
 
-  cell_types <- unique(as.character(meta[[cell_type_col]]))
-  cell_types <- cell_types[!is.na(cell_types)]
-  if (length(cell_types) == 0L) stop("No cell types found in column: ", cell_type_col)
-
-  # optional ordering
-  if (!is.null(layer_order)) {
-    keep <- intersect(layer_order, cell_types)
-    cell_types <- c(keep, setdiff(cell_types, keep))
+  if (!is.null(group_order) && is.null(layer_order)) {
+    layer_order <- group_order
+    if (verbose) message("Using `group_order` as alias of `layer_order`.")
   }
 
-  # ---- decide gene universe ----
-  all_genes <- rownames(mat)
-  if (!is.null(feature_ids)) {
-    genes <- intersect(all_genes, unique(as.character(feature_ids)))
-    if (length(genes) < 2L)
-      stop("After intersecting with the assay, <2 genes remain in `feature_ids`.")
-    if (verbose) message("Using ", length(genes), " genes from `feature_ids`.")
-  } else if (isTRUE(use_variable_features)) {
-    # try stored variable features for this assay
-    vf <- try(Seurat::VariableFeatures(seurat_obj[[assay]]), silent = TRUE)
-    vf <- if (inherits(vf, "try-error")) character(0) else vf
-    vf <- intersect(all_genes, vf)
-    if (length(vf) > 0L) {
-      genes <- if (!is.null(n_features) && is.finite(n_features)) head(vf, n_features) else vf
-      if (verbose) message("Using ", length(genes), " VariableFeatures from assay '", assay, "'.")
+  # -- Pull the matrix (features x cells) --
+  Mat <- GetAssayData(seurat_obj, assay = assay, slot = slot)
+  if (is.null(rownames(Mat)) || is.null(colnames(Mat)))
+    stop("Assay matrix must have rownames (features) and colnames (cells).")
+
+  # -- Determine feature set (consistent across layers/repeats) --
+  if (is.null(feature_ids)) {
+    vf <- tryCatch(VariableFeat(seurat_obj, assay = assay), error = function(e) character(0))
+    vf <- vf[!is.na(vf)]
+    if (length(vf) == 0L) {
+      if (verbose) message("No VariableFeatures; selecting top-", n_var_features, " by variance.")
+      .row_vars <- function(m) {
+        n <- ncol(m)
+        if (inherits(m, "dgCMatrix")) {
+          m2 <- m; m2@x <- m2@x^2
+          s1 <- Matrix::rowSums(m)
+          s2 <- Matrix::rowSums(m2)
+        } else {
+          s1 <- rowSums(m)
+          s2 <- rowSums(m * m)
+        }
+        (s2 - (s1 * s1) / n) / max(1, n - 1)
+      }
+      rv <- .row_vars(Mat)
+      o  <- order(rv, decreasing = TRUE)
+      keep <- head(rownames(Mat)[o], n = min(n_var_features, length(o)))
+      feature_ids <- unique(keep)
     } else {
-      # fallback to top-variance genes across all cells (sparse-friendly)
-      if (verbose) message("No VariableFeatures stored; selecting top-", n_features, " by variance.")
-      genes <- .top_variance_genes(mat, n = n_features)
+      feature_ids <- unique(as.character(vf))
     }
   } else {
-    if (verbose) message("Using top-", n_features, " genes by variance (no VariableFeatures requested).")
-    genes <- .top_variance_genes(mat, n = n_features)
+    feature_ids <- unique(as.character(feature_ids))
   }
 
-  # ---- helpers ----
-  .rc_fast_rowvars <- function(smat) {
-    # row variance for genes × cells sparse or dense matrix
-    n <- ncol(smat)
-    # sums and sums of squares (sparse-friendly)
-    rs  <- Matrix::rowSums(smat)
-    rss <- Matrix::rowSums(smat^2)
-    mu  <- rs / pmax(n, 1L)
-    v   <- pmax(rss / pmax(n, 1L) - mu^2, 0)
-    as.numeric(v)
+  # Keep only features that actually exist (pad later)
+  present_feats <- intersect(feature_ids, rownames(Mat))
+  missing_feats <- setdiff(feature_ids, present_feats)
+  if (!length(present_feats)) stop("None of `feature_ids` found in assay rows.")
+  Mat <- Mat[present_feats, , drop = FALSE]
+
+  # -- Layers (cell types) --
+  md <- seurat_obj@meta.data
+  if (!cell_type_col %in% names(md)) {
+    stop("`cell_type_col` (", cell_type_col, ") not found in seurat_obj@meta.data.")
+  }
+  layers <- as.character(md[[cell_type_col]])
+  names(layers) <- rownames(md)  # cell barcodes
+  uniq_layers <- unique(layers[!is.na(layers)])
+
+  # Apply user-specified order, append any remainder
+  if (!is.null(layer_order)) {
+    in_both   <- intersect(layer_order, uniq_layers)
+    remainder <- setdiff(uniq_layers, in_both)
+    uniq_layers <- c(in_both, remainder)
   }
 
-  .cor_with_p <- function(X, method) {
-    # X: cells × genes (observations × variables)
-    # prefer WGCNA for p-values (supports bicor)
+  # -- Correlation + P helper (X = cells x genes) --
+  .cor_with_p <- function(X) {
     Cp <- try({
       if (requireNamespace("WGCNA", quietly = TRUE)) {
-        method_map <- c(pearson = "p", spearman = "s", bicor = "bicor")
-        WGCNA::corAndPvalue(X, method = method_map[[method]], alternative = "two.sided")
+        method_map <- c(pearson="p", spearman="s")
+        WGCNA::corAndPvalue(as.matrix(X), method = method_map[[cor_method]], alternative = "two.sided")
       } else stop("noWGCNA")
     }, silent = TRUE)
-    if (!inherits(Cp, "try-error")) return(list(cor = Cp$cor, p = Cp$p))
-
-    # fallback to Hmisc::rcorr for pearson/spearman
-    if (!requireNamespace("Hmisc", quietly = TRUE))
-      stop("Need WGCNA or Hmisc to compute correlation p-values.")
-    if (method == "bicor") stop("bicor requires WGCNA; install WGCNA or use 'spearman'/'pearson'.")
-    rc <- Hmisc::rcorr(as.matrix(X), type = method)
-    list(cor = rc$r, p = rc$P)
+    if (!inherits(Cp, "try-error")) {
+      list(cor = Cp$cor, p = Cp$p)
+    } else {
+      if (!requireNamespace("Hmisc", quietly = TRUE)) {
+        stop("Need either WGCNA or Hmisc installed to compute correlation p-values.")
+      }
+      rc <- Hmisc::rcorr(as.matrix(X), type = cor_method)
+      list(cor = rc$r, p = rc$P)
+    }
   }
 
-  .pad_adjust <- function(pmat, method) {
-    if (method == "none") return(pmat)
-    meth <- if (tolower(method) == "fdr") "BH" else method
-    ut <- upper.tri(pmat, diag = FALSE)
-    pvec <- pmat[ut]
-    pmat[ut] <- p.adjust(pvec, method = meth)
-    pmat[lower.tri(pmat, diag = FALSE)] <- t(pmat)[lower.tri(pmat, diag = FALSE)]
-    diag(pmat) <- 1
-    pmat
-  }
+  # -- Build one layer adjacency (optional draw) --
+  .adj_for_layer <- function(layer_id, draw_n = NULL, rep_index = NA_integer_) {
+    cells_all <- names(layers)[layers == layer_id]
+    n_all     <- length(cells_all)
 
-  # expose top-variance selector
-  .top_variance_genes <- function(smat, n = 2000) {
-    v <- .rc_fast_rowvars(smat)
-    ord <- order(v, decreasing = TRUE)
-    head(rownames(smat)[ord], n = min(n, nrow(smat)))
-  }
-
-  # ---- per-type adjacency ----
-  gene_universe <- genes
-  adj_list <- setNames(vector("list", length(cell_types)), cell_types)
-
-  for (ct in cell_types) {
-    cells_ct <- rownames(meta)[meta[[cell_type_col]] == ct]
-    cells_ct <- intersect(cells_ct, colnames(mat))
-    n_ct <- length(cells_ct)
-
-    if (n_ct < max(3L, min_cells_per_type)) {
-      if (verbose) message("Skipping '", ct, "': only ", n_ct, " cells (< ", max(3L, min_cells_per_type), ").")
-      adj_list[[ct]] <- matrix(0, nrow = length(gene_universe), ncol = length(gene_universe),
-                               dimnames = list(gene_universe, gene_universe))
-      next
+    if (n_all < min_cells_per_layer) {
+      if (verbose) message("Skipping '", layer_id, "': only ", n_all, " cells (< ", min_cells_per_layer, ").")
+      Z <- matrix(0, nrow = length(feature_ids), ncol = length(feature_ids),
+                  dimnames = list(feature_ids, feature_ids))
+      attr(Z, "n_cells") <- n_all
+      return(Z)
     }
 
-    if (!is.null(max_cells_per_type) && is.finite(max_cells_per_type) && n_ct > max_cells_per_type) {
-      set.seed(1)
-      cells_ct <- sample(cells_ct, max_cells_per_type)
-      n_ct <- length(cells_ct)
-      if (verbose) message("Subsampled '", ct, "' to ", n_ct, " cells (max_cells_per_type).")
+    if (!is.null(draw_n)) {
+      draw_n <- min(draw_n, n_all)
+      set.seed(NULL)
+      cells <- sample(cells_all, draw_n)
+    } else {
+      cells <- cells_all
+      draw_n <- length(cells)
     }
 
-    # subset to gene_universe × cells_ct
-    M <- mat[gene_universe, cells_ct, drop = FALSE]   # genes × cells
-    # drop zero-variance genes within this cell type (avoid NA correlations)
-    v_ct <- .rc_fast_rowvars(M)
-    gkeep <- gene_universe[v_ct > 0]
-    if (length(gkeep) < 2L) {
-      if (verbose) message("Cell type '", ct, "': <2 informative genes; returning zeros.")
-      adj_list[[ct]] <- matrix(0, nrow = length(gene_universe), ncol = length(gene_universe),
-                               dimnames = list(gene_universe, gene_universe))
-      next
+    subM <- Mat[, cells, drop = FALSE]   # genes x cells
+    X    <- t(subM)                      # cells x genes
+
+    # QC using WGCNA if available
+    if (requireNamespace("WGCNA", quietly = TRUE)) {
+      gsg <- WGCNA::goodSamplesGenes(as.matrix(X), verbose = 0)
+      if (!gsg$allOK) {
+        if (verbose) {
+          if (sum(!gsg$goodGenes) > 0) {
+            removed_features <- colnames(X)[!gsg$goodGenes]
+            message(
+              paste0(
+                paste(removed_features, collapse = ", "),
+                " removed in iteration ", ifelse(is.na(rep_index), "NA", rep_index),
+                " from layer ", layer_id
+              )
+            )
+          }
+          if (sum(!gsg$goodSamples) > 0) {
+            removed_samples <- rownames(X)[!gsg$goodSamples]
+            message("Removing cells: ", paste(removed_samples, collapse = ", "),
+                    " | layer = ", layer_id,
+                    if (!is.na(rep_index)) paste0(" | repeat = ", rep_index))
+          }
+        }
+        X <- X[gsg$goodSamples, gsg$goodGenes, drop = FALSE]
+      }
     }
-    M2 <- M[gkeep, , drop = FALSE]
 
-    # compute correlation & p across cells
-    X <- t(as.matrix(M2))  # cells × genes
-    cp <- .cor_with_p(X, method = cor_method)
-    R <- cp$cor; P <- cp$p
-    # ensure row/colnames
-    rownames(R) <- colnames(R) <- gkeep
-    rownames(P) <- colnames(P) <- gkeep
-    diag(R) <- 0; diag(P) <- 1
+    if (nrow(X) < 3L || ncol(X) < 2L) {
+      if (verbose) message("After QC, layer '", layer_id, "' too small; returning zeros.")
+      Z <- matrix(0, nrow = length(feature_ids), ncol = length(feature_ids),
+                  dimnames = list(feature_ids, feature_ids))
+      attr(Z, "n_cells") <- nrow(X)
+      return(Z)
+    }
 
-    # adjust p-values if requested
-    P2 <- .pad_adjust(P, pval_adjust)
+    cp <- .cor_with_p(X)
+    cor_mat <- cp$cor; p_mat <- cp$p
+    diag(cor_mat) <- 0; diag(p_mat) <- 1
 
-    # threshold to adjacency
-    keep <- (abs(R) >= corr_threshold) & (P2 <= pval_cutoff)
+    # Adjust p-values on unique tests (upper triangle), mirror back
+    p_use <- p_mat
+    if (adj_method != "none") {
+      ut <- upper.tri(p_use, diag = FALSE)
+      p_use[ut] <- p.adjust(p_use[ut], method = adj_method)
+      p_use[lower.tri(p_use, diag = FALSE)] <- t(p_use)[lower.tri(p_use, diag = FALSE)]
+      diag(p_use) <- 1
+    }
+
+    keep <- (abs(cor_mat) >= corr_threshold) & (p_use <= pval_cutoff)
     keep[is.na(keep)] <- FALSE
-    A <- R; A[!keep] <- 0
 
-    # pad to full gene_universe order
-    fullA <- matrix(0, nrow = length(gene_universe), ncol = length(gene_universe),
-                    dimnames = list(gene_universe, gene_universe))
-    fullA[gkeep, gkeep] <- A[gkeep, gkeep, drop = FALSE]
-    adj_list[[ct]] <- fullA
-    if (verbose) message("Built adjacency for '", ct, "' (genes=", nrow(fullA), ", cells=", n_ct, ").")
+    adj <- cor_mat
+    adj[!keep] <- 0
+
+    # Expand back to the full feature_ids order (pad zeros for missing)
+    present <- colnames(X)
+    full_adj <- matrix(0, nrow = length(feature_ids), ncol = length(feature_ids),
+                       dimnames = list(feature_ids, feature_ids))
+    common <- intersect(feature_ids, present)
+    if (length(common)) {
+      full_adj[common, common] <- adj[common, common, drop = FALSE]
+    }
+
+    if (verbose) message("Built adjacency for '", layer_id, "' (genes=", length(feature_ids),
+                         ", cells=", draw_n, ").")
+    attr(full_adj, "n_cells") <- draw_n
+    full_adj
   }
 
-  attr(adj_list, "gene_order") <- gene_universe
-  attr(adj_list, "cell_types") <- cell_types
-  attr(adj_list, "assay")      <- assay
-  attr(adj_list, "slot")       <- slot
-
-  # ---- NEW: save the output list to a timestamped .rds (no behavior change) ----
-  # Uses getOption("mlnet.results_dir","omicsDNA_results") as the base folder.
-  {
-    .ensure_dir <- function(d) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
-    .san        <- function(x) gsub("[^A-Za-z0-9._-]+", "_", as.character(x))
-    results_dir <- getOption("mlnet.results_dir", "omicsDNA_results")
-    .ensure_dir(results_dir)
-    stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
-    aslot <- paste0("_", .san(assay), "_", .san(slot))
-    nl    <- paste0("_Nlayers-", length(adj_list))
-    fname <- paste0("sc_adjacency", aslot, nl, "_", stamp, ".rds")
-    path  <- file.path(results_dir, fname)
-    saveRDS(adj_list, file = path, compress = "xz")
-    attr(adj_list, "rds_file") <- normalizePath(path, winslash = "/", mustWork = FALSE)
-    if (isTRUE(verbose)) message("💾 Saved adjacency list: ", attr(adj_list, "rds_file"))
+  # -- Driver: resampling or single pass --
+  result <- NULL
+  if (resample) {
+    if (verbose) message("Resampling: ", n_repeats, " repeats; ", samples_per_group, " cells/type.")
+    result <- vector("list", n_repeats)
+    for (i in seq_len(n_repeats)) {
+      mats <- lapply(uniq_layers, function(L) .adj_for_layer(L, draw_n = samples_per_group, rep_index = i))
+      names(mats) <- uniq_layers
+      result[[i]] <- mats
+      if (verbose) message("sampling ", i, " completed")
+    }
+  } else {
+    if (verbose) message("Computing adjacency once per layer (no resampling).")
+    mats <- lapply(uniq_layers, function(L) .adj_for_layer(L, draw_n = NULL, rep_index = NA_integer_))
+    names(mats) <- uniq_layers
+    result <- mats
   }
-  # ------------------------------------------------------------------------------
 
-  adj_list
+  # -- Save to RDS (optional) --
+  rds_path <- NULL
+  if (isTRUE(save_rds)) {
+    if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+    stamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
+    tag   <- if (resample) "bootstrap" else "no_bootstrap"
+    prefix <- if (is.null(file_prefix) || !nzchar(file_prefix)) "sc_adjacency" else file_prefix
+    rds_path <- file.path(out_dir, sprintf("%s_%s_%s.rds", prefix, tag, stamp))
+    comp <- if (isTRUE(compress) || isFALSE(compress)) compress else as.character(compress)
+    saveRDS(result, rds_path, compress = comp)
+    if (verbose) message("💾 Saved adjacency to: ", rds_path)
+  }
+
+  attr(result, "rds_file") <- rds_path
+  return(result)
 }
+
+

@@ -2,163 +2,223 @@
 % Please edit documentation in R/sc_buildAdjacency.R
 \name{sc_buildAdjacency}
 \alias{sc_buildAdjacency}
-\title{Single‑cell coexpression adjacency per cell type (layers) from Seurat}
+\title{Build single-cell (per cell-type) correlation-filtered adjacency matrices.}
 \usage{
 sc_buildAdjacency(
   seurat_obj,
   assay = NULL,
-  slot = c("data", "scale.data", "counts"),
+  slot = c("data", "counts", "scale.data"),
   cell_type_col = NULL,
+  group_col = NULL,
   feature_ids = NULL,
-  use_variable_features = TRUE,
-  n_features = 2000,
-  min_cells_per_type = 20,
-  max_cells_per_type = NULL,
-  cor_method = c("spearman", "pearson", "bicor"),
-  pval_adjust = c("fdr", "BH", "bonferroni", "none"),
+  n_var_features = 2000,
+  cor_method = c("spearman", "pearson"),
+  pval_adjust = c("none", "fdr", "BH", "bonferroni", "bf"),
   pval_cutoff = 0.05,
-  corr_threshold = 0.25,
+  corr_threshold = 0.7,
+  resample = TRUE,
+  samples_per_group = 100,
+  n_repeats = 5,
+  min_cells_per_layer = 20,
+  group_order = NULL,
   layer_order = NULL,
+  save_rds = TRUE,
+  out_dir = file.path(getwd(), "omicsDNA_sc_results"),
+  file_prefix = "sc_adjacency",
+  compress = "xz",
   verbose = TRUE
 )
 }
 \arguments{
-\item{seurat_obj}{A \pkg{Seurat} object.}
+\item{seurat_obj}{A \strong{Seurat/SeuratObject} containing your single-cell data.
+Must have (i) an assay with a gene (rows) × cell (columns) matrix and
+(ii) a \verb{@meta.data} column with cell-type labels. The function supports both
+\code{SeuratObject} and \code{Seurat} namespaces for \code{GetAssayData}, \code{DefaultAssay},
+and \code{VariableFeatures}.}
 
-\item{assay}{Character. Assay to use. If \code{NULL}, the function tries, in order,
-\code{"integrated"}, \code{"SCT"}, \code{"RNA"}, then falls back to the first assay present.}
+\item{assay}{Character; which assay to read from. Defaults to
+\code{DefaultAssay(seurat_obj)}. Ensure it matches the modality you want to
+correlate (e.g., "RNA" for gene expression).}
 
-\item{slot}{Character; which slot to read from the assay. One of \code{"data"},
-\code{"scale.data"}, \code{"counts"}. Default \code{"data"}.}
+\item{slot}{Character; which slot to pull: \code{"data"}, \code{"counts"}, or
+\code{"scale.data"}. Default \code{"data"}. Use \code{"data"} after normalization/log-
+transform, \code{"counts"} for raw counts (less typical for correlations), or
+\code{"scale.data"} if you pre-scaled/centered features.}
 
-\item{cell_type_col}{Character; name of the metadata column with cell‑type labels.
-If \code{NULL}, the function searches common candidates and errors if none are present.}
+\item{cell_type_col}{Character; name of the \verb{@meta.data} column that holds
+\strong{cell-type (layer) labels}. Required unless \code{group_col} (alias) is used.}
 
-\item{feature_ids}{Optional character vector of genes to include. If \code{NULL},
-the function uses \code{VariableFeatures(seurat_obj[[assay]])} when available,
-otherwise selects the top \code{n_features} by row variance.}
+\item{group_col}{Character; \strong{alias} for \code{cell_type_col}. If provided and
+\code{cell_type_col} is \code{NULL}, the function uses this and prints a note.}
 
-\item{use_variable_features}{Logical; if \code{TRUE} and \code{feature_ids} is \code{NULL},
-attempt to use \code{VariableFeatures}. Default \code{TRUE}.}
+\item{feature_ids}{Character vector of \strong{gene IDs} (row names of the assay
+matrix) to include. If \code{NULL}, the function tries \code{VariableFeatures()};
+if none are set, it picks the top-variance genes (see \code{n_var_features}).
+Returned matrices are always ordered by this vector, padding missing genes
+with zero rows/columns to ensure identical shapes across layers/repeats.}
 
-\item{n_features}{Integer; when \code{feature_ids} is \code{NULL} and no variable features
-are stored, pick this many top‑variance genes. Default \code{2000}.}
+\item{n_var_features}{Integer; how many top-variance features to pick when
+\code{VariableFeatures()} is absent. Default \code{2000}.}
 
-\item{min_cells_per_type}{Integer; minimum number of cells required to build an adjacency
-for a cell type. Types with fewer cells return a zero matrix. Default \code{20}.}
+\item{cor_method}{Correlation method: \code{"spearman"} (rank-based; default) or
+\code{"pearson"} (linear). Choose \code{"spearman"} for robustness to outliers and
+nonlinearity; \code{"pearson"} for linear associations on scaled data.}
 
-\item{max_cells_per_type}{Optional integer; if provided and a cell type has more cells than this,
-randomly subsample to this many cells to control time/memory. Default \code{NULL} (use all).}
+\item{pval_adjust}{P-value adjustment method. Accepts \code{"none"}, \code{"fdr"},
+\code{"BH"}, \code{"bonferroni"}, \code{"bf"} (synonym for \code{"bonferroni"}). The method is
+applied to the \strong{upper triangle only} and mirrored. Default \code{"none"}.}
 
-\item{cor_method}{Correlation method: \code{"spearman"} (default), \code{"pearson"},
-or \code{"bicor"} (requires \pkg{WGCNA}).}
+\item{pval_cutoff}{Numeric; p-value cutoff \strong{after} adjustment (if any).
+Edges with p-values above this threshold are zeroed. Default \code{0.05}.}
 
-\item{pval_adjust}{P‑value adjustment: \code{"fdr"}, \code{"BH"}, \code{"bonferroni"},
-or \code{"none"}. Default \code{"fdr"}.}
+\item{corr_threshold}{Numeric; absolute correlation threshold. Only edges
+with \verb{|r| ≥ corr_threshold} survive. Default \code{0.7}.}
 
-\item{pval_cutoff}{Numeric; (adjusted) p‑value cutoff for edges. Default \code{0.05}.}
+\item{resample}{Logical; if \code{TRUE} (default), perform \strong{balanced} sampling
+of \code{samples_per_group} cells from each cell type, repeated \code{n_repeats} times.
+If \code{FALSE}, use all available cells per cell type exactly once.}
 
-\item{corr_threshold}{Numeric; absolute correlation threshold for edges. Default \code{0.25}.}
+\item{samples_per_group}{Integer; \strong{target} number of cells per cell type
+in each repeat when \code{resample = TRUE}. If a cell type has fewer cells, the
+function draws as many as available (no upsampling).}
 
-\item{layer_order}{Optional character vector to control the order of cell types in the output.}
+\item{n_repeats}{Integer; number of repeated draws when \code{resample = TRUE}.
+Default \code{5}.}
 
-\item{verbose}{Logical; print progress messages. Default \code{TRUE}.}
+\item{min_cells_per_layer}{Integer; minimum number of cells required in a
+cell type for attempting an adjacency. Layers with fewer cells return a
+zero matrix of the correct shape. Default \code{20}.}
+
+\item{group_order}{Character vector; \strong{alias} for \code{layer_order}. If used,
+the function prints a note and applies it as \code{layer_order}.}
+
+\item{layer_order}{Character vector; desired \strong{ordering of layers} (cell
+types) in the output. Any unspecified layers are appended after the given
+order.}
+
+\item{save_rds}{Logical; whether to save the return object to \strong{RDS}
+on disk. Default \code{TRUE}. The path is stored in the top-level attribute
+\code{"rds_file"}.}
+
+\item{out_dir}{Directory where the RDS file is written when \code{save_rds = TRUE}.
+Defaults to \code{file.path(getwd(), "omicsDNA_sc_results")}. Created if missing.}
+
+\item{file_prefix}{Basename (no extension) for the saved file. Default
+\code{"sc_adjacency"}. A timestamp and a tag indicating resampling/no-resampling
+are appended automatically.}
+
+\item{compress}{Compression for \code{saveRDS()}. Accepts logical (\code{TRUE}/\code{FALSE})
+or a method string (\code{"gzip"}, \code{"bzip2"}, \code{"xz"}). Default \code{"xz"} (smallest
+size, slower write/read).}
+
+\item{verbose}{Logical; print progress/QC notes. Default \code{TRUE}.}
 }
 \value{
-A named list of adjacency matrices \code{adj[[cell_type]] = matrix} (genes × genes), all with
-identical row/column order. Attributes:
+If \code{resample = TRUE}: a \strong{list of length \code{n_repeats}}, each element being a
+\strong{named sub-list} of per-layer adjacency matrices (one matrix per cell type,
+ordered by \code{layer_order} if supplied).
+If \code{resample = FALSE}: a \strong{single named list} of per-layer adjacency matrices.
+
+For every adjacency matrix:
 \itemize{
-\item \code{attr(x, "gene_order")} — the gene order used across matrices.
-\item \code{attr(x, "cell_types")} — the cell types included (order reflects output).
-\item \code{attr(x, "assay")} and \code{attr(x, "slot")} — provenance.
+\item dimension is \verb{length(feature_ids) × length(feature_ids)} and row/column
+names are exactly \code{feature_ids} (padded with zeros for missing genes).
+\item diagonal is zero; nonzero entries are the (signed) correlation estimates.
+\item attribute \code{"n_cells"} records how many cells contributed for that layer/repeat.
 }
+
+The \strong{top-level} return object has attribute \code{"rds_file"} with the saved path
+(or \code{NULL} if \code{save_rds = FALSE}).
 }
 \description{
-Given a \pkg{Seurat} object with one or more assays (e.g., \code{"RNA"}, \code{"SCT"},
-\code{"integrated"}), this function extracts an assay/slot matrix (default: \code{slot="data"}),
-pulls the cell metadata, and for each \strong{cell type} (chosen via a metadata column) computes
-a gene–gene correlation matrix \strong{across individual cells} of that type (no aggregation).
-Edges are kept when they satisfy both an absolute correlation threshold and a p‑value cutoff.
-The result is a list of adjacency matrices—one per cell type—sharing an identical gene order,
-ready to be used as layers in a multilayer network.
+This helper constructs \strong{one correlation network per cell type} from a Seurat
+object by thresholding pairwise gene–gene correlations using both an absolute
+correlation cutoff and a (optionally adjusted) p-value cutoff. It can perform
+\strong{balanced resampling} (bootstrap-like) so each repeat draws the same number
+of cells per cell type, stabilising downstream edges/metrics. The output shape
+mirrors \code{omicsDNA::buildAdjacency()} (per-layer matrices, optionally repeated),
+so you can pipe results directly into \code{omicsDNA} edge extraction / consensus /
+multilayer assembly workflows. See the \code{omicsDNA} overview for the layered
+network workflow and typical end-to-end usage.  # (overview mirrors buildAdjacency)
 }
 \details{
-Build per–cell type gene–gene adjacency matrices from a Seurat object (no aggregation)
+\strong{What it does (per layer/cell type):}
+\enumerate{
+\item Selects a fixed set of features (genes) shared across layers/repeats:
+uses \code{feature_ids} if supplied; otherwise uses Seurat's \code{VariableFeatures()}
+if present; otherwise picks the top-variance genes (\code{n_var_features}).
+\item Optionally draws a \strong{balanced} sample of cells per cell type
+(\code{samples_per_group}) for each repeat (\code{n_repeats}).
+\item Optionally filters bad samples/genes via \code{WGCNA::goodSamplesGenes()}
+(if WGCNA is installed); logs removals when \code{verbose = TRUE}.
+\item Computes pairwise gene–gene correlations and associated p-values using
+\strong{WGCNA} (\code{corAndPvalue}) when available, otherwise \strong{Hmisc} (\code{rcorr}).
+\item Adjusts the \strong{upper-triangular} p-values only (to avoid double counting),
+mirrors them to the lower triangle, and sets diagonals appropriately.
+\item Builds an adjacency by keeping edges where \verb{|correlation| ≥ corr_threshold}
+\strong{and} \verb{p ≤ pval_cutoff} (after adjustment if requested); others are zeroed.
+\item \strong{Pads} back to the requested \code{feature_ids} order so every returned
+matrix has identical dimensions, even if some features are absent in a layer.
+}
 
-\strong{Assay and slot.}
-You can point to any assay present in the object (e.g., \code{"RNA"}, \code{"SCT"},
-\code{"integrated"}) and choose the slot to read (\code{"data"} is recommended).
-For typical Seurat workflows:
+\strong{Notes & tips}
 \itemize{
-\item \code{assay="RNA", slot="data"} → log‑normalized expression (sparse).
-\item \code{assay="SCT", slot="data"} → SCT residuals (already normalized).
-\item \code{assay="integrated", slot="data"} → corrected expression used for integration.
+\item \strong{Reproducibility:} This function does not set a seed internally. For
+reproducible resampling, call \verb{set.seed(<integer>)} before running.
+\item \strong{Performance:} Correlation scales roughly with O(G^2) in the number of
+genes \code{G}. Supplying a targeted \code{feature_ids} (or relying on variable
+features) is strongly recommended for speed and memory.
+\item \strong{QC fallback:} If after QC there are too few cells or genes in a layer,
+the function returns a zero matrix of the right shape and sets the
+\code{"n_cells"} attribute accordingly.
 }
 
-\strong{Cell types (layers).}
-The function reads \code{object@meta.data}. Set \code{cell_type_col} to the column
-that contains the cell‑type labels (these labels become the layer names). If omitted,
-the function tries common candidates (e.g., \code{"cell_type"}, \code{"celltype"},
-\code{"CellType"}, \code{"seurat_clusters"}), and errors if none is found.
-
-\strong{Gene universe.}
-Use \code{feature_ids} to fix the genes used across all layers. If \code{feature_ids} is
-\code{NULL}, the function (by default) uses \code{\link[Seurat]{VariableFeatures}} from
-the selected assay if available; otherwise it picks the top \code{n_features} genes by
-row variance (computed efficiently on sparse matrices). All adjacency matrices are then
-padded to this common gene universe and share the same row/column order.
-
-\strong{Correlation & statistics.}
-Correlations are computed with \code{cor_method = "spearman"} (default), or
-\code{"pearson"}, or robust \code{"bicor"} (requires \pkg{WGCNA}). P‑values come from
-\pkg{WGCNA} (\code{corAndPvalue}) when available; otherwise the function falls back to
-\pkg{Hmisc} (\code{rcorr}) for Pearson/Spearman. Adjusted p‑values are supported via
-\code{pval_adjust = "fdr"|"BH"|"bonferroni"|"none"}.
-
-\strong{Scale considerations.}
-Computing correlations across cells is feasible provided you keep the gene set modest
-(e.g., 1–3k genes). For very large datasets, consider limiting cells per type using
-\code{max_cells_per_type}, or pass a curated \code{feature_ids}. Note that with large
-numbers of cells, \strong{p‑values can be extremely small}; if you want to keep edges based
-on correlation only, set \code{pval_cutoff = 1}.
+Mirrors \code{omicsDNA::buildAdjacency()} semantics and return shape (per-layer matrices,
+with optional repeated balanced draws). See the omicsDNA overview for the
+layered network workflow.
 }
-\section{Tips}{
-
+\note{
 \itemize{
-\item If you see “too few cells” messages, lower \code{min_cells_per_type} or merge rare types.
-\item To keep only correlation‑based edges (ignore p‑values), set \code{pval_cutoff = 1}.
-\item For very large cell counts, set \code{max_cells_per_type} (e.g., 5000–10000).
+\item For reproducible draws, set a seed (e.g., \code{set.seed(1)}) \strong{before} calling.
+\item The function prefers \code{WGCNA} for correlation + p-values and falls back to
+\code{Hmisc} when \code{WGCNA} is not installed.
 }
 }
-
 \examples{
-\dontrun{
-library(Seurat)
-seu <- readRDS("my_seurat.rds")
+\donttest{
+  # Minimal single-cell example using Seurat's toy dataset
+  library(Seurat)
+  data("pbmc_small")
 
-adj <- sc_buildAdjacency(
-  seurat_obj         = seu,
-  assay              = "SCT",        # or "RNA", "integrated", etc.
-  slot               = "data",
-  cell_type_col      = "celltype",   # choose your metadata column
-  feature_ids        = NULL,         # use VariableFeatures if present; else top-variance
-  use_variable_features = TRUE,
-  n_features         = 3000,
-  min_cells_per_type = 30,
-  max_cells_per_type = 8000,         # subsample if needed; NULL = use all
-  cor_method         = "spearman",
-  pval_adjust        = "fdr",
-  pval_cutoff        = 0.05,
-  corr_threshold     = 0.25,
-  layer_order        = c("T cell","B cell","NK","Myeloid","Endothelial"),
-  verbose            = TRUE
-)
+  # Create a simple cell-type label for demonstration (use your real labels)
+  pbmc_small$celltype <- as.character(Idents(pbmc_small))
 
-names(adj)                 # cell types (layers)
-dim(adj[[1]])              # genes × genes (same order across layers)
-attr(adj, "gene_order")[1:10]
+  # Build one adjacency matrix per celltype (no resampling for speed)
+  adj_list <- sc_buildAdjacency(
+    seurat_obj          = pbmc_small,
+    assay               = DefaultAssay(pbmc_small),
+    slot                = "data",
+    cell_type_col       = "celltype",
+    cor_method          = "spearman",
+    corr_threshold      = 0.6,
+    pval_adjust         = "fdr",
+    pval_cutoff         = 0.1,
+    resample            = FALSE,
+    save_rds            = FALSE,
+    verbose             = TRUE
+  )
+
+  # Each element is a (genes x genes) adjacency for a cell type
+  str(adj_list, max.level = 1)
 }
+
+}
+\references{
+Langfelder P, Horvath S (2008) WGCNA: an R package for weighted correlation
+network analysis. \emph{BMC Bioinformatics} 9, 559.
+Harrell FE Jr et al. (2024) Hmisc: Harrell Miscellaneous. R package version.
 }
 \seealso{
-\code{\link[Seurat]{GetAssayData}}, \code{\link[Seurat]{VariableFeatures}}
+\code{omicsDNA::buildAdjacency()}, \code{omicsDNA::edgesFromAdjacency()},
+\code{omicsDNA::consensusEdges()}, \code{omicsDNA::build_multiNet()}
 }
