@@ -407,3 +407,18 @@ Most functions save outputs under `getOption("mlnet.results_dir","omicsDNA_resul
 ```r
 set.seed(1)
 ```
+
+---
+
+## 🙋 Feedback & contributions
+
+Issues and pull requests are welcome. Please provide a minimal example and `sessionInfo()` where possible.
+
+---
+
+## 📄 License
+
+MIT © VafaeeLab
+
+```
+```

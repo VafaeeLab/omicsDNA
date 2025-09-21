@@ -70,6 +70,8 @@ omicsDNA
       pair**
       differences](#27-grid_layer_diffs--multipanel-grid-of-all-consecutive-pair-differences)
   - [Reproducibility notes](#reproducibility-notes)
+  - [🙋 Feedback & contributions](#raising_hand-feedback--contributions)
+  - [📄 License](#page_facing_up-license)
 
 # omicsDNA <img src="man/figures/logo.png" align="right" height="110"/>
 
@@ -512,3 +514,16 @@ communities):
 ``` r
 set.seed(1)
 ```
+
+------------------------------------------------------------------------
+
+## 🙋 Feedback & contributions
+
+Issues and pull requests are welcome. Please provide a minimal example
+and `sessionInfo()` where possible.
+
+------------------------------------------------------------------------
+
+## 📄 License
+
+MIT © VafaeeLab
