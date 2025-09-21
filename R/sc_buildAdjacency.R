@@ -186,7 +186,7 @@ sc_buildAdjacency <- function(
     group_order           = NULL,      # alias
     layer_order           = NULL,
     save_rds              = TRUE,
-    out_dir               = file.path(getwd(), "omicsDNA_sc_results"),
+    out_dir               = file.path(getwd(), "omicsDNA_results"),
     file_prefix           = "sc_adjacency",
     compress              = "xz",
     verbose               = TRUE
