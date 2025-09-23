@@ -11,7 +11,7 @@ sc_buildAdjacency(
   cell_type_col = NULL,
   group_col = NULL,
   feature_ids = NULL,
-  n_var_features = 2000,
+  n_var_features = 3000,
   cor_method = c("spearman", "pearson"),
   pval_adjust = c("none", "fdr", "BH", "bonferroni", "bf"),
   pval_cutoff = 0.05,
@@ -58,7 +58,7 @@ Returned matrices are always ordered by this vector, padding missing genes
 with zero rows/columns to ensure identical shapes across layers/repeats.}
 
 \item{n_var_features}{Integer; how many top-variance features to pick when
-\code{VariableFeatures()} is absent. Default \code{2000}.}
+\code{VariableFeatures()} is absent. Default \code{3000}.}
 
 \item{cor_method}{Correlation method: \code{"spearman"} (rank-based; default) or
 \code{"pearson"} (linear). Choose \code{"spearman"} for robustness to outliers and
