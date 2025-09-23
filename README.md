@@ -47,7 +47,7 @@ omicsDNA
       community
       rows](#17-annotatecom--add-feature-attributes-eg-genetype-to-community-rows)
     - [18) `sumComFeat()` — summaries by feature type
-      (actor/community/layer)](#18-sumcomfeat--summaries-by-feature-type-actorcommunitylayer)
+      (actor)](#18-sumcomfeat--summaries-by-feature-type-actor)
     - [19) `get_FeatureDeg()` — degrees (per layer /
       long)](#19-get_featuredeg--degrees-per-layer--long)
     - [20) `gp_enrich_multinet()` — g:Profiler enrichment **per
@@ -370,7 +370,7 @@ commA <- annotateCom(
 )
 ```
 
-### 18) `sumComFeat()` — summaries by feature type (actor/community/layer)
+### 18) `sumComFeat()` — summaries by feature type (actor)
 
 ``` r
 summTF <- sumComFeat(

@@ -277,7 +277,7 @@ commA <- annotateCom(
 )
 ```
 
-### 18) `sumComFeat()` — summaries by feature type (actor/community/layer)
+### 18) `sumComFeat()` — summaries by feature type (actor)
 ```r
 summTF <- sumComFeat(
   commA,

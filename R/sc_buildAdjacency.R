@@ -1,7 +1,6 @@
-
-# --------------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 #  1b - sc_buildAdjacency(): Seurat → per–cell type gene–gene adjacency
-# --------------------------------------------------------------------------------
+# ---------------------------------------------------------------------
 
 #' Build single-cell (per cell-type) correlation-filtered adjacency matrices.
 #'
@@ -97,7 +96,7 @@
 #'   Returned matrices are always ordered by this vector, padding missing genes
 #'   with zero rows/columns to ensure identical shapes across layers/repeats.
 #' @param n_var_features Integer; how many top-variance features to pick when
-#'   `VariableFeatures()` is absent. Default `2000`.
+#'   `VariableFeatures()` is absent. Default `3000`.
 #' @param cor_method Correlation method: `"spearman"` (rank-based; default) or
 #'   `"pearson"` (linear). Choose `"spearman"` for robustness to outliers and
 #'   nonlinearity; `"pearson"` for linear associations on scaled data.
@@ -174,7 +173,7 @@ sc_buildAdjacency <- function(
     cell_type_col         = NULL,
     group_col             = NULL,      # alias
     feature_ids           = NULL,
-    n_var_features        = 2000,
+    n_var_features        = 3000,
     cor_method            = c("spearman","pearson"),
     pval_adjust           = c("none","fdr","BH","bonferroni","bf"),
     pval_cutoff           = 0.05,
@@ -440,5 +439,4 @@ sc_buildAdjacency <- function(
   attr(result, "rds_file") <- rds_path
   return(result)
 }
-
 
