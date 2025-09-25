@@ -1,6 +1,5 @@
 
 
-
 # ---- small helper for consistent key matching (unchanged) -------------------
 .normalize_keys <- function(x, steps = c("strip_version","trim","tolower")) {
   x <- as.character(x)
@@ -240,9 +239,14 @@ sumComFeat <- function(
     if (!dir.exists(results_dir)) dir.create(results_dir, recursive = TRUE, showWarnings = FALSE)
     stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
 
-    f_actor  <- file.path(results_dir, paste0(prefix, "_by-actor_",          stamp, ".csv"))
-    f_cid    <- file.path(results_dir, paste0(prefix, "_by-cid_",            stamp, ".csv"))
-    f_counts <- file.path(results_dir, paste0(prefix, "_counts_cid-layer_",  stamp, ".csv"))
+    # NEW: timestamped subfolder to hold this call's outputs
+    run_dir <- file.path(results_dir, paste0("sumComFeat_", stamp))  # NEW: run_dir
+    if (!dir.exists(run_dir)) dir.create(run_dir, recursive = TRUE, showWarnings = FALSE)  # NEW
+    if (isTRUE(verbose)) message("Output folder: ", normalizePath(run_dir, winslash = "/", mustWork = FALSE))  # NEW
+
+    f_actor  <- file.path(run_dir, paste0(prefix, "_by-actor_",          stamp, ".csv"))   # NEW: run_dir
+    f_cid    <- file.path(run_dir, paste0(prefix, "_by-cid_",            stamp, ".csv"))   # NEW: run_dir
+    f_counts <- file.path(run_dir, paste0(prefix, "_counts_cid-layer_",  stamp, ".csv"))   # NEW: run_dir
 
     utils::write.csv(by_actor,         f_actor,  row.names = FALSE)
     utils::write.csv(by_cid,           f_cid,    row.names = FALSE)
@@ -266,3 +270,4 @@ sumComFeat <- function(
   if (!is.null(files)) attr(out, "files") <- files
   invisible(out)
 }
+

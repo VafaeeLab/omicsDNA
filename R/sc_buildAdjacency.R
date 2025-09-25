@@ -1,5 +1,6 @@
+
 # ---------------------------------------------------------------------
-#  1b - sc_buildAdjacency(): Seurat → per–cell type gene–gene adjacency
+#  1.1 - sc_buildAdjacency(): Seurat → per–cell type gene–gene adjacency
 # ---------------------------------------------------------------------
 
 #' Build single-cell (per cell-type) correlation-filtered adjacency matrices.
@@ -241,6 +242,7 @@ sc_buildAdjacency <- function(
   Mat <- GetAssayData(seurat_obj, assay = assay, slot = slot)
   if (is.null(rownames(Mat)) || is.null(colnames(Mat)))
     stop("Assay matrix must have rownames (features) and colnames (cells).")
+  if (is.data.frame(Mat)) Mat <- as.matrix(Mat)  # <<< FIX: guard against data.frame
 
   # -- Determine feature set (consistent across layers/repeats) --
   if (is.null(feature_ids)) {
@@ -334,8 +336,24 @@ sc_buildAdjacency <- function(
       draw_n <- length(cells)
     }
 
+    # <<< FIX: ensure the sampled cells actually exist in the assay matrix
+    cells <- intersect(cells, colnames(Mat))
+    if (length(cells) < 2L) {
+      if (verbose) message("Layer '", layer_id, "' has < 2 matching cells in assay after intersect; returning zeros.")
+      Z <- matrix(0, nrow = length(feature_ids), ncol = length(feature_ids),
+                  dimnames = list(feature_ids, feature_ids))
+      attr(Z, "n_cells") <- length(cells)
+      return(Z)
+    }
+
     subM <- Mat[, cells, drop = FALSE]   # genes x cells
-    X    <- t(subM)                      # cells x genes
+
+    # <<< FIX: robust transpose for sparse/base matrices; avoid t.default() on non-matrix
+    if (inherits(subM, "Matrix")) {
+      X <- Matrix::t(subM)               # cells x genes (sparse-friendly)
+    } else {
+      X <- t(as.matrix(subM))            # force base matrix then transpose
+    }
 
     # QC using WGCNA if available
     if (requireNamespace("WGCNA", quietly = TRUE)) {
@@ -359,8 +377,12 @@ sc_buildAdjacency <- function(
                     if (!is.na(rep_index)) paste0(" | repeat = ", rep_index))
           }
         }
-        X <- X[gsg$goodSamples, gsg$goodGenes, drop = FALSE]
+        X <- as.matrix(X)[gsg$goodSamples, gsg$goodGenes, drop = FALSE]  # ensure base matrix after QC
+      } else {
+        X <- as.matrix(X)  # ensure base matrix for downstream stats either way
       }
+    } else {
+      X <- as.matrix(X)    # ensure base matrix when WGCNA not present
     }
 
     if (nrow(X) < 3L || ncol(X) < 2L) {
@@ -439,4 +461,3 @@ sc_buildAdjacency <- function(
   attr(result, "rds_file") <- rds_path
   return(result)
 }
-

@@ -1,5 +1,4 @@
 
-
 # -------------------------------------------------------
 # 24 — Grid of consecutive layer differences
 # -------------------------------------------------------
@@ -122,24 +121,29 @@ grid_layer_diffs <- function(
 
   # ---- I/O prep ----
   .ensure_dir(results_dir)
-  # *** KEY FIX: make results_dir ABSOLUTE so downstream file paths are absolute ***
+  # *** keep results_dir ABSOLUTE so downstream file paths are absolute ***
   results_dir <- normalizePath(results_dir, winslash = "/", mustWork = FALSE)
 
   stamp <- .stamp()
 
+  # NEW: timestamped run_dir that will hold all outputs for this call -----------
+  run_dir <- file.path(results_dir, paste0("layer_diffs_", stamp))   # NEW: run_dir
+  .ensure_dir(run_dir)                                               # NEW: create it
+  # ---------------------------------------------------------------------------
+
   # grid output path (always timestamped)
   if (is.null(grid_file) || !nzchar(grid_file)) {
-    grid_file <- file.path(results_dir, paste0("diffs_all_pairs_", stamp, ".", grid_format))
+    grid_file <- file.path(run_dir, paste0("diffs_all_pairs_", stamp, ".", grid_format))   # (run_dir)
   } else {
-    if (!.is_abs(grid_file)) grid_file <- file.path(results_dir, grid_file)
+    if (!.is_abs(grid_file)) grid_file <- file.path(run_dir, grid_file)                    # (run_dir)
     grid_file <- .append_stamp(grid_file, stamp, default_ext = grid_format)
   }
 
   # combined CSV output path (always timestamped)
   if (is.null(combined_csv_file) || !nzchar(combined_csv_file)) {
-    combined_csv_file <- file.path(results_dir, paste0("diff_edges_all_pairs_", stamp, ".csv"))
+    combined_csv_file <- file.path(run_dir, paste0("diff_edges_all_pairs_", stamp, ".csv"))  # (run_dir)
   } else {
-    if (!.is_abs(combined_csv_file)) combined_csv_file <- file.path(results_dir, combined_csv_file)
+    if (!.is_abs(combined_csv_file)) combined_csv_file <- file.path(run_dir, combined_csv_file)  # (run_dir)
     combined_csv_file <- .append_stamp(combined_csv_file, stamp, default_ext = "csv")
   }
 
@@ -154,7 +158,7 @@ grid_layer_diffs <- function(
   for (i in seq_len(n_pairs)) {
     L1i <- pairs_df$L1[i]
     L2i <- pairs_df$L2[i]
-    pair_base <- file.path(results_dir, sprintf("%s_%s_vs_%s", pair_file_prefix, L1i, L2i))
+    pair_base <- file.path(run_dir, sprintf("%s_%s_vs_%s", pair_file_prefix, L1i, L2i))  # (run_dir)
     out_edges <- NULL
 
     if (identical(pair_format, "png")) {
@@ -169,7 +173,7 @@ grid_layer_diffs <- function(
             L2               = L2i,
             file             = pair_png,
             format           = "png",
-            results_dir      = results_dir,  # safe (file is absolute)
+            results_dir      = run_dir,   # (run_dir) safe; file is absolute anyway
             save_edge_csv    = FALSE,
             weight_attr      = weight_attr,
             weight_aggregate = weight_aggregate
@@ -190,7 +194,7 @@ grid_layer_diffs <- function(
           list(
             net              = net, L1 = L1i, L2 = L2i,
             file             = pair_pdf, format = "pdf",
-            results_dir      = results_dir,
+            results_dir      = run_dir,   # (run_dir)
             save_edge_csv    = FALSE,
             weight_attr      = weight_attr, weight_aggregate = weight_aggregate
           ),
@@ -330,4 +334,3 @@ grid_layer_diffs <- function(
     counts       = counts_df
   ))
 }
-

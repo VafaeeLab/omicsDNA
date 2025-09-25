@@ -1,3 +1,4 @@
+
 # ------------------------------------------------------------
 # 26 — GO enrichment: single set OR per‑layer multinet
 # ------------------------------------------------------------
@@ -148,6 +149,11 @@ go_enrichment_report <- function(genes = NULL,
   stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
   base  <- if (is.null(file_prefix) || !nzchar(file_prefix)) paste0("GO_", ont, "_", stamp) else file_prefix
 
+  # NEW: timestamped run_dir to hold this run's outputs
+  run_dir <- file.path(out_dir, paste0("go_enrich_", stamp))
+  if (!dir.exists(run_dir)) dir.create(run_dir, recursive = TRUE, showWarnings = FALSE)
+  # ---------------------------------------------------------------------------
+
   # -------- helper to build bar/dot/cnet (returns list(bar, dot, cnet)) --------
   .mk_plots <- function(ego, title_prefix = "", do_bar = FALSE,
                         show_cat = showCategory, cnet_cat = cnet_showCategory) {
@@ -214,7 +220,7 @@ go_enrichment_report <- function(genes = NULL,
       if (!inherits(ego_s, "try-error") && nrow(as.data.frame(ego_s)) > 0) ego <- ego_s
     }
     tbl <- as.data.frame(ego)
-    csv_file <- if (isTRUE(save_csv)) file.path(out_dir, paste0(base, ".csv")) else NULL
+    csv_file <- if (isTRUE(save_csv)) file.path(run_dir, paste0(base, ".csv")) else NULL
     if (!is.null(csv_file)) utils::write.csv(tbl, csv_file, row.names = FALSE)
 
     plots <- .mk_plots(ego, do_bar = include_barplot)
@@ -223,7 +229,7 @@ go_enrichment_report <- function(genes = NULL,
       if (!inherits(plots$dot,  "try-error") && !is.null(plots$dot))  print(plots$dot)
       if (!inherits(plots$cnet, "try-error") && !is.null(plots$cnet)) print(plots$cnet)
     }
-    pdf_file <- if (isTRUE(save_pdf)) file.path(out_dir, paste0(base, ".pdf")) else NULL
+    pdf_file <- if (isTRUE(save_pdf)) file.path(run_dir, paste0(base, ".pdf")) else NULL
     if (!is.null(pdf_file)) {
       grDevices::pdf(pdf_file, width = width, height = height, onefile = TRUE, paper = "special")
       on.exit(grDevices::dev.off(), add = TRUE)
@@ -300,7 +306,7 @@ go_enrichment_report <- function(genes = NULL,
     }
 
     tbl <- as.data.frame(ego)
-    csv_file <- if (isTRUE(save_csv)) file.path(out_dir, paste0(base, "_", ln, ".csv")) else NULL
+    csv_file <- if (isTRUE(save_csv)) file.path(run_dir, paste0(base, "_", ln, ".csv")) else NULL
     if (!is.null(csv_file)) utils::write.csv(tbl, csv_file, row.names = FALSE)
 
     # Build plots for this layer (bar optional in multinet)
@@ -325,7 +331,7 @@ go_enrichment_report <- function(genes = NULL,
   combined_pdf <- NULL; layer_files <- NULL
   if (isTRUE(save_pdf)) {
     if (isTRUE(one_pdf)) {
-      combined_pdf <- file.path(out_dir, paste0(base, "_byLayer.pdf"))
+      combined_pdf <- file.path(run_dir, paste0(base, "_byLayer.pdf"))
       grDevices::pdf(combined_pdf, width = width, height = height, onefile = TRUE, paper = "special")
       on.exit(grDevices::dev.off(), add = TRUE)
       for (p in to_pdf) print(p)
@@ -338,7 +344,7 @@ go_enrichment_report <- function(genes = NULL,
         info <- by_layer[[ln]]
         if (is.null(info$ego) || !nrow(info$table)) next
         plots <- .mk_plots(info$ego, title_prefix = ln, do_bar = include_barplot_multinet)
-        fn <- file.path(out_dir, paste0(base, "_", ln, ".pdf"))
+        fn <- file.path(run_dir, paste0(base, "_", ln, ".pdf"))
         grDevices::pdf(fn, width = width, height = height, onefile = TRUE, paper = "special")
         on.exit(grDevices::dev.off(), add = TRUE)
         if (!inherits(plots$bar,  "try-error") && !is.null(plots$bar))  print(plots$bar)

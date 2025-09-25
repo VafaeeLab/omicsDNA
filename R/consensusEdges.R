@@ -19,6 +19,12 @@
 #' - A (possibly nested) `list` of adjacency matrices (base or sparse). Adjacencies
 #'   are first converted with `edgesFromAdjacency()` (which must be available).
 #'
+#' **Pre‑filter applied for list inputs (Option B)**
+#' - Within each iteration, **remove only empty layer snapshots** (0‑row edge
+#'   frames or 0‑edge adjacencies) and report the removal.
+#' - After that, if a layer appears with ≥1 edge in **< 20%** of iterations,
+#'   **drop the layer entirely** and report it (prevents downstream raggedness).
+#'
 #' **How it works (per layer)**
 #' 1. Normalise the input into a tidy table with columns `layer`, `rep`, `from`,
 #'    `to`, `weight`. For nested lists, the **last** list level is treated as
@@ -106,33 +112,12 @@
 #' with columns `from`, `to`, `weight`, `n_present`, `n_repeats`, `prop_present`.
 #' If `as_list = FALSE`, a single tidy data frame with an additional `layer` column.
 #'
-#' @section Practical tips:
+#' @section Practical tips
 #' - If you start from adjacencies obtained via resampling (e.g., bootstrap),
 #'   pass the nested list of matrices directly; the function will label layers
 #'   and repetitions deterministically from the list structure.
 #' - When your repetitions are unlabelled, you can leave `rep_col` unset;
 #'   the function will treat all rows as belonging to repetition `"1"`.
-#'
-#' @examples
-#' \dontrun{
-#' ## Example 1: tidy edges with explicit layer/rep columns
-#' df <- data.frame(
-#'   layer  = rep(c("A","A","B","B"), each = 3),
-#'   rep    = rep(c("r1","r2"), times = 6),
-#'   from   = c("g1","g2","g1","g1","g2","g2","g1","g3","g1","g2","g3","g1"),
-#'   to     = c("g2","g3","g3","g2","g3","g1","g3","g2","g2","g1","g1","g3"),
-#'   weight = rnorm(12)
-#' )
-#' cons_A_list <- consensusEdges(df, prop_present = 0.7, summary = "median", as_list = TRUE)
-#'
-#' ## Example 2: nested list of adjacency matrices (repeat -> layer)
-#' ## (requires edgesFromAdjacency)
-#' adj_list <- list(
-#'   `1` = list(A = diag(0, 3), B = diag(0, 3)),
-#'   `2` = list(A = diag(0, 3), B = diag(0, 3))
-#' )
-#' cons_df <- consensusEdges(adj_list, prop_present = 0.5, summary = "mean", as_list = FALSE)
-#' }
 #'
 #' @seealso \code{\link{edgesFromAdjacency}} for converting adjacency matrices to edge tables.
 #' @export
@@ -180,7 +165,23 @@ consensusEdges <- function(
   .list_depth <- function(x) if (!is.list(x) || !length(x)) 0L else 1L + max(vapply(x, .list_depth, integer(1L)))
   .first_leaf <- function(x) { if (is.list(x) && length(x)) return(.first_leaf(x[[1]])); x }
 
+  .matrix_has_edges <- function(m) {
+    if (inherits(m, "Matrix")) {
+      nz  <- Matrix::nnzero(m)
+      dnn <- sum(diag(m) != 0)
+      (nz - dnn) > 0
+    } else if (is.matrix(m)) {
+      if (!length(m)) return(FALSE)
+      mm <- m
+      if (nrow(mm) == ncol(mm) && nrow(mm) > 0) diag(mm) <- 0
+      any(mm != 0)
+    } else {
+      FALSE
+    }
+  }
+
   # Flatten any-depth LIST of EDGE DATA FRAMES into df with id cols level1..levelK
+  # (robust to 0-row leaves)
   .flatten_edge_list_any_depth <- function(x) {
     res <- list()
     rec <- function(node, path) {
@@ -193,9 +194,16 @@ consensusEdges <- function(
           weight = as.numeric(node$weight),
           stringsAsFactors = FALSE
         )
+        # attach id columns as 0-row if df is empty
         if (length(path)) {
-          add <- as.list(path); names(add) <- paste0("level", seq_along(path))
-          df <- cbind(as.data.frame(add, stringsAsFactors = FALSE), df)
+          id_names <- paste0("level", seq_along(path))
+          if (nrow(df) == 0L) {
+            id_df <- as.data.frame(setNames(lapply(path, function(.) character(0)), id_names), stringsAsFactors = FALSE)
+            df    <- cbind(id_df, df)
+          } else {
+            add   <- as.list(path); names(add) <- id_names
+            df    <- cbind(as.data.frame(add, stringsAsFactors = FALSE), df)
+          }
         }
         res[[length(res)+1L]] <<- df
       } else if (is.list(node) && length(node)) {
@@ -203,6 +211,9 @@ consensusEdges <- function(
           nm <- names(node)[i]; if (is.null(nm) || !nzchar(nm)) nm <- as.character(i)
           rec(node[[i]], c(path, nm))
         }
+      } else if (is.matrix(node) || inherits(node, "Matrix")) {
+        # treat matrices as edges via edgesFromAdjacency() at higher level; do nothing here
+        stop("Unexpected adjacency matrix leaf in edge-list flattener; use adjacency flattener path.")
       } else if (!is.null(node)) {
         stop("Unsupported leaf type in list input: ", class(node)[1])
       }
@@ -213,7 +224,7 @@ consensusEdges <- function(
     idcols <- unique(unlist(lapply(res, function(df) names(df)[grepl("^level\\d+$", names(df))])))
     idcols <- idcols[order(as.integer(sub("^level", "", idcols)))]
     res <- lapply(res, function(df) {
-      for (col in setdiff(idcols, names(df))) df[[col]] <- NA_character_
+      for (col in setdiff(idcols, names(df))) df[[col]] <- if (nrow(df)) NA_character_ else character(0)
       df[, c(idcols, "from","to","weight")]
     })
     out <- do.call(rbind, res)
@@ -221,7 +232,81 @@ consensusEdges <- function(
     out
   }
 
-  # Normalize input into tidy df with columns: layer, rep, from, to, weight
+  # ---- Option B pre-filter for LIST inputs ----
+  # Remove empty layer snapshots (per iteration) and then globally drop layers seen in <20% of iterations.
+  if (is.list(edges)) {
+    leaf <- .first_leaf(edges)
+    if (is.data.frame(leaf) || is.matrix(leaf) || inherits(leaf, "Matrix")) {
+
+      # Heuristic: treat top-level as iterations if it is a list of lists
+      if (length(edges) > 0 && all(vapply(edges, is.list, logical(1)))) {
+
+        iter_names <- names(edges)
+        if (is.null(iter_names) || !any(nzchar(iter_names))) iter_names <- as.character(seq_len(length(edges)))
+
+        # pass 1: remove 0-edge snapshots; track per-layer presence across iterations
+        layer_presence_counts <- integer(0)
+
+        for (i in seq_along(edges)) {
+          layer_list <- edges[[i]]
+          if (!is.list(layer_list)) next
+          lay_names <- names(layer_list)
+          if (is.null(lay_names) || !any(nzchar(lay_names))) lay_names <- as.character(seq_along(layer_list))
+
+          for (j in seq_along(layer_list)) {
+            Lname <- lay_names[j]
+            leafj <- layer_list[[j]]
+
+            is_empty <- FALSE
+            if (is.data.frame(leafj)) {
+              is_empty <- nrow(leafj) == 0L
+            } else if (is.matrix(leafj) || inherits(leafj, "Matrix")) {
+              is_empty <- !.matrix_has_edges(leafj)
+            } else {
+              # Unsupported leaf: drop it defensively
+              is_empty <- TRUE
+            }
+
+            if (is_empty) {
+              # remove this snapshot; report
+              edges[[i]][[Lname]] <- NULL
+              if (isTRUE(verbose)) message("Removing layer '", Lname, "' from iteration ", iter_names[i], ": 0 edges.")
+            } else {
+              # mark presence of this layer in this iteration
+              layer_presence_counts[Lname] <- layer_presence_counts[Lname] + 1L
+            }
+          }
+        }
+
+        # denominator: total iterations
+        n_iters_total <- length(edges)
+        # threshold: <20% presence -> drop layer globally
+        min_keep_global <- ceiling(0.20 * n_iters_total)
+        if (length(layer_presence_counts)) {
+          drop_glob <- names(layer_presence_counts)[layer_presence_counts < min_keep_global]
+          if (length(drop_glob)) {
+            for (i in seq_along(edges)) {
+              if (is.list(edges[[i]]) && length(edges[[i]])) {
+                for (nm in intersect(names(edges[[i]]), drop_glob)) {
+                  edges[[i]][[nm]] <- NULL
+                }
+              }
+            }
+            if (isTRUE(verbose)) {
+              for (nm in drop_glob) {
+                k <- layer_presence_counts[[nm]]
+                p <- if (n_iters_total > 0) round(100 * k / n_iters_total, 1) else 0
+                message("Dropping layer '", nm, "' globally: present in ",
+                        k, "/", n_iters_total, " iterations (", p, "% < 20%).")
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # ---- Normalize input into tidy df with columns: layer, rep, from, to, weight ----
   to_df <- function(E) {
     # Case A: already a data.frame
     if (is.data.frame(E)) {
@@ -324,7 +409,7 @@ consensusEdges <- function(
     empty <- data.frame(layer=character(), from=character(), to=character(), weight=numeric(),
                         n_present=integer(), n_repeats=integer(), prop_present=numeric(),
                         stringsAsFactors = FALSE)
-    return(if (as_list) split(empty, empty$layer) else empty)
+    return(if (as_list) list() else empty)
   }
 
   # deduplicate within (layer, rep, from, to)
@@ -355,7 +440,7 @@ consensusEdges <- function(
       result_list[[L]] <- data.frame(from=character(), to=character(), weight=numeric(),
                                      n_present=integer(), n_repeats=integer(), prop_present=numeric(),
                                      stringsAsFactors = FALSE)
-      if (verbose) message("• Layer ", L, ": kept 0 edges (threshold = ", min_keep, " / ", n_repeats, ")")
+      if (isTRUE(verbose)) message("• Layer ", L, ": kept 0 edges (threshold = ", min_keep, " / ", n_repeats, ")")
       next
     }
 
@@ -372,7 +457,7 @@ consensusEdges <- function(
     rownames(outL) <- NULL
     result_list[[L]] <- outL
 
-    if (verbose) {
+    if (isTRUE(verbose)) {
       total_unique <- nrow(unique(dL[, c("from","to")]))
       message("• Layer ", L, ": kept ", nrow(outL), " / ", total_unique,
               " edges (threshold = ", min_keep, " / ", n_repeats, ")")
@@ -408,7 +493,7 @@ consensusEdges <- function(
     }
     if (!.is_abs(rds_file)) rds_file <- file.path(results_dir, rds_file)
     saveRDS(out_obj, rds_file)
-    if (verbose) message("Saved RDS: ", normalizePath(rds_file, FALSE))
+    if (isTRUE(verbose)) message("Saved RDS: ", normalizePath(rds_file, FALSE))
   }
 
   if (isTRUE(write_csv)) {
@@ -417,11 +502,11 @@ consensusEdges <- function(
         fn <- file.path(results_dir, paste0(csv_prefix, "_layer_", .sanitize(L), "_", stamp, ".csv"))
         utils::write.csv(out_obj[[L]], fn, row.names = FALSE)
       }
-      if (verbose) message("Saved per-layer CSVs under: ", normalizePath(results_dir, FALSE))
+      if (isTRUE(verbose)) message("Saved per-layer CSVs under: ", normalizePath(results_dir, FALSE))
     } else {
       fn <- file.path(results_dir, paste0(csv_prefix, "_", stamp, ".csv"))
       utils::write.csv(out_obj, fn, row.names = FALSE)
-      if (verbose) message("Saved CSV: ", normalizePath(fn, FALSE))
+      if (isTRUE(verbose)) message("Saved CSV: ", normalizePath(fn, FALSE))
     }
   }
 
@@ -435,8 +520,8 @@ consensusEdges <- function(
       if (isTRUE(as_list)) writexl::write_xlsx(out_obj, xlsx_file)
       else                 writexl::write_xlsx(list(edges = out_obj), xlsx_file)
 
-      if (verbose) message("Saved XLSX: ", normalizePath(xlsx_file, FALSE))
-    } else if (verbose) {
+      if (isTRUE(verbose)) message("Saved XLSX: ", normalizePath(xlsx_file, FALSE))
+    } else if (isTRUE(verbose)) {
       message("`writexl` not installed; skipping XLSX export.")
     }
   }
