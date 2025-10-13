@@ -113,31 +113,59 @@ install.packages(c("gifski","gganimate","png","av"))# GIF / MP4 exporters
 
 Below, each function has **one example with its most informative
 arguments** (as in the package script). Replace object names
-(`expression_mat`, `metaData`, `genes_info`, …) with your data.
+(`expression_mat`, `metaData`, …) with your data.
 
 ### 1) `buildAdjacency()` — group‑wise correlation → adjacency (with optional resampling)
 
 ``` r
+
+setwd("~/Abir/test_data/")
+
+# Importing the expression matrix with sample IDs as column names and genes as row names.
+expression_mat <- read.csv("~/Abir/test_data/norm_DEGs_n_stableGenes_V.csv")
+n <- expression_mat$X
+expression_mat <- expression_mat[ , -1]
+rownames(expression_mat) <- n
+
+# Metadata dataframe must have the "sample column"
+metaData <- read_csv("~/Abir/test_data/metaData_V.csv")
+metaData <- as.data.frame(metaData)
+colnames(metaData)[1] <- "sample"
+head(metaData)
+
+# match the names in metadata and column names expression matrix.
+metaData$sample <- chartr("-", ".", metaData$sample) 
+
+metaData$age_label %>% table()
+# E1 E2 M1 M2 M3 M4 
+# 40 43 41 44 46 21
+
 set.seed(1)
 adjacency <- buildAdjacency(
-  dataMatrix      = expression_mat,         # features × samples
-  sample_metadata = metaData,               # has a column "AgeGroup"
-  group_col       = "AgeGroup",
+  dataMatrix      = expression_mat,        
+  sample_metadata = metaData,               
+  group_col       = "age_label",
   feature_ids     = rownames(expression_mat),
   cor_method      = "spearman",
-  corr_threshold  = 0.60,                   # keep strong |rho|
-  pval_adjust     = "fdr",
+  corr_threshold  = 0.35,                   
+  pval_adjust     = "none",
   pval_cutoff     = 0.05,
-  resample        = TRUE,                   # bootstrap‑like repeats
-  samples_per_group = 20,                   # balanced sampling
-  n_repeats       = 50,
-  save_rds        = TRUE,                   # auto‑named RDS into results dir
+  resample        = TRUE,                   
+  samples_per_group = 20,                   
+  n_repeats       = 10,
+  save_rds        = TRUE,                   
   verbose         = TRUE
 )
+
 # Later you can reload via: readRDS(attr(adjacency, "rds_file"))
 ```
 
 ### 1.1) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
+
+For a comprehensive detailed analysis, refer to following vignette on
+human foetal kidney single cell RNA-seq data:
+
+[sc_omicsDNA](https://rstudio.anc-lab.cloud.edu.au/~mpir0002/22_09_2025_sc_omicsDNA_v3.html)
 
 ``` r
 ## \donttest{
@@ -145,7 +173,7 @@ library(Seurat)
 data("pbmc_small")
 pbmc_small$celltype <- as.character(Idents(pbmc_small))   # or your own labels
 
-adj_list <- sc_buildAdjacency(
+sc_adjacency <- sc_buildAdjacency(
   seurat_obj     = pbmc_small,
   assay          = DefaultAssay(pbmc_small),
   slot           = "data",
@@ -158,7 +186,7 @@ adj_list <- sc_buildAdjacency(
   save_rds       = FALSE,
   verbose        = TRUE
 )
-str(adj_list, max.level = 1)
+
 ## }
 ```
 
@@ -169,18 +197,21 @@ str(adj_list, max.level = 1)
 A <- matrix(c(0,0.8,0.8,0), 2, 2, dimnames=list(c("a","b"), c("a","b")))
 edgesA <- edgesFromAdjacency(A, directed = FALSE, drop_zeros = TRUE, min_abs = 0)
 
-# Per‑group list, flattened with layer label
-L <- list(G1 = A, G2 = A * 0.5)
-edgesL <- edgesFromAdjacency(L, flatten = TRUE, id_cols = "layer")
-
 # Nested list (repeat -> group); ragged OK
 NL <- list(`1`=list(E1=A, E2=A), `2`=list(E1=A))
-edgesNL <- edgesFromAdjacency(NL, flatten = TRUE, id_cols = c("repeat","layer"))
+edgesNL <- edgesFromAdjacency(NL, flatten = FALSE, id_cols = c("repeat","layer"))
+
+edges_list <- edgesFromAdjacency(
+  adjacency,
+  flatten = FALSE,
+  id_cols = c("repeat","group")
+)
 ```
 
 ### 3) `consensusEdges()` — across‑repeat edge consensus per layer (CSV/XLSX/RDS)
 
 ``` r
+
 # Tidy edge table with 'layer' and 'rep' columns
 df <- data.frame(
   layer  = rep(c("A","A","B","B"), each = 3),
@@ -200,6 +231,15 @@ cons_list <- consensusEdges(
   save_to_rds  = TRUE,
   csv_prefix   = "consensus_edges"
 )
+
+
+cons_list <- consensusEdges(
+  edges_list,
+  prop_present = 0.7,
+  summary      = "mean",
+  as_list      = TRUE
+)
+
 ```
 
 ### 4) `build_multiNet()` — assemble multilayer from per‑layer **edge lists**

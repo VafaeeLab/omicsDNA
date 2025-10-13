@@ -37,7 +37,7 @@ install.packages(c("gifski","gganimate","png","av"))# GIF / MP4 exporters
 
 ## Function‑by‑function examples
 
-Below, each function has **one example with its most informative arguments** (as in the package script). Replace object names (`expression_mat`, `metaData`, `genes_info`, …) with your data.
+Below, each function has **one example with its most informative arguments** (as in the package script). Replace object names (`expression_mat`, `metaData`, …) with your data.
 
 ### 1) `buildAdjacency()` — group‑wise correlation → adjacency (with optional resampling)
 ```r
