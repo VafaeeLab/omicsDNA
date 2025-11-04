@@ -301,18 +301,33 @@ rep$samples$edges            # first rows of edges with attribute columns
 
 ```
 
+
 ### 11) `detectCom()` — community detection on the supra‑graph
 ```r
 
-comm <- detectCom(
+# Generalised Louvain (canonical method), count-based supra-graph weights
+comm_gl <- detectCom(
   net,
-  method      = "louvain",
+  method      = "glouvain",   # <- preferred spelling
   edgeWeight  = "count",
   min.actors  = 15,
   min.layers  = 2,
-  seed        = 1,   # optional: reproducibility
+  seed        = 1,
   save_to_rds = TRUE,
-  write_csv   = FALSE,     # set TRUE if you want a CSV too
+  write_csv   = TRUE,
+  verbose     = TRUE
+)
+
+
+# Clique-based detection with explicit k; keep only sizeable, multilayer communities
+comm_clq <- detectCom(
+  net,
+  method      = "clique",
+  clique.k    = 4,        # cohesion threshold in the supra-graph
+  min.actors  = 20,       # post-detection retention threshold
+  min.layers  = 2,
+  edgeWeight  = "count",
+  write_summary_csv = TRUE,
   verbose     = TRUE
 )
 
