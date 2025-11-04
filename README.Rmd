@@ -113,8 +113,6 @@ sc_adjacency <- sc_buildAdjacency(
 ```
 
 
-
-
 ### 2) `edgesFromAdjacency()` — matrices (or lists of matrices) → edge tables
 ```r
 # Dense matrix
@@ -132,8 +130,6 @@ edges_list <- edgesFromAdjacency(
 )
 
 ```
-
-
 
 
 ### 3) `consensusEdges()` — across‑repeat edge consensus per layer (CSV/XLSX/RDS)
@@ -171,7 +167,6 @@ cons_list <- consensusEdges(
 ```
 
 
-
 ### 4) `build_multiNet()` — assemble multilayer from per‑layer **edge lists**
 ```r
 net <- build_multiNet(
@@ -187,30 +182,68 @@ net <- build_multiNet(
 ```
 
 
-
-
-### 5) `build_multinet_from_graphs()` — assemble multilayer from **igraph** graphs
+### 5) `edges_list_to_graphs()` and 6) `graphs_to_edges_list()` — convert back and forth
 ```r
-# Suppose 'graphs' is a named list of per‑layer igraph objects
-net2 <- build_multinet_from_graphs(
-  graphs_list          = graphs,
-  nodesMetadata        = genes_info,
-  featureID_col        = "GeneName",
-  nodeAttrCols         = "GeneType",
-  save_layers_graphml  = TRUE,       # optional per‑layer GraphML exports
-  graphml_prefix       = "layer",
-  save_to_rds          = TRUE
+list_graphs <- edges_list_to_graphs(cons_list, directed = TRUE)
+
+edges_back <- graphs_to_edges_list(
+  graphs_list             = list_graphs,
+  weight_attr             = "weight",   # use the weight attribute
+  default_weight          = 1,          # fill in if missing
+  canonicalize_undirected = TRUE,       # put smaller name first for undirected graphs
+  verbose                 = TRUE
+)  
+```
+
+
+### 7) `build_multinet_from_graphs()` — assemble multilayer from **igraph** graphs
+```r
+
+# Suppose 'list_graphs' is a named list of per‑layer igraph objects
+layer_order <- names(cons_list)  # keep the current naming/ordering
+net_graphs <- build_multinet_from_graphs(
+  graphsPerLayer     = list_graphs,
+  layerOrder         = layer_order,    # same ordering
+  nodesMetadata      = NULL,           # (match what you passed above)
+  featureID_col      = "GeneName",
+  nodeAttrCols       = "GeneType",
+  save_layers_graphml= TRUE,       # optional per‑layer GraphML exports
+  save_to_rds        = FALSE,
+  verbose            = FALSE,
+  graphml_prefix     = "layer",
+  save_to_rds        = TRUE
 )
+
 ```
 
-### 6) `edges_list_to_graphs()` and 7) `graphs_to_edges_list()` — convert back and forth
+
+Build a second graph to make a comparison between two multi-layer graphs using the next function     
 ```r
-Gs      <- edges_list_to_graphs(cons_list, directed = FALSE)
-edgesDf <- graphs_to_edges_list(Gs)  # tidy data.frame with layer column
+
+net_edges <- build_multiNet(
+  edgeListPerLayer   = cons_list,
+  layerOrder         = layer_order,
+  directed           = FALSE,
+  nodesMetadata      = NULL,           # or your genes_info + featureID_col, etc.
+  aggregate_duplicates = "none",
+  save_to_rds        = FALSE,
+  verbose            = FALSE
+)
+
 ```
+
 
 ### 8) `compare_multinets()` — compare two or more multilayer networks
 ```r
+
+diff_report <- compare_multinets(
+  net_a    = net_edges,
+  net_b    = net_graphs,
+  tol      = 1e-9,
+  show_max = 12,   # show up to 12 items per mismatch category
+  verbose  = TRUE  # print a full, readable diff to the console
+)
+
 cmp <- compare_multinets(
   nets         = list(A = net, B = net2),
   by           = "union",      # or "intersect", "strict"
@@ -219,7 +252,11 @@ cmp <- compare_multinets(
   write_csv    = TRUE,         # CSVs per layer + manifest
   prefix       = "cmp_AB"
 )
+
 ```
+
+
+**compare_multinets() helps compare common and different edges between layers of two multilayer graphs, can be used in the downstream enrichment analysis with aim of comparing two biological contexts across same time points.**     
 
 ### 9) `add_network_attributes()` — attach actor/edge metadata to the multilayer net
 ```r
@@ -227,40 +264,58 @@ net <- add_network_attributes(
   net,
   nodesMetadata = genes_info,
   featureID_col = "GeneName",
-  nodeAttrCols  = c("GeneType"),
-  edgesMetadata = edges_meta_df,   # or a named list per layer
-  edge_from     = "from", edge_to = "to", edge_layer_col = "layer",
-  edgeAttrCols  = c("score","evidence"),
-  edgeAggregate = "mean",
-  fillMissingNodes = TRUE, nodeFillValue = NA,
-  auto_detect_keys  = TRUE,        # robust actor ID matching
-  save_report       = TRUE,        # saves TXT + RDS summary
-  export_edge_join_csv = TRUE, edge_join_prefix = "edge_attach_debug",
-  verbose = TRUE
+  nodeAttrCols  = "GeneType",
+  edgesMetadata = cons_list,                          # named list: one df per layer
+  edge_from     = "from",
+  edge_to       = "to",
+  edgeAttrCols  = c("n_present","n_repeats","prop_present"),
+  actor_key_normalize = c("strip_version","trim","tolower"),
+  auto_detect_keys    = FALSE,
+  map_edges_by_actor_key = TRUE,
+  directed_network    = FALSE,
+  verbose             = TRUE,
+  save_report         = TRUE,                         # writes a small report
+  export_edge_join_csv = FALSE                        # flip to TRUE if debugging joins
 )
+
+# List attributes available (names + types)
+multinet::attributes_ml(net)
+
 ```
+
 
 ### 10) `network_attributes()` — report what attributes are attached
 ```r
-attr_report <- network_attributes(
+
+# After you enriched the network with add_network_attributes(...):
+rep <- network_attributes(
   net,
-  show_in_rstudio = TRUE,
-  write_csv       = TRUE,
-  file_prefix     = "net_attrs"
+  show_examples = TRUE,  # print small tables of actors/edges with attrs
+  show_max      = 12,    # up to 12 names/rows per section
+  verbose       = TRUE
 )
+
+rep$added$edge_attrs         # what edge attrs were attached (per report)
+rep$present$actor            # current actor-attribute definitions
+rep$samples$edges            # first rows of edges with attribute columns
+
 ```
 
 ### 11) `detectCom()` — community detection on the supra‑graph
 ```r
+
 comm <- detectCom(
   net,
-  method      = "louvain",         # "infomap", "clique" (k‑clique union), etc.
-  edgeWeight  = "count",           # supra edge weighting scheme
-  min.actors  = 15,                # prune tiny communities
-  min.layers  = 2,                 # keep those spanning ≥ 2 layers
-  seed        = 1,
-  write_csv   = TRUE               # saves community CSV
+  method      = "louvain",
+  edgeWeight  = "count",
+  min.actors  = 15,
+  min.layers  = 2,
+  seed        = 1,   # optional: reproducibility
+  save_to_rds = TRUE,
+  write_csv   = FALSE,     # set TRUE if you want a CSV too
+  verbose     = TRUE
 )
+
 ```
 
 ### 12) `plotCom()` — community layout + CSV export of node positions
@@ -317,17 +372,30 @@ LM <- layer_metrics(
   write_csv     = TRUE,             # per‑layer + manifest CSVs
   prefix        = "layer_metrics"
 )
+
+res$summary[, c("layer","n_nodes","n_edges","density")]
+
 ```
+
 
 ### 17) `annotateCom()` — add feature attributes (e.g., GeneType) to community rows
 ```r
-commA <- annotateCom(
-  comm,
+
+comm_annot <- annotateCom(
+  communities   = comm,
   nodesMetadata = genes_info,
   featureID_col = "GeneName",
-  attrCols      = c("GeneType"),
-  write_csv     = TRUE
+  attribute     = "GeneType",
+  actor_normalize = c("strip_version","trim","tolower"),
+  fill_missing  = "Unknown",
+  write_csv     = TRUE,
+  output_prefix = "communities_with_GeneType",  # alias kept for convenience
+  verbose       = TRUE
 )
+
+head(comm_annot)
+table(comm_annot$GeneType, useNA = "ifany")
+
 ```
 
 ### 18) `sumComFeat()` — summaries by feature type (actor)
@@ -340,6 +408,25 @@ summTF <- sumComFeat(
   write_csv     = TRUE,        # multiple CSVs (actor, by‑community, by‑layer)
   prefix        = "TF_summaries"
 )
+
+
+# lncRNA
+lnc_summary <- sumComFeat(
+  communities   = comm_annot,
+  feature_col   = "GeneType",
+  feature_type  = "lncRNA",
+  write_csv     = TRUE
+)
+
+attr(lnc_summary, "files")  # where the three CSVs were written
+
+# protein-coding
+pc_summary <- sumComFeat(comm_annot, feature_col = "GeneType", feature_type = "protein_coding")
+
+# multiple feature types at once
+mix_summary <- sumComFeat(comm_annot, feature_col = "GeneType", feature_type = c("lncRNA","TF"), write_csv = TRUE)
+
+
 ```
 
 ### 19) `get_FeatureDeg()` — degrees (per layer / long)
@@ -350,7 +437,27 @@ degTF <- get_FeatureDeg(
   layers      = multinet::layers_ml(net),
   long        = TRUE
 )
+
+# 1) Use any feature set you like (lncRNAs, TFs, enzymes, …)
+feat_list  <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
+head(feat_list)
+all_layers <- multinet::layers_ml(net)
+
+deg_lnc <- get_FeatureDeg(
+  net, featureList = feat_list, layers = all_layers,
+  directed = FALSE, mode = "all",
+  write_csv   = TRUE,
+  output_file = "protein_coding_degree_byLayer.csv"  # saved under getOption("mlnet.results_dir","results")
+)
+
+# 2) Protein-coding instead (no file written)
+pc_list <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
+deg_pc  <- get_FeatureDeg(net, featureList = pc_list, layers = all_layers)
+
 ```
+
+
+
 
 ### 20) `gp_enrich_multinet()` — g:Profiler enrichment **per layer**
 ```r
