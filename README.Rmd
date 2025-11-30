@@ -92,6 +92,7 @@ adjacency <- buildAdjacency(
 )
 
 # Later you can reload via: readRDS(attr(adjacency, "rds_file"))
+
 ```
 
 ### 1.1) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
@@ -101,7 +102,7 @@ For a comprehensive detailed analysis, refer to following vignette on human foet
 [sc_omicsDNA](https://rstudio.anc-lab.cloud.edu.au/~mpir0002/22_09_2025_sc_omicsDNA_v3.html)
 
 ```r
-## \donttest{
+
 library(Seurat)
 data("pbmc_small")
 pbmc_small$celltype <- as.character(Idents(pbmc_small))   # or your own labels
@@ -120,7 +121,7 @@ sc_adjacency <- sc_buildAdjacency(
   verbose        = TRUE
 )
 
-## }
+
 ```
 
 
