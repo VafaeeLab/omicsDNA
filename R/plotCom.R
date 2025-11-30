@@ -6,126 +6,102 @@
 #' Plot multilayer communities with an interactive preview and file exports
 #'
 #' @description
-#' This routine visualises community assignments on a multilayer network and
-#' simultaneously supports reproducible export of the figure and the underlying
-#' long table of assignments. By default it:
-#' (i) draws to the current graphics device (e.g., the RStudio *Plots* pane) so
-#' you can inspect or manually *Export*; (ii) writes a high‑resolution image to
-#' disk; and (iii) saves a tidy `(actor, layer, cid)` table for downstream use.
+#' Visualise community assignments on a multilayer network while **also**
+#' exporting (i) a high‑resolution image and (ii) a tidy long table
+#' `(actor, layer, cid)` for downstream analyses. By default the function
+#' (1) draws to the current graphics device (e.g., the RStudio *Plots* pane),
+#' (2) writes an image to disk, and (3) saves the normalised assignment table.
 #'
 #' @details
-#' **What it does**
-#' 1. Validates and normalises the `communities` table to ensure one community ID
-#'    (`cid`) per `(actor, layer)` pair. If multiple rows exist for the same pair,
-#'    the first is kept (a message is printed when `verbose = TRUE`).
-#' 2. Intersects the requested layers with those actually present in the network
-#'    (queried via `multinet::edges_ml()`), and drops community rows whose actors
-#'    do not appear in the corresponding layer. This prevents plotting nodes that
-#'    are absent from the chosen layers.
-#' 3. Computes a multilayer layout using either
-#'    `multinet::layout_multiforce_ml()` (force‑directed; parameterised by
-#'    `gravity`) or `multinet::layout_circular_ml()` (arranged on circles).
-#' 4. Calls the multilayer network `plot()` method once, passing the community
-#'    mapping as a three‑column data frame (`actor`, `layer`, `cid`) and laying
-#'    out the selected layers on a user‑controlled grid of panels.
-#' 5. Optionally duplicates the on‑screen plot to a file with
-#'    `grDevices::dev.copy()` (when `show_in_rstudio = TRUE`) or renders directly
-#'    to an off‑screen device (when `show_in_rstudio = FALSE`). It also saves the
-#'    long community table in `.rds` and/or `.csv` format without printing it.
+#' **What this function guarantees**
 #'
-#' **How community labels are handled**
-#' - The function accepts one of `cid`, `com`, or `community` in `communities`.
-#'   If the column is numeric, it is used as‑is; otherwise labels are converted
-#'   to integer IDs via factor coding for plotting purposes. This does not alter
-#'   your original labels upstream (e.g., `"C1"`, `"C2"`)—only the numeric
-#'   encoding passed to the plotting backend.
+#' 1. **Normalisation** — The `communities` input is validated and reduced to a
+#'    single `cid` per `(actor, layer)` pair. If duplicates exist, the first is
+#'    kept (message shown when `verbose = TRUE`). The community column can be
+#'    any of `cid`, `com`, or `community`. Non‑numeric labels are factor‑coded to
+#'    integers for plotting; your original labels are unaffected upstream.
+#' 2. **Layer & actor intersection** — Only layers present in the network are
+#'    plotted, and only actors that actually appear in those layers are kept.
+#'    Intra‑layer edges are detected via `multinet::edges_ml()`; cross‑layer
+#'    edges are discarded for the purpose of per‑layer drawing.
+#' 3. **Layout** — Choose either a force‑directed layout
+#'    (`"multiforce"`, accepts `gravity`) or a `"circular"` arrangement via
+#'    `multinet::layout_multiforce_ml()` / `layout_circular_ml()`.
+#' 4. **Grid arrangement** — Layers are laid out on a near‑square panel grid
+#'    unless you supply `grid = c(nrow, ncol)`.
+#' 5. **Reproducible export** — If `show_in_rstudio = TRUE`, you see the plot on
+#'    screen and the same content is copied to file via `grDevices::dev.copy()`.
+#'    If `show_in_rstudio = FALSE`, the figure is rendered directly to an
+#'    off‑screen device. The long `(actor, layer, cid)` table is saved as RDS
+#'    and/or CSV without printing to the console.
 #'
-#' **Layer selection and grid arrangement**
-#' - If `layersToPlot = NULL`, the function visualises the intersection of the
-#'   layers present in `communities` and in the network. Otherwise, the supplied
-#'   subset is intersected with available layers.
-#' - When `grid = NULL`, a near‑square arrangement is chosen automatically
-#'   (number of rows ≈ `sqrt(#layers)`); you may override with `grid = c(nr, nc)`.
+#' **File naming & persistence**
 #'
-#' **Persistence and file names**
-#' - Figures are written under `results_dir` using an informative stem that
-#'   includes the layout and number of layers, e.g.,
-#'   `plotCom_multiforce_4layers_<timestamp>.png`. Provide `file` to override.
-#' - The long table is saved as RDS and/or CSV. When `df_file` is provided, it
-#'   is honoured **for the RDS** (absolute paths are respected; relative paths
-#'   are created under `results_dir`). For CSV, the base name of `df_file`
-#'   (without extension) is used under `results_dir`.
+#' - Output files live under `results_dir` unless you pass absolute paths.
+#' - If `file` is `NULL`, a descriptive stem is generated, e.g.:
+#'   `plotCom_multiforce_4layers_<timestamp>.png`.
+#' - For the table, if `df_file` is provided, it is used for the **RDS** path
+#'   (relative paths resolved under `results_dir`, absolute respected). For CSV,
+#'   the **base name** of `df_file` (sans extension) is used under `results_dir`.
 #'
-#' @param net A `multinet::ml.network` to be plotted (must be compatible with
-#'   `multinet::edges_ml()` and the multilayer `plot()` method).
-#' @param communities A data frame containing at least `actor` and `layer`, plus
-#'   one of `cid`, `com`, or `community` indicating community membership.
-#' @param layout Character; multilayer layout to use: `"multiforce"` (force‑
-#'   directed; supports `gravity`) or `"circular"`. Default `c("multiforce","circular")`
-#'   (matched to `"multiforce"`).
-#' @param layersToPlot Optional character vector selecting which layers to draw.
-#'   By default, plots the intersection of layers present in `communities` and
-#'   in the network.
-#' @param grid `NULL` (automatic near‑square arrangement) or an integer vector
-#'   `c(nrow, ncol)` specifying the panel grid. Default `NULL`.
-#' @param vertex.size Numeric; node size passed to the plotting backend.
-#'   Default `5`.
-#' @param vertex.cex Numeric; node size multiplier passed to the plotting
-#'   backend. Default `1.2`.
-#' @param show.labels Logical; show vertex labels (`TRUE`) or suppress them
-#'   (`FALSE`, default). Internally this toggles `vertex.labels`.
-#' @param gravity Numeric in roughly `[0, 1]`; attraction strength for the
-#'   multiforce layout. Ignored when `layout = "circular"`. Default `0.3`.
-#' @param seed Optional integer seed for reproducible layout initialisation.
-#'   Default `NULL`.
+#' @param net A `multinet::ml.network`. Must be compatible with
+#'   `multinet::edges_ml()` and the multilayer `plot()` method.
+#' @param communities `data.frame` with at least `actor` and `layer`, plus one of
+#'   `cid`, `com`, or `community` describing community membership.
+#' @param layout Character; `"multiforce"` (force‑directed; supports `gravity`)
+#'   or `"circular"`. Default `c("multiforce","circular")` (matched to `"multiforce"`).
+#' @param layersToPlot Optional character vector of layer names to draw. If
+#'   `NULL`, plots the intersection of layers present in `communities` and in
+#'   the network.
+#' @param grid `NULL` (auto near‑square) or integer vector `c(nrow, ncol)`.
+#' @param vertex.size Numeric; node size passed to the plotting backend. Default `5`.
+#' @param vertex.cex Numeric; node size multiplier. Default `1.2`.
+#' @param show.labels Logical; whether to show vertex labels. Default `FALSE`.
+#' @param gravity Numeric (roughly `[0, 1]`); attraction for multiforce layout.
+#'   Ignored when `layout = "circular"`. Default `0.3`.
+#' @param seed Optional integer seed for reproducible layout initialisation. Default `NULL`.
 #' @param results_dir Directory where outputs are written. Default
 #'   `getOption("mlnet.results_dir", "omicsDNA_results")`.
-#' @param show_in_rstudio Logical; if `TRUE` (default), draw to the current
-#'   device (e.g., RStudio *Plots* pane) for interactive inspection.
+#' @param show_in_rstudio Logical; if `TRUE` (default) draw to current device
+#'   (interactive preview).
 #' @param save_plot Logical; if `TRUE`, save the figure to a file. Default `TRUE`.
-#' @param file Optional output path for the figure. If `NULL`, an informative
-#'   name is constructed under `results_dir`. Relative paths are resolved under
-#'   `results_dir`; absolute paths are respected.
+#' @param file Optional output path for the figure. If `NULL`, constructed under
+#'   `results_dir`. Relative paths are resolved under `results_dir`; absolute paths are respected.
 #' @param format Image format for the saved figure: `"png"` or `"pdf"`. Default
 #'   `c("png","pdf")` (matched to `"png"`).
 #' @param width,height Numeric dimensions of the saved figure. Interpreted in
-#'   `units` for PNG and in inches for PDF. Defaults `10` × `8`.
-#' @param units Character; units for PNG dimensions (`"in"`, `"cm"`, or `"mm"`).
-#'   Default `"in"`. Ignored for PDF.
+#'   `units` for PNG; inches for PDF. Defaults `10` × `8`.
+#' @param units Character units for PNG dimensions (`"in"`, `"cm"`, or `"mm"`).
+#'   Ignored for PDF. Default `"in"`.
 #' @param dpi Numeric; raster resolution (PNG only). Default `300`.
 #' @param save_df Logical; if `TRUE`, save the long `(actor, layer, cid)` table.
 #'   Default `TRUE`.
-#' @param df_format Either `"rds"`, `"csv"`, or both (e.g., `c("rds","csv")`).
-#'   Default `"rds"`.
-#' @param df_file Optional file name for the RDS output. If relative, it is
-#'   created under `results_dir`; absolute paths are respected. (For CSV, the
-#'   base name of `df_file` is used under `results_dir`.)
+#' @param df_format `"rds"`, `"csv"`, or both (e.g., `c("rds","csv")`). Default `"rds"`.
+#' @param df_file Optional file name for the **RDS** output. Relative paths are
+#'   created under `results_dir`; absolute paths are respected. For CSV, the base
+#'   name of `df_file` is used under `results_dir`.
 #' @param verbose Logical; print informative messages (dropped rows, file paths).
 #'   Default `TRUE`.
 #' @param ... Additional arguments forwarded to the multilayer network `plot()`
-#'   method (e.g., colour palettes or edge styling parameters supported by your
-#'   plotting backend).
+#'   method (e.g., colour palette or edge styling supported by your plotting backend).
 #'
-#' @return (Invisibly) the normalised community table used for plotting with
-#'   columns `actor`, `layer`, `cid`. The returned object carries attributes:
-#'   - `file`: path to the saved figure (if `save_plot = TRUE`);
-#'   - `df_file`: character vector of paths to the saved RDS/CSV (if any);
-#'   - `grid`: the panel grid used;
-#'   - `layers`: the layers actually plotted.
+#' @return (Invisibly) the normalised `data.frame` used for plotting with
+#'   columns `actor`, `layer`, `cid`. The object carries attributes:
+#'   - `file`: path to the saved figure (if `save_plot = TRUE`)
+#'   - `df_file`: character vector of saved RDS/CSV paths (if any)
+#'   - `grid`: the panel grid used
+#'   - `layers`: the layers actually plotted
 #'
 #' @section Practical notes:
-#' - When `show_in_rstudio = TRUE` and `save_plot = TRUE`, the function clones
-#'   the current plot to a file using `grDevices::dev.copy()`. To render only to
-#'   an off‑screen file (without drawing in the Plots pane), set
-#'   `show_in_rstudio = FALSE`.
-#' - The function only plots actors that appear in the chosen layers of the
-#'   network; assignments for absent actors/layers are dropped (reported when
-#'   `verbose = TRUE`).
+#' - To draw **only** to file (without preview), set `show_in_rstudio = FALSE`.
+#' - Assignments for actors absent from the chosen layers are dropped
+#'   (reported when `verbose = TRUE`).
+#' - `vertex.labels` is suppressed by passing `NA` unless `show.labels = TRUE`.
 #'
 #' @examples
 #' \dontrun{
 #' # Minimal usage: preview in RStudio, save PNG and the long table as RDS
-#' plotCom(
+#' out <- plotCom(
 #'   net, comm,
 #'   layout          = "multiforce",
 #'   gravity         = 0.3,
@@ -136,8 +112,10 @@
 #'   df_format       = "rds",
 #'   seed            = 1
 #' )
+#' attr(out, "file")     # path to the image
+#' attr(out, "df_file")  # path(s) to saved table(s)
 #'
-#' # Custom grid and both table formats
+#' # Custom layer subset, custom grid, and both table formats
 #' plotCom(
 #'   net, comm,
 #'   layersToPlot    = c("Young","Old"),
@@ -148,7 +126,7 @@
 #' }
 #'
 #' @seealso
-#'   \code{\link{detectCom}} for obtaining community assignments;
+#'   \code{\link{detectCom}} for community detection;
 #'   \code{\link{build_multiNet}} for assembling multilayer networks.
 #'
 #' @importFrom multinet layout_multiforce_ml layout_circular_ml edges_ml
@@ -157,49 +135,57 @@
 #' @export
 plotCom <- function(net,
                     communities,
-                    layout        = c("multiforce","circular"),
-                    layersToPlot  = NULL,
-                    grid          = NULL,
-                    vertex.size   = 5,
-                    vertex.cex    = 1.2,
-                    show.labels   = FALSE,
-                    gravity       = 0.3,
-                    seed          = NULL,
-                    results_dir   = getOption("mlnet.results_dir","omicsDNA_results"),
-                    # NEW:
+                    layout          = c("multiforce","circular"),
+                    layersToPlot    = NULL,
+                    grid            = NULL,
+                    vertex.size     = 5,
+                    vertex.cex      = 1.2,
+                    show.labels     = FALSE,
+                    gravity         = 0.3,
+                    seed            = NULL,
+                    results_dir     = getOption("mlnet.results_dir","omicsDNA_results"),
                     show_in_rstudio = TRUE,
-                    save_plot     = TRUE,
-                    file          = NULL,
-                    format        = c("png","pdf"),
-                    width         = 10,
-                    height        = 8,
-                    units         = "in",
-                    dpi           = 300,
-                    # NEW (save the long df, don't print):
-                    save_df       = TRUE,
-                    df_format     = "rds",  # one or both of c("rds","csv")
-                    df_file       = NULL,
-                    verbose       = TRUE,
+                    save_plot       = TRUE,
+                    file            = NULL,
+                    format          = c("png","pdf"),
+                    width           = 10,
+                    height          = 8,
+                    units           = "in",
+                    dpi             = 300,
+                    save_df         = TRUE,
+                    df_format       = "rds",
+                    df_file         = NULL,
+                    verbose         = TRUE,
                     ...) {
+
   layout <- match.arg(layout)
   format <- match.arg(format)
 
-  .ensure_dir <- function(d) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  .is_abs     <- function(p) grepl("^(/|[A-Za-z]:[\\/])", p)
-  .pick       <- function(cands, nms) { z <- cands[cands %in% nms]; if (length(z)) z[1] else NA_character_ }
+  # ---- small internal helpers ------------------------------------------------
+  .dir_create <- function(d) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  .is_abs     <- function(p) grepl("^(/|[A-Za-z]:[\\/])", p)  # unix or windows
+  .msg        <- function(...) if (isTRUE(verbose)) message(...)
 
+  # sanity checks on numeric inputs
+  stopifnot(is.numeric(vertex.size), is.numeric(vertex.cex), vertex.size > 0, vertex.cex > 0)
+  stopifnot(is.numeric(width), is.numeric(height), width > 0, height > 0)
+  stopifnot(is.numeric(dpi), dpi > 0)
+  stopifnot(is.logical(show_in_rstudio), is.logical(save_plot), is.logical(save_df), is.logical(show.labels))
+
+  # validate communities
   if (!is.data.frame(communities))
     stop("`communities` must be a data.frame.")
   if (!all(c("actor","layer") %in% names(communities)))
     stop("`communities` must contain columns `actor` and `layer`.")
 
-  # Accept 'cid' or 'com' or 'community' and coerce to numeric cid starting at 1
+  # discover community column and normalise to integer `cid`
   comm_col <- intersect(c("cid","com","community"), names(communities))
   if (!length(comm_col))
-    stop("`communities` must include either `cid`, `com`, or `community`.")
+    stop("`communities` must include one of: `cid`, `com`, or `community`.")
   comm_col <- comm_col[1L]
-  cid_raw  <- communities[[comm_col]]
-  cid_num  <- if (is.numeric(cid_raw)) as.integer(cid_raw) else as.integer(factor(cid_raw))
+
+  cid_raw <- communities[[comm_col]]
+  cid_num <- if (is.numeric(cid_raw)) as.integer(cid_raw) else as.integer(factor(cid_raw))
 
   df <- data.frame(
     actor = as.character(communities$actor),
@@ -207,134 +193,147 @@ plotCom <- function(net,
     cid   = as.integer(cid_num),
     stringsAsFactors = FALSE
   )
-  # De‑duplicate: one cid per (actor, layer)
+
+  # de-duplicate to one row per (actor, layer)
   if (any(duplicated(df[, c("actor","layer")]))) {
-    if (verbose) message("Duplicate (actor,layer) rows in `communities`: keeping the first for each pair.")
+    .msg("Duplicate (actor, layer) rows in `communities`: keeping the first for each pair.")
     df <- df[!duplicated(df[, c("actor","layer")]), , drop = FALSE]
   }
 
-  # --------- Intersect with what actually exists in the network ----------
+  # ---- network interrogation & layer/actor intersection ----------------------
   Eraw <- try(multinet::edges_ml(net), silent = TRUE)
   if (inherits(Eraw, "try-error") || is.null(Eraw))
-    stop("Could not retrieve edges from `net` via multinet::edges_ml().")
-  Eall <- if (is.data.frame(Eraw)) Eraw else {
-    tmp <- try(as.data.frame(Eraw, stringsAsFactors = FALSE), silent = TRUE)
-    if (inherits(tmp, "try-error") || is.null(tmp) || !nrow(tmp)) {
-      stop("`edges_ml(net)` did not return a coercible table of edges.")
-    }
-    tmp
-  }
+    stop("Could not retrieve edges from `net` via multinet::edges_ml()`.")
+
+  Eall <- try(as.data.frame(Eraw, stringsAsFactors = FALSE), silent = TRUE)
+  if (inherits(Eall, "try-error") || is.null(Eall) || !nrow(Eall))
+    stop("`edges_ml(net)` did not yield a coercible, non-empty edge table.")
+
   nm <- names(Eall)
 
-  # Robust endpoint/layer detection
-  pairs <- list(
+  # endpoint detection: common source/target name pairs
+  endpoint_pairs <- list(
     c("from_actor","to_actor"), c("from","to"), c("source","target"),
     c("actor1","actor2"), c("i","j"), c("v1","v2")
   )
   a_col <- b_col <- NA_character_
-  for (p in pairs) if (all(p %in% nm)) { a_col <- p[1]; b_col <- p[2]; break }
+  for (p in endpoint_pairs) if (all(p %in% nm)) { a_col <- p[1]; b_col <- p[2]; break }
   if (is.na(a_col)) {
+    # fallback: choose two character/factor columns that are not layer columns
     layer_like <- c("layer","Layer","from_layer","to_layer","l1","l2")
     char_cols  <- which(vapply(Eall, function(x) is.character(x) || is.factor(x), logical(1)))
     char_cols  <- setdiff(char_cols, match(layer_like, nm, nomatch = 0))
     if (length(char_cols) < 2)
-      stop("Could not identify two endpoint columns in the network edge table.")
+      stop("Could not identify two endpoint columns in the edge table.")
     a_col <- nm[char_cols[1]]; b_col <- nm[char_cols[2]]
   }
 
-  if ("from_layer" %in% nm && "to_layer" %in% nm) {
+  # construct a single 'layer' column for intra-layer edges only
+  if (all(c("from_layer","to_layer") %in% nm)) {
     Eall <- Eall[Eall$from_layer == Eall$to_layer, , drop = FALSE]
     Eall$layer <- as.character(Eall$from_layer)
   } else if ("layer" %in% nm) {
     Eall$layer <- as.character(Eall$layer)
   } else {
+    # if the network has no explicit layer info, treat it as a single layer
     Eall$layer <- "L1"
   }
-  if (!nrow(Eall)) stop("No intra-layer edges found in the network.")
+  if (!nrow(Eall))
+    stop("No intra-layer edges found in the network (after filtering).")
 
-  # Layers to plot (intersection of requested, communities, and network)
-  layers_in_comm <- unique(df$layer)
   layers_in_net  <- sort(unique(Eall$layer))
+  layers_in_comm <- sort(unique(df$layer))
+
+  # choose layers to plot
   if (is.null(layersToPlot)) {
     layersToPlot <- intersect(layers_in_comm, layers_in_net)
   } else {
     layersToPlot <- intersect(as.character(layersToPlot), layers_in_net)
   }
-  if (!length(layersToPlot)) stop("No valid layers to plot (after intersection with the network).")
+  if (!length(layersToPlot))
+    stop("No valid layers to plot after intersecting with the network.")
 
-  # Filter community rows to actors present in each selected layer of the network
+  # actors present per selected layer (based on endpoints)
   actors_by_layer <- lapply(layersToPlot, function(ly) {
     ed <- Eall[Eall$layer == ly, , drop = FALSE]
     unique(c(as.character(ed[[a_col]]), as.character(ed[[b_col]])))
   })
   names(actors_by_layer) <- layersToPlot
 
-  keep_idx <- df$layer %in% names(actors_by_layer) &
-    mapply(function(act, ly) act %in% actors_by_layer[[ly]], df$actor, df$layer)
-  if (verbose) {
-    dropped <- sum(!keep_idx)
-    if (dropped > 0) message("Dropping ", dropped, " community rows (actors not present in selected layers).")
-  }
-  df <- df[keep_idx, , drop = FALSE]
-  if (!nrow(df)) stop("No community assignments left after filtering to actors present in selected layers.")
+  # keep only (actor, layer) pairs that exist in the network layers selected
+  keep_idx <- mapply(function(act, ly) {
+    if (!ly %in% names(actors_by_layer)) return(FALSE)
+    act %in% actors_by_layer[[ly]]
+  }, df$actor, df$layer)
 
-  # --------- Layout ----------
+  dropped <- sum(!keep_idx)
+  if (dropped > 0) .msg("Dropping ", dropped, " community rows (actors not present in selected layers).")
+  df <- df[keep_idx, , drop = FALSE]
+  if (!nrow(df))
+    stop("No community assignments remain after filtering to actors present in selected layers.")
+
+  # ---- layout computation ----------------------------------------------------
   if (!is.null(seed)) set.seed(as.integer(seed))
   lay_coords <- if (layout == "multiforce") {
-    res <- try(multinet::layout_multiforce_ml(net, gravity = gravity), silent = TRUE)
-    if (inherits(res, "try-error")) {
-      if (verbose) message("`layout_multiforce_ml` failed with gravity=", gravity, "; trying default.")
+    out <- try(multinet::layout_multiforce_ml(net, gravity = gravity), silent = TRUE)
+    if (inherits(out, "try-error")) {
+      .msg("`layout_multiforce_ml()` failed with gravity = ", gravity, "; falling back to default parameters.")
       multinet::layout_multiforce_ml(net)
-    } else res
+    } else out
   } else {
     multinet::layout_circular_ml(net)
   }
 
-  # --------- Grid ----------
+  # ---- grid arrangement ------------------------------------------------------
   if (is.null(grid)) {
-    k <- length(layersToPlot)
-    nr <- max(1, floor(sqrt(k)))
+    k  <- length(layersToPlot)
+    nr <- max(1L, round(sqrt(k)))  # near-square
     nc <- ceiling(k / nr)
-    grid <- c(nr, nc)
+    grid <- c(as.integer(nr), as.integer(nc))
   } else {
     if (!(is.numeric(grid) && length(grid) == 2L && all(is.finite(grid)) && all(grid >= 1)))
       stop("`grid` must be NULL or a numeric length-2 vector (nrow, ncol) >= 1.")
     grid <- as.integer(grid)
   }
 
-  # --------- Labels on/off ----------
-  vlabels <- if (show.labels) NULL else NA
+  # ---- labels on/off ---------------------------------------------------------
+  vlabels <- if (isTRUE(show.labels)) NULL else NA
 
-  # --------- Ensure results dir ----------
-  .ensure_dir(results_dir)
+  # ---- ensure output directory & stem ---------------------------------------
+  .dir_create(results_dir)
   stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
 
-  # --------- 1) Draw to RStudio (current device) so user can Export ----------
-  do_plot <- function() {
-    plot(net,
-         layout        = lay_coords,
-         grid          = grid,
-         layers        = layersToPlot,
-         com           = df,                # actor, layer, cid
-         vertex.size   = vertex.size,
-         vertex.cex    = vertex.cex,
-         vertex.labels = vlabels,
-         ...)
-  }
-  if (isTRUE(show_in_rstudio)) {
-    do_plot()  # shows in the Plots pane; user can Export from RStudio
+  # function that performs a single draw (used for both preview and export)
+  .do_plot <- function() {
+    plot(
+      net,
+      layout        = lay_coords,
+      grid          = grid,
+      layers        = layersToPlot,
+      com           = df,                # three columns: actor, layer, cid
+      vertex.size   = vertex.size,
+      vertex.cex    = vertex.cex,
+      vertex.labels = vlabels,
+      ...
+    )
   }
 
-  # --------- 2) Save the plot under results/ ----------
+  # ---- 1) Interactive preview (if requested) --------------------------------
+  if (isTRUE(show_in_rstudio)) {
+    .do_plot()
+  }
+
+  # ---- 2) Save plot to file (if requested) ----------------------------------
+  saved_plot_path <- NULL
   if (isTRUE(save_plot)) {
     if (is.null(file)) {
-      base <- sprintf("plotCom_%s_%dlayers_%s", tolower(layout), length(layersToPlot), stamp)
-      file <- paste0(base, ".", format)
+      stem <- sprintf("plotCom_%s_%dlayers_%s", tolower(layout), length(layersToPlot), stamp)
+      file <- paste0(stem, ".", format)
     }
     if (!.is_abs(file)) file <- file.path(results_dir, file)
 
     if (isTRUE(show_in_rstudio)) {
-      # copy what you see to the chosen device (keeps the RStudio plot visible)
+      # copy the current device content to disk
       if (format == "png") {
         dev_id <- grDevices::dev.copy(grDevices::png, filename = file,
                                       width = width, height = height, units = units, res = dpi)
@@ -345,50 +344,63 @@ plotCom <- function(net,
         grDevices::dev.off(dev_id)
       }
     } else {
-      # open off‑screen device, plot, close
+      # draw directly to an off-screen device
       if (format == "png") {
         grDevices::png(filename = file, width = width, height = height, units = units, res = dpi)
         on.exit(grDevices::dev.off(), add = TRUE)
-        do_plot()
+        .do_plot()
       } else {
-        grDevices::pdf(file, width = width, height = height)  # inches
+        grDevices::pdf(file = file, width = width, height = height)  # inches
         on.exit(grDevices::dev.off(), add = TRUE)
-        do_plot()
+        .do_plot()
       }
     }
-    if (verbose) message("Saved ", toupper(format), ": ", normalizePath(file, FALSE))
+    saved_plot_path <- normalizePath(file, mustWork = FALSE)
+    .msg("Saved ", toupper(format), ": ", saved_plot_path)
   }
 
-  # --------- 3) Save the (actor, layer, cid) table under results/ ----------
+  # ---- 3) Save the long (actor, layer, cid) table (if requested) ------------
   df_paths <- character(0)
   if (isTRUE(save_df)) {
-    df_formats <- unique(match.arg(df_format, several.ok = TRUE))
-    if (is.null(df_file)) {
-      base <- sprintf("plotCom_communities_%s_%dlayers_%s", tolower(layout), length(layersToPlot), stamp)
+    df_formats <- unique(match.arg(df_format, c("rds","csv"), several.ok = TRUE))
+
+    base_name <- if (is.null(df_file)) {
+      sprintf("plotCom_communities_%s_%dlayers_%s", tolower(layout), length(layersToPlot), stamp)
     } else {
-      base <- tools::file_path_sans_ext(basename(df_file))
+      tools::file_path_sans_ext(basename(df_file))
     }
+
+    # RDS path: honour df_file exactly (absolute respected; relative into results_dir)
     if ("rds" %in% df_formats) {
-      rds_path <- if (is.null(df_file)) file.path(results_dir, paste0(base, ".rds")) else
-        if (.is_abs(df_file)) df_file else file.path(results_dir, df_file)
+      rds_path <- if (is.null(df_file)) {
+        file.path(results_dir, paste0(base_name, ".rds"))
+      } else if (.is_abs(df_file)) {
+        df_file
+      } else {
+        file.path(results_dir, df_file)
+      }
       saveRDS(df, rds_path)
-      df_paths <- c(df_paths, rds_path)
-      if (verbose) message("Saved community table (RDS): ", normalizePath(rds_path, FALSE))
+      df_paths <- c(df_paths, normalizePath(rds_path, mustWork = FALSE))
+      .msg("Saved community table (RDS): ", df_paths[length(df_paths)])
     }
+
+    # CSV path: always under results_dir, using base name
     if ("csv" %in% df_formats) {
-      csv_path <- file.path(results_dir, paste0(base, ".csv"))
+      csv_path <- file.path(results_dir, paste0(base_name, ".csv"))
       utils::write.csv(df, csv_path, row.names = FALSE)
-      df_paths <- c(df_paths, csv_path)
-      if (verbose) message("Saved community table (CSV): ", normalizePath(csv_path, FALSE))
+      df_paths <- c(df_paths, normalizePath(csv_path, mustWork = FALSE))
+      .msg("Saved community table (CSV): ", df_paths[length(df_paths)])
     }
   }
 
-  # Return invisibly (so nothing prints to the Console)
-  res <- structure(df,
-                   file    = if (isTRUE(save_plot)) file else NULL,
-                   df_file = if (length(df_paths)) df_paths else NULL,
-                   grid    = grid,
-                   layers  = layersToPlot)
-  return(invisible(res))
+  # ---- return invisibly with useful attributes -------------------------------
+  res <- structure(
+    df,
+    file    = saved_plot_path,
+    df_file = if (length(df_paths)) df_paths else NULL,
+    grid    = grid,
+    layers  = layersToPlot
+  )
+  invisible(res)
 }
 

@@ -55,6 +55,17 @@ metaData <- read_csv("~/Abir/test_data/metaData_V.csv")
 metaData <- as.data.frame(metaData)
 colnames(metaData)[1] <- "sample"
 head(metaData)
+                    sample muscle_grp age_group2 age_label       group
+1 GTEX-111FC-0826-SM-5GZWO   left_Ven    [65,70)        M4 left_Ven_M4
+2 GTEX-111YS-0426-SM-5987O   left_Ven    [65,70)        M4 left_Ven_M4
+3 GTEX-1122O-0826-SM-5GICV   left_Ven    [60,65)        M3 left_Ven_M3
+4 GTEX-117YX-1126-SM-5H128   left_Ven    [60,65)        M3 left_Ven_M3
+5 GTEX-11DXX-0326-SM-5PNWC   left_Ven    [65,70)        M4 left_Ven_M4
+6 GTEX-11DXZ-0626-SM-5GU77   left_Ven    [65,70)        M4 left_Ven_M4
+
+head(colnames(expression_mat))
+[1] "GTEX.111FC.0826.SM.5GZWO" "GTEX.111YS.0426.SM.5987O" "GTEX.1122O.0826.SM.5GICV" "GTEX.117YX.1126.SM.5H128"
+[5] "GTEX.11DXX.0326.SM.5PNWC" "GTEX.11DXZ.0626.SM.5GU77"
 
 # match the names in metadata and column names expression matrix.
 metaData$sample <- chartr("-", ".", metaData$sample) 
@@ -169,6 +180,21 @@ cons_list <- consensusEdges(
 
 ### 4) `build_multiNet()` — assemble multilayer from per‑layer **edge lists**
 ```r
+
+gene_info <- read_csv("gene_info2.csv", skip = 1)
+colnames(gene_info) <- c("GeneId" , "GeneName" , "GeneType")
+head(gene_info)
+# A tibble: 6 × 3
+  GeneId            GeneName        GeneType      
+  <chr>             <chr>           <chr>         
+1 ENSG00000243485.5 MIR1302-2HG     lncRNA        
+2 ENSG00000237613.2 FAM138A         lncRNA        
+3 ENSG00000186092.7 OR4F5           protein_coding
+4 ENSG00000238009.6 ENSG00000238009 lncRNA        
+5 ENSG00000239906.1 ENSG00000239906 lncRNA        
+6 ENSG00000241860.7 ENSG00000241860 lncRNA    
+
+
 net <- build_multiNet(
   edgeListPerLayer     = cons_list,  # from consensusEdges(..., as_list=TRUE)
   nodesMetadata        = genes_info, # optional actor attributes
@@ -208,7 +234,6 @@ net_graphs <- build_multinet_from_graphs(
   featureID_col      = "GeneName",
   nodeAttrCols       = "GeneType",
   save_layers_graphml= TRUE,       # optional per‑layer GraphML exports
-  save_to_rds        = FALSE,
   verbose            = FALSE,
   graphml_prefix     = "layer",
   save_to_rds        = TRUE
@@ -244,14 +269,6 @@ diff_report <- compare_multinets(
   verbose  = TRUE  # print a full, readable diff to the console
 )
 
-cmp <- compare_multinets(
-  nets         = list(A = net, B = net2),
-  by           = "union",      # or "intersect", "strict"
-  edge_mode    = "undirected",
-  ignore_missing = TRUE,
-  write_csv    = TRUE,         # CSVs per layer + manifest
-  prefix       = "cmp_AB"
-)
 
 ```
 
@@ -306,7 +323,7 @@ rep$samples$edges            # first rows of edges with attribute columns
 ```r
 
 # Generalised Louvain (canonical method), count-based supra-graph weights
-comm_gl <- detectCom(
+comm <- detectCom(
   net,
   method      = "glouvain",   # <- preferred spelling
   edgeWeight  = "count",
@@ -333,8 +350,10 @@ comm_clq <- detectCom(
 
 ```
 
+
 ### 12) `plotCom()` — community layout + CSV export of node positions
 ```r
+
 p <- plotCom(
   net, communities = comm,
   layout = "multiforce", gravity = 0.30,   # nice cross‑layer layout
@@ -342,53 +361,50 @@ p <- plotCom(
   save_plot = TRUE, format = "png", width = 10, height = 8, dpi = 300,
   save_df   = TRUE, df_format = "csv", df_prefix = "layout_multiforce"
 )
+
 ```
 
-### 13) `com_vs_samples()` — sanity: community counts vs sample counts
+
+### 13) `edges_vs_samples()` — sanity: community counts vs sample counts
 ```r
-cs <- com_vs_samples(
-  comm,
-  num_samples = table(metaData$AgeGroup),  # vector with per‑layer sample sizes
-  show_in_rstudio = TRUE,
-  save_plot = TRUE
+
+ns <- c(E1 = 46, E2 = 22, M1 = 16, M2 = 27, M3 = 23, M4 = 26)
+
+edges_per_layer <- edges_vs_samples(
+  communities = NULL,
+  num_samples = ns,
+  net = net
 )
+
 ```
+
 
 ### 14) `analyze_actor_overlap()` — actor Jaccard overlaps across layers
 ```r
+
 Aov <- analyze_actor_overlap(
   net,
-  reorder         = TRUE,   # reorder layers to cluster similarity
-  drop_zero_diag  = TRUE,
-  palette         = "RdBu",
-  show_in_rstudio = TRUE, save_plot = TRUE
+  reorder         = TRUE   # reorder layers to cluster similarity
 )
+
 ```
 
 ### 15) `analyze_edge_overlap()` — edge Jaccard overlaps across layers
 ```r
+
 Eov <- analyze_edge_overlap(
   net,
-  reorder         = TRUE,
-  drop_zero_diag  = TRUE,
-  palette         = "RdBu",
-  show_in_rstudio = TRUE, save_plot = TRUE
+  reorder         = TRUE
 )
+
 ```
 
 ### 16) `layer_metrics()` — per‑layer size/centrality/path summaries
 ```r
-LM <- layer_metrics(
-  net,
-  layers        = multinet::layers_ml(net),
-  directed      = FALSE,
-  centralities  = c("degree","betweenness","closeness"),
-  paths         = TRUE,             # components, APL, diameter
-  write_csv     = TRUE,             # per‑layer + manifest CSVs
-  prefix        = "layer_metrics"
-)
 
-res$summary[, c("layer","n_nodes","n_edges","density")]
+LM <- layer_metrics(net)
+
+LM$summary[, c("layer","n_nodes","n_edges","density")]
 
 ```
 
@@ -413,23 +429,15 @@ table(comm_annot$GeneType, useNA = "ifany")
 
 ```
 
+
 ### 18) `sumComFeat()` — summaries by feature type (actor)
 ```r
-summTF <- sumComFeat(
-  commA,
-  feature_type  = "TF",        # e.g., "TF", "lncRNA"
-  ignore_case   = TRUE,
-  normalize_ids = TRUE,
-  write_csv     = TRUE,        # multiple CSVs (actor, by‑community, by‑layer)
-  prefix        = "TF_summaries"
-)
-
 
 # lncRNA
 lnc_summary <- sumComFeat(
   communities   = comm_annot,
   feature_col   = "GeneType",
-  feature_type  = "lncRNA",
+  feature_type  = "lncRNA",        # e.g., "TF", "lncRNA"
   write_csv     = TRUE
 )
 
@@ -441,16 +449,15 @@ pc_summary <- sumComFeat(comm_annot, feature_col = "GeneType", feature_type = "p
 # multiple feature types at once
 mix_summary <- sumComFeat(comm_annot, feature_col = "GeneType", feature_type = c("lncRNA","TF"), write_csv = TRUE)
 
-
 ```
+
 
 ### 19) `get_FeatureDeg()` — degrees (per layer / long)
 ```r
 degTF <- get_FeatureDeg(
   net,
   featureList = subset(commA, GeneType == "TF")$actor,
-  layers      = multinet::layers_ml(net),
-  long        = TRUE
+  layers      = multinet::layers_ml(net)
 )
 
 # 1) Use any feature set you like (lncRNAs, TFs, enzymes, …)
