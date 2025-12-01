@@ -48,8 +48,8 @@ omicsDNA
       rows](#17-annotatecom--add-feature-attributes-eg-genetype-to-community-rows)
     - [18) `sumComFeat()` — summaries by feature type
       (actor)](#18-sumcomfeat--summaries-by-feature-type-actor)
-    - [19) `get_FeatureDeg()` — degrees (per layer /
-      long)](#19-get_featuredeg--degrees-per-layer--long)
+    - [19) `get_FeatureDeg()` — degrees (per
+      layer)](#19-get_featuredeg--degrees-per-layer)
     - [20) `gp_enrich_multinet()` — g:Profiler enrichment **per module
       and per
       layer**](#20-gp_enrich_multinet--gprofiler-enrichment-per-module-and-per-layer)
@@ -134,12 +134,12 @@ metaData <- as.data.frame(metaData)
 colnames(metaData)[1] <- "sample"
 head(metaData)
                     sample muscle_grp age_group2 age_label       group
-1 GTEX-111FC-0826-SM-5GZWO   left_Ven    [65,70)        M4 left_Ven_M4
-2 GTEX-111YS-0426-SM-5987O   left_Ven    [65,70)        M4 left_Ven_M4
-3 GTEX-1122O-0826-SM-5GICV   left_Ven    [60,65)        M3 left_Ven_M3
-4 GTEX-117YX-1126-SM-5H128   left_Ven    [60,65)        M3 left_Ven_M3
-5 GTEX-11DXX-0326-SM-5PNWC   left_Ven    [65,70)        M4 left_Ven_M4
-6 GTEX-11DXZ-0626-SM-5GU77   left_Ven    [65,70)        M4 left_Ven_M4
+#1 GTEX-111FC-0826-SM-5GZWO   left_Ven    [65,70)        M4 left_Ven_M4
+#2 GTEX-111YS-0426-SM-5987O   left_Ven    [65,70)        M4 left_Ven_M4
+#3 GTEX-1122O-0826-SM-5GICV   left_Ven    [60,65)        M3 left_Ven_M3
+#4 GTEX-117YX-1126-SM-5H128   left_Ven    [60,65)        M3 left_Ven_M3
+#5 GTEX-11DXX-0326-SM-5PNWC   left_Ven    [65,70)        M4 left_Ven_M4
+#6 GTEX-11DXZ-0626-SM-5GU77   left_Ven    [65,70)        M4 left_Ven_M4
 
 head(colnames(expression_mat))
 [1] "GTEX.111FC.0826.SM.5GZWO" "GTEX.111YS.0426.SM.5987O" "GTEX.1122O.0826.SM.5GICV" "GTEX.117YX.1126.SM.5H128"
@@ -260,7 +260,7 @@ cons_list <- consensusEdges(
 gene_info <- read_csv("gene_info2.csv", skip = 1)
 colnames(gene_info) <- c("GeneId" , "GeneName" , "GeneType")
 head(gene_info)
-# A tibble: 6 × 3
+ A tibble: 6 × 3
   GeneId            GeneName        GeneType      
   <chr>             <chr>           <chr>         
 1 ENSG00000243485.5 MIR1302-2HG     lncRNA        
@@ -317,7 +317,7 @@ net_graphs <- build_multinet_from_graphs(
 ```
 
 Build a second graph to make a comparison between two multi-layer graphs
-using the next function
+using the next function.
 
 ``` r
 
@@ -349,7 +349,7 @@ diff_report <- compare_multinets(
 **compare_multinets() helps compare common and different edges between
 layers of two multilayer graphs, can be used in the downstream
 enrichment analysis with aim of comparing two biological contexts across
-same time points.**
+same time points or layers.**
 
 ### 9) `add_network_attributes()` — attach actor/edge metadata to the multilayer net
 
@@ -511,8 +511,7 @@ head(comm_annot)
 5  AGO1  C2    E1 glouvain protein_coding
 6 ABCB5  C1    E1 glouvain protein_coding
 
-table(comm_annot$GeneType, useNA = "ifany")
-
+table(comm_annot$GeneType)
         lncRNA protein_coding 
            308           3687 
            
@@ -560,7 +559,7 @@ ADAM12 ADAM12    5 E1, E2, M1, M2, M3, M4      1        6
 ADNP     ADNP    2 E1, E2, M1, M2, M3, M4      1        6
 ```
 
-### 19) `get_FeatureDeg()` — degrees (per layer / long)
+### 19) `get_FeatureDeg()` — degrees (per layer)
 
 ``` r
 
