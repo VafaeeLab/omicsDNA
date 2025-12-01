@@ -745,6 +745,8 @@ gsea_layer <- gsea_msigdbr_layer_pairs(
 
 
 ## 3) Community‑scope GSEA restricted to a custom gene list
+plot_layer_diff(net, L1 = "E1", L2 = "M1", save_edge_csv = TRUE)
+edges_diff_E1_M1 <- read_csv("omicsDNA_results/edges_diff_E1_vs_E2_2025-12-01.csv")
 
 E1_M1 <- edges_diff_E1_M1$from[edges_diff_E1_E2$category == "common"] %>% unique()
 
