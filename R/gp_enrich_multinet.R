@@ -1,61 +1,30 @@
 
 
 # -----------------------------------------------------------------------------
-# 27 - gp_enrich_multinet(): g:Profiler per layer + CSV + dot plot + 2 networks
+# 27 - gp_enrich_multinet(): g:Profiler per layer / per community
 # -----------------------------------------------------------------------------
 
-#' g:Profiler enrichment per layer (CSV + gost plot + concept network + term-only network)
+#' g:Profiler enrichment for multilayer networks (layer- or community-wise)
 #'
-#' @title Layer-wise functional enrichment with g:Profiler for multilayer networks,
-#' and automatic export of CSV, dot plot, concept (term–gene) network, and term-only overlap network
+#' @title Functional enrichment with g:Profiler for multilayer networks
 #'
 #' @description
-#' For each selected layer of a multilayer network, this function:
+#' For each selected layer (and optionally each community in each layer), this
+#' function:
 #' \enumerate{
-#'   \item extracts the layer's gene symbols (from vertex names);
-#'   \item runs \strong{g:Profiler} enrichment (\code{\link[gprofiler2]{gost}}) against the requested sources;
+#'   \item extracts gene symbols (from vertex names or community memberships);
+#'   \item optionally restricts them to a user-supplied gene set
+#'         (\code{restrict_genes});
+#'   \item runs \strong{g:Profiler} (\code{\link[gprofiler2]{gost}}) using the
+#'         requested sources;
+#'   \item saves a \strong{CSV} with results, including a plain-text
+#'         \code{intersection_genes} column and simple enrichment metrics;
 #'   \item saves a \strong{gost} dot plot of significant terms;
-#'   \item saves a \strong{concept (term–gene) network} showing terms connected to their hit genes
-#'         (both term names and gene symbols are labelled; terms are colored by \eqn{-\log_{10}(p)} and
-#'         sized by intersection size; genes are grey);
-#'   \item saves a \strong{term-only overlap network} (nodes = terms; edges drawn when two terms share
-#'         at least \code{ton_min_overlap} genes; \emph{numbers near nodes show each term’s
-#'         \code{intersection_size}});
-#'   \item writes a CSV of g:Profiler results, augmented with a plain-text
-#'         \code{intersection_genes} (semicolon-separated gene symbols).
+#'   \item saves a \strong{term–gene concept network};
+#'   \item saves a \strong{term-only overlap network}.
 #' }
 #'
-#' A per-run manifest (\code{SUMMARY.csv}) lists what was saved for each layer.
-#'
-#' @details
-#' \strong{Inputs.} Layers are read from \code{multinet::layers_ml(net)}. Each layer is converted to an
-#' \pkg{igraph} using \code{as.list(net)}; the node names of that graph are interpreted as gene symbols.
-#'
-#' \strong{Enrichment.} The g:Profiler call uses \code{evcodes = TRUE} so that \code{$intersection} carries
-#' actual gene members per term. You can limit to significant results and set the multiple-testing method
-#' and threshold via \code{significant}, \code{correction_method}, and \code{user_threshold}.
-#' Background choice is controlled with \code{domain_scope} and (optionally) \code{custom_bg}:
-#' \itemize{
-#'   \item \code{domain_scope = "annotated"} (default): test against the annotation domain.
-#'   \item \code{domain_scope = "custom"}: test against a user-supplied background gene set
-#'         passed in \code{custom_bg} (required in this mode).
-#'   \item If you pass a non-\code{NULL} \code{custom_bg} while \code{domain_scope != "custom"}, the function
-#'         automatically switches to \code{domain_scope = "custom"} (with a message).
-#' }
-#'
-#' \strong{Plots.}
-#' \itemize{
-#'   \item The gost dot plot is produced by \code{\link[gprofiler2]{gostplot}} and is downsampled to the
-#'         \code{show_terms} most significant results for legibility.
-#'   \item The concept (term–gene) network connects each selected term (top \code{show_terms} by p-value)
-#'         to its \code{intersection} genes; terms are colored by \eqn{-\log_{10}(p)} and sized by
-#'         \code{intersection_size}. \emph{Both term names and gene symbols are printed.}
-#'   \item The term-only overlap network places an edge between two terms when they share at least
-#'         \code{ton_min_overlap} intersection genes. Node labels show term names; a second number near
-#'         each node is the term’s \code{intersection_size}. Node color encodes \eqn{-\log_{10}(p)}.
-#' }
-#'
-#' \strong{Output structure.} Results are written to:
+#' In \strong{layer scope}, the output structure is conserved:
 #' \preformatted{
 #'   <results_dir>/<run_name>/
 #'     <layer>/
@@ -63,116 +32,124 @@
 #'       gprof_dot_<layer>.<format>
 #'       gprof_cnet_<layer>.<format>
 #'       gprof_termnet_<layer>.<format>
-#'     SUMMARY.csv          (run-level manifest at the root of <run_name>)
+#'     SUMMARY.csv
 #' }
-#' When \code{per_layer_subdirs = FALSE}, the files are written directly under
-#' \code{<results_dir>/<run_name>/} with layer-specific filenames.
 #'
-#' @section Scaling, units and aesthetics:
+#' In \strong{community scope}, results are nested inside each layer:
+#' \preformatted{
+#'   <results_dir>/<run_name>/
+#'     <layer>/
+#'       cid_<CID>/
+#'         gprof_<layer>_cid<CID>.csv
+#'         gprof_dot_<layer>_cid<CID>.<format>
+#'         gprof_cnet_<layer>_cid<CID>.<format>
+#'         gprof_termnet_<layer>_cid<CID>.<format>
+#'     SUMMARY.csv
+#' }
+#'
+#' @details
+#' \strong{Inputs.}
+#' Layers are read from \code{multinet::layers_ml(net)} and converted to
+#' \pkg{igraph}s via \code{as.list(net)} (vertex names = gene symbols).
+#'
+#' \strong{Scopes.}
 #' \itemize{
-#'   \item Plot \code{width}/\code{height} are in \strong{inches}; \code{dpi} is ignored for PDF.
-#'   \item Network node sizes are rescaled to a sensible visual range (terms larger than genes).
-#'   \item \code{ton_margin_cm} is in \strong{centimetres} and set as a ggplot plot margin.
+#'   \item \code{enrich_scope = "layer"} (default): one query per layer
+#'         (vertex set of the layer, optionally restricted by \code{restrict_genes}).
+#'   \item \code{enrich_scope = "community"}: one query per community per layer,
+#'         as defined by \code{communities} (\code{actor}, \code{layer}, \code{cid}).
 #' }
 #'
-#' @param net A \pkg{multinet} object. Layers are discovered via \code{multinet::layers_ml(net)} and
-#'   coerced to \pkg{igraph} objects through \code{as.list(net)}; vertex names are assumed to be gene symbols.
-#' @param organism Organism string accepted by g:Profiler (e.g., \code{"hsapiens"}, \code{"mmusculus"}).
-#' @param sources Character vector of g:Profiler sources to include (e.g., \code{c("GO:BP","GO:MF","GO:CC","REAC")}).
-#' @param layer_order Optional character vector specifying which layers to process and in what order. By default,
-#'   all layers from \code{net} are used in their native order.
-#' @param significant Logical. If \code{TRUE}, g:Profiler filters to significant terms according to
-#'   \code{user_threshold} and \code{correction_method}.
-#' @param user_threshold Numeric. Significance threshold (e.g., \code{0.05}).
-#' @param correction_method Multiple testing method for g:Profiler. One of \code{"g_SCS"}, \code{"fdr"},
-#'   or \code{"bonferroni"}.
-#' @param exclude_iea Logical. If \code{TRUE}, exclude electronic annotations (IEA) where applicable.
-#' @param domain_scope One of \code{"annotated"} (default) or \code{"custom"}.
-#'   Use \code{"custom"} when supplying \code{custom_bg}.
-#' @param custom_bg Optional character vector of background genes. Required when \code{domain_scope="custom"}.
-#' @param show_terms Integer. Number of top terms (by p-value) to display in the dot plot and the concept network.
-#' @param results_dir Base output directory. Created if it does not exist.
-#' @param run_name Name of the run subfolder under \code{results_dir}. If \code{NULL}, a name of the form
-#'   \code{"gprofiler_multinet_<YYYY-mm-dd_HHMMSS>"} is generated.
-#' @param per_layer_subdirs Logical; if \code{TRUE} (default) create a subdirectory per layer.
-#' @param format Image format for saved figures: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
-#' @param width,height,dpi Plot geometry for saved figures (inches; DPI ignored for PDF).
-#' @param show_in_rstudio Logical; if \code{TRUE}, also \code{print()} plots to the current graphics device.
-#' @param verbose Logical; if \code{TRUE}, print progress messages.
-#' @param ton_show Logical; if \code{TRUE} (default), draw the term-only overlap network.
-#' @param ton_top_terms Integer; number of top terms (by p-value) to include in the term-only network.
-#' @param ton_min_overlap Integer; minimum \emph{shared intersection genes} between two terms to draw an edge.
-#' @param ton_layout Layout for the term-only network. One of \code{"fr"}, \code{"kk"}, \code{"lgl"}, \code{"mds"}.
-#' @param ton_width,ton_height Size (inches) for the term-only network figure.
-#' @param ton_margin_cm Numeric vector \code{c(top, right, bottom, left)} in centimetres for term-only plot margins.
+#' \strong{Communities.} \code{communities} should be a data.frame with at least:
+#' \itemize{
+#'   \item an \emph{actor} column (gene symbol / actor ID);
+#'   \item a \emph{layer} column (matching \code{multinet::layers_ml(net)});
+#'   \item a community column. The function normalises this to \code{cid} using:
+#'         \code{cid}, \code{com}, or \code{community} (in that order).
+#' }
 #'
-#' @return
-#' Invisibly returns a list with:
+#' \strong{Custom query restriction.}
+#' If \code{restrict_genes} is non-\code{NULL}, the query set for each layer
+#' (or community) is intersected with this vector before calling g:Profiler.
+#' Only communities/layers with at least \code{min_query_size} genes after
+#' restriction are tested.
+#'
+#' \strong{Statistics.}
+#' G:Profiler returns adjusted p-values using \code{correction_method}:
+#' \code{"g_SCS"}, \code{"fdr"} (Benjamini–Hochberg FDR), or \code{"bonferroni"}.
+#' The threshold is given by \code{user_threshold}.
+#'
+#' Additionally, this function supports \code{correction_method = "none"}:
+#' \itemize{
+#'   \item g:Profiler is called without significance filtering;
+#'   \item raw hypergeometric p-values (\code{p_raw}) are computed from
+#'         \code{effective_domain_size}, \code{term_size},
+#'         \code{query_size}, and \code{intersection_size};
+#'   \item if \code{significant = TRUE}, terms are kept only when
+#'         \code{p_raw <= user_threshold};
+#'   \item CSVs include an extra \code{p_raw} column, and ranking/plots
+#'         use \code{p_raw}.
+#' }
+#'
+#' The result CSV also contains:
+#' \itemize{
+#'   \item \code{intersection_genes} — semicolon-separated gene symbols;
+#'   \item \code{precision = intersection_size / query_size};
+#'   \item \code{recall    = intersection_size / term_size}.
+#' }
+#'
+#' @param net A \pkg{multinet} object.
+#' @param organism Organism string accepted by g:Profiler (e.g. "hsapiens").
+#' @param sources Character vector of g:Profiler sources (e.g. c("GO:BP","REAC")).
+#' @param layer_order Optional character vector of layers to process (and order).
+#' @param significant Logical; if TRUE, apply a p-value threshold:
+#'   for standard corrections this is handled by g:Profiler;
+#'   for \code{correction_method = "none"} it is applied to \code{p_raw}.
+#' @param user_threshold Numeric significance threshold.
+#' @param correction_method One of "g_SCS", "fdr", "bonferroni", or "none".
+#'   See Details for behaviour of "none".
+#' @param exclude_iea Logical; exclude electronic annotations?
+#' @param domain_scope "annotated" or "custom" (with \code{custom_bg}).
+#' @param custom_bg Optional background genes (symbols), used when
+#'   \code{domain_scope = "custom"}.
+#' @param show_terms Number of top terms (by p-value) for dot plot and concept net.
+#' @param results_dir Base output directory.
+#' @param run_name Optional subfolder name under \code{results_dir}; if NULL a
+#'   timestamped name is generated.
+#' @param per_layer_subdirs Logical; if TRUE (default) create a subdirectory per
+#'   layer under the run directory.
+#' @param format Plot format: "png", "pdf", or "jpg".
+#' @param width,height,dpi Plot geometry (inches; DPI ignored for PDF).
+#' @param show_in_rstudio Logical; print plots to current device.
+#' @param verbose Logical; print progress messages.
+#' @param ton_show Logical; draw term-only network?
+#' @param ton_top_terms Number of top terms to include in term-only network.
+#' @param ton_min_overlap Minimum shared genes between terms to draw an edge.
+#' @param ton_layout Layout for term-only network ("fr","kk","lgl","mds").
+#' @param ton_width,ton_height Size (inches) for term-only network.
+#' @param ton_margin_cm Vector c(top,right,bottom,left) in cm for term-only plot.
+#' @param communities Optional data.frame describing communities.
+#' @param enrich_scope "layer" (default) or "community".
+#' @param restrict_genes Optional character vector; if non-NULL, each query
+#'   gene set is restricted to its intersection with this vector.
+#' @param min_query_size Minimum number of genes in a query to run g:Profiler.
+#'
+#' @return Invisibly, a list with:
 #' \describe{
-#'   \item{\code{run_dir}}{Absolute path to the run directory.}
-#'   \item{\code{by_layer}}{Named list keyed by layer containing file paths for
-#'         \code{csv_file}, \code{dotplot_file}, \code{cnet_file}, and \code{termnet_file}.}
-#'   \item{\code{summary_file}}{Absolute path to the run-level \code{SUMMARY.csv} manifest.}
+#'   \item{\code{run_dir}}{Absolute path to the run folder.}
+#'   \item{\code{by_layer}}{Layer-keyed list. For layer-scope, each element
+#'       contains file paths and \code{n_genes}/\code{n_terms}. For community-
+#'       scope, each layer contains a list keyed by community ID (e.g. "cid_C1").}
+#'   \item{\code{summary_file}}{Path to run-level \code{SUMMARY.csv}.}
 #' }
-#'
-#' @section Notes and troubleshooting:
-#' \itemize{
-#'   \item \strong{Custom background:} When \code{domain_scope="custom"}, \code{custom_bg} must be provided;
-#'         otherwise the function stops with a clear error.
-#'   \item \strong{Very many terms:} Increase \code{show_terms}, figure sizes, or use PDF for higher fidelity.
-#'   \item \strong{Networks require} \pkg{ggraph} and \pkg{igraph}. If either is missing, network plots are skipped.
-#' }
-#'
-#' @seealso
-#' \code{\link[gprofiler2]{gost}}, \code{\link[gprofiler2]{gostplot}},
-#' \code{\link[ggraph]{ggraph}}, \code{\link[igraph]{graph_from_data_frame}}
 #'
 #' @importFrom gprofiler2 gost gostplot
-#' @importFrom ggplot2 ggsave ggplot aes geom_point scale_size_continuous scale_color_viridis_c labs theme_minimal theme element_text element_blank
-#' @importFrom igraph graph_from_data_frame layout_with_fr layout_with_kk layout_with_lgl layout_with_mds V
+#' @importFrom ggplot2 ggsave ggplot aes geom_point scale_size_continuous
+#'   scale_color_viridis_c labs theme_minimal theme element_text element_blank
+#' @importFrom igraph graph_from_data_frame layout_with_fr layout_with_kk
+#'   layout_with_lgl layout_with_mds V
 #' @importFrom utils write.csv combn
 #' @importFrom multinet layers_ml
-#'
-#' @examples
-#' \dontrun{
-#' ## Single comprehensive example (demonstrates all arguments)
-#' ## Assume you have a 'multinet' object 'net' with layers E1, E2, M1 whose vertex names are gene symbols.
-#'
-#' # Prepare a custom background as the union of all vertex names across layers:
-#' all_bg <- unique(unlist(lapply(as.list(net), function(g) igraph::V(g)$name)))
-#'
-#' res <- gp_enrich_multinet(
-#'   net                = net,
-#'   organism           = "hsapiens",
-#'   sources            = c("GO:BP","GO:MF","GO:CC","REAC"),
-#'   layer_order        = c("E1","E2","M1"),
-#'   significant        = TRUE,
-#'   user_threshold     = 0.05,
-#'   correction_method  = "g_SCS",                  # or "fdr", "bonferroni"
-#'   exclude_iea        = FALSE,
-#'   domain_scope       = "custom",                 # <-- use the custom background below
-#'   custom_bg          = all_bg,
-#'   show_terms         = 12,                       # limit for dot plot + concept network
-#'   results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
-#'   run_name           = paste0("gprofiler_run_", format(Sys.time(), "%Y%m%d_%H%M%S")),
-#'   per_layer_subdirs  = TRUE,
-#'   format             = "png",
-#'   width              = 9, height = 7, dpi = 300,
-#'   show_in_rstudio    = TRUE,
-#'   verbose            = TRUE,
-#'   # term-only overlap network:
-#'   ton_show           = TRUE,
-#'   ton_top_terms      = 10,
-#'   ton_min_overlap    = 1,
-#'   ton_layout         = "fr",
-#'   ton_width          = 9,
-#'   ton_height         = 7,
-#'   ton_margin_cm      = c(0.8,0.8,0.8,0.8)
-#' )
-#'
-#' # Inspect the run manifest:
-#' read.csv(res$summary_file, stringsAsFactors = FALSE)
-#' }
 #' @export
 gp_enrich_multinet <- function(
     net,
@@ -181,7 +158,7 @@ gp_enrich_multinet <- function(
     layer_order       = NULL,
     significant       = TRUE,
     user_threshold    = 0.05,
-    correction_method = c("g_SCS","fdr","bonferroni"),
+    correction_method = c("g_SCS","fdr","bonferroni","none"),
     exclude_iea       = FALSE,
     domain_scope      = c("annotated","custom"),
     custom_bg         = NULL,
@@ -200,7 +177,12 @@ gp_enrich_multinet <- function(
     ton_layout        = "fr",
     ton_width         = width,
     ton_height        = height,
-    ton_margin_cm     = c(0.5,0.5,0.5,0.5)
+    ton_margin_cm     = c(0.5,0.5,0.5,0.5),
+    # communities, scope & restriction
+    communities       = NULL,
+    enrich_scope      = c("layer","community"),
+    restrict_genes    = NULL,
+    min_query_size    = 3
 ) {
   # ---- dependencies ----
   if (!requireNamespace("multinet",  quietly = TRUE))
@@ -217,11 +199,15 @@ gp_enrich_multinet <- function(
   correction_method <- match.arg(correction_method)
   domain_scope      <- match.arg(domain_scope)
   format            <- match.arg(format)
+  enrich_scope      <- match.arg(enrich_scope)
 
-  # ---- helpers ----
-  .ensure_dir <- function(d) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
-  .stamp      <- function() format(Sys.time(), "%Y-%m-%d_%H%M%S")
-  .unit_cm    <- function(v) grid::unit(v, "cm")
+  # ---- helpers ---------------------------------------------------------------
+  .ensure_dir <- function(d) {
+    if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    invisible(d)
+  }
+  .stamp   <- function() format(Sys.time(), "%Y-%m-%d_%H%M%S")
+  .unit_cm <- function(v) grid::unit(v, "cm")
   .rescale <- function(x, to = c(4,10)) {
     x <- suppressWarnings(as.numeric(x))
     r <- range(x, finite = TRUE)
@@ -233,7 +219,7 @@ gp_enrich_multinet <- function(
     df <- as.data.frame(df, stringsAsFactors = FALSE)
     for (nm in names(df)) if (is.list(df[[nm]]))
       df[[nm]] <- vapply(df[[nm]], function(x) {
-        if (is.null(x) || (is.atomic(x) && length(x)==0L)) return(NA_character_)
+        if (is.null(x) || (is.atomic(x) && length(x) == 0L)) return(NA_character_)
         paste(as.character(unlist(x, use.names = FALSE)), collapse = ";")
       }, character(1))
     df
@@ -242,9 +228,10 @@ gp_enrich_multinet <- function(
     if (is.null(x)) return(character(0))
     if (is.list(x)) x <- unlist(x, use.names = FALSE)
     x <- as.character(x)
-    if (length(x) == 1L) x <- unlist(strsplit(x, "[,;]", perl = TRUE), use.names = FALSE)
+    if (length(x) == 1L)
+      x <- unlist(strsplit(x, "[,;]", perl = TRUE), use.names = FALSE)
     x <- trimws(x)
-    x <- sub("\\s*\\(.*\\)$", "", x)  # strip "(EVIDENCE)" if present
+    x <- sub("\\s*\\(.*\\)$", "", x)  # drop "(EVIDENCE)" etc
     unique(x[nzchar(x)])
   }
   .layout_terms <- function(g, method = "fr") {
@@ -256,25 +243,65 @@ gp_enrich_multinet <- function(
            igraph::layout_with_fr(g))
   }
 
-  # ---- layer selection ----
+  # ---- normalise communities (if given) -------------------------------------
+  comm <- NULL
+  if (!is.null(communities)) {
+    comm <- as.data.frame(communities, stringsAsFactors = FALSE)
+
+    # Normalise `cid` column if needed
+    if (!"cid" %in% names(comm)) {
+      alt <- intersect(c("cid","com","community"), names(comm))[1L]
+      if (is.na(alt))
+        stop("Could not find cid/com/community column in `communities`.")
+      comm$cid <- comm[[alt]]
+    }
+
+    # Normalise `actor`
+    if (!"actor" %in% names(comm)) {
+      alt <- intersect(c("actor","gene","gene_id","symbol"), names(comm))[1L]
+      if (is.na(alt))
+        stop("Could not find actor/gene/gene_id/symbol column in `communities`.")
+      comm$actor <- comm[[alt]]
+    }
+
+    # Normalise `layer`
+    if (!"layer" %in% names(comm)) {
+      alt <- intersect(c("layer","Layer"), names(comm))[1L]
+      if (is.na(alt))
+        stop("Could not find layer/Layer column in `communities`.")
+      comm$layer <- comm[[alt]]
+    }
+
+    comm$actor <- as.character(comm$actor)
+    comm$layer <- as.character(comm$layer)
+    comm$cid   <- as.character(comm$cid)
+  }
+
+  if (enrich_scope == "community" && is.null(comm))
+    stop("For enrich_scope = 'community', please supply `communities`.")
+
+  # ---- layer selection -------------------------------------------------------
   Ls <- try(multinet::layers_ml(net), silent = TRUE)
   if (inherits(Ls, "try-error") || is.null(Ls) || !length(Ls))
     stop("Could not get layers via multinet::layers_ml(net).")
   Ls <- as.character(Ls)
-  layers <- if (is.null(layer_order)) Ls else {
+  layers <- if (is.null(layer_order)) {
+    Ls
+  } else {
     keep <- intersect(as.character(layer_order), Ls)
-    if (!length(keep)) stop("None of the requested layers are present in 'net'.")
+    if (!length(keep))
+      stop("None of the requested layers are present in 'net'.")
     keep
   }
 
-  # ---- igraph list ----
+  # ---- igraph list -----------------------------------------------------------
   glist <- try(as.list(net), silent = TRUE)
   if (inherits(glist, "try-error") || !is.list(glist))
     stop("Could not coerce 'net' to list of igraphs via as.list(net).")
   if (!is.null(names(glist)) && any(names(glist) == "_flat_"))
     glist <- glist[names(glist) != "_flat_"]
 
-  # ---- run folder ----
+  # ---- run folder ------------------------------------------------------------
   .ensure_dir(results_dir)
   if (is.null(run_name) || !nzchar(run_name))
     run_name <- paste0("gprofiler_multinet_", .stamp())
@@ -283,7 +310,7 @@ gp_enrich_multinet <- function(
   if (isTRUE(verbose))
     message("Run folder: ", normalizePath(run_dir, winslash = "/", mustWork = FALSE))
 
-  # ---- background logic ----
+  # ---- background logic ------------------------------------------------------
   if (!is.null(custom_bg) && domain_scope != "custom") {
     message("custom_bg provided: switching domain_scope to 'custom'.")
     domain_scope <- "custom"
@@ -291,79 +318,172 @@ gp_enrich_multinet <- function(
   if (identical(domain_scope, "custom") && is.null(custom_bg))
     stop("domain_scope='custom' requires a non-NULL 'custom_bg' gene vector.")
 
-  by_layer <- stats::setNames(vector("list", length(layers)), layers)
-  summary_rows <- list()
+  # ---- core worker: run g:Profiler + plots for one query --------------------
+  .run_query <- function(query_genes, stub, title_prefix, layer_dir) {
+    # basic cleaning + restriction
+    query_genes <- unique(as.character(query_genes))
+    query_genes <- query_genes[nzchar(query_genes)]
 
-  # ---- iterate layers ----
-  for (ln in layers) {
-    if (isTRUE(verbose)) message("Layer: ", ln)
-    layer_dir <- if (isTRUE(per_layer_subdirs)) {
-      d <- file.path(run_dir, ln); .ensure_dir(d); d
-    } else run_dir
+    if (!is.null(restrict_genes)) {
+      query_genes <- intersect(query_genes, as.character(restrict_genes))
+    }
 
-    g <- glist[[ln]]
-    if (!inherits(g, "igraph")) { warning("  Skipping '", ln, "' (not an igraph)."); next }
-    genes <- unique(as.character(igraph::V(g)$name))
-    genes <- genes[nzchar(genes)]
-    if (!length(genes)) { warning("  Skipping '", ln, "' (no vertex names)."); next }
+    n_query <- length(query_genes)
+    if (n_query < min_query_size) {
+      if (isTRUE(verbose))
+        message("  [", title_prefix, "] only ", n_query,
+                " genes after restriction (< ", min_query_size, "); skipped.")
+      return(list(
+        n_genes      = n_query,
+        n_terms      = 0L,
+        csv_file     = NA_character_,
+        dotplot_file = NA_character_,
+        cnet_file    = NA_character_,
+        termnet_file = NA_character_
+      ))
+    }
 
-    # ---- g:Profiler enrichment ----
+    # choose how to call g:Profiler
+    use_raw_p       <- identical(correction_method, "none")
+    cm_for_gost     <- if (use_raw_p) "g_SCS" else correction_method
+    signif_for_gost <- if (use_raw_p) FALSE   else significant
+    thr_for_gost    <- if (use_raw_p) 1       else user_threshold
+
+    # g:Profiler call
     gres <- try(
       gprofiler2::gost(
-        query                       = genes,
+        query                       = query_genes,
         organism                    = organism,
         ordered_query               = FALSE,
         multi_query                 = FALSE,
-        significant                 = significant,
+        significant                 = signif_for_gost,
         exclude_iea                 = exclude_iea,
         measure_underrepresentation = FALSE,
         evcodes                     = TRUE,
-        user_threshold              = user_threshold,
-        correction_method           = correction_method,
+        user_threshold              = thr_for_gost,
+        correction_method           = cm_for_gost,
         domain_scope                = domain_scope,
         custom_bg                   = if (!is.null(custom_bg)) custom_bg else NULL,
         sources                     = sources
       ),
       silent = TRUE
     )
-    if (inherits(gres, "try-error") || is.null(gres) || is.null(gres$result) || !nrow(gres$result)) {
-      if (isTRUE(verbose)) message("  No results for '", ln, "'.")
-      by_layer[[ln]] <- list(csv_file=NA, dotplot_file=NA, cnet_file=NA, termnet_file=NA)
-      next
+
+    if (inherits(gres, "try-error") ||
+        is.null(gres) ||
+        is.null(gres$result) ||
+        !nrow(gres$result)) {
+      if (isTRUE(verbose))
+        message("  [", title_prefix, "] no g:Profiler results.")
+      return(list(
+        n_genes      = n_query,
+        n_terms      = 0L,
+        csv_file     = NA_character_,
+        dotplot_file = NA_character_,
+        cnet_file    = NA_character_,
+        termnet_file = NA_character_
+      ))
     }
 
-    # ---- CSV with intersection_genes ----
+    # Flatten + intersection_genes + simple metrics
     inter_chr <- vapply(seq_len(nrow(gres$result)), function(i) {
       s <- .extract_symbols(gres$result$intersection[[i]])
-      if (length(s)) paste(s, collapse=";") else NA_character_
+      if (length(s)) paste(s, collapse = ";") else NA_character_
     }, character(1))
+
     df_flat <- .flatten_df(gres$result)
     df_flat$intersection_genes <- inter_chr
-    csv_file <- file.path(layer_dir, paste0("gprof_", ln, ".csv"))
+
+    if (all(c("intersection_size","term_size","query_size") %in% names(df_flat))) {
+      qs <- suppressWarnings(as.numeric(df_flat$query_size))
+      ts <- suppressWarnings(as.numeric(df_flat$term_size))
+      is <- suppressWarnings(as.numeric(df_flat$intersection_size))
+      df_flat$precision <- ifelse(qs > 0, is / qs, NA_real_)
+      df_flat$recall    <- ifelse(ts > 0, is / ts, NA_real_)
+    }
+
+    # ---- p-values: standard vs "none" ---------------------------------------
+    if (use_raw_p) {
+      req <- c("intersection_size","term_size","query_size","effective_domain_size")
+      if (all(req %in% names(df_flat))) {
+        k  <- suppressWarnings(as.numeric(df_flat$intersection_size))
+        m  <- suppressWarnings(as.numeric(df_flat$term_size))
+        q  <- suppressWarnings(as.numeric(df_flat$query_size))
+        N  <- suppressWarnings(as.numeric(df_flat$effective_domain_size))
+        df_flat$p_raw <- stats::phyper(k - 1, m, N - m, q, lower.tail = FALSE)
+      } else {
+        df_flat$p_raw <- NA_real_
+      }
+      p_used <- df_flat$p_raw
+
+      # apply threshold manually if significant = TRUE
+      if (isTRUE(significant)) {
+        keep <- which(!is.na(p_used) & p_used <= user_threshold)
+        if (!length(keep)) {
+          if (isTRUE(verbose))
+            message("  [", title_prefix,
+                    "] no terms pass raw p-value threshold (", user_threshold, ").")
+          return(list(
+            n_genes      = n_query,
+            n_terms      = 0L,
+            csv_file     = NA_character_,
+            dotplot_file = NA_character_,
+            cnet_file    = NA_character_,
+            termnet_file = NA_character_
+          ))
+        }
+        df_flat     <- df_flat[keep, , drop = FALSE]
+        gres$result <- gres$result[keep, , drop = FALSE]
+        p_used      <- p_used[keep]
+      }
+    } else {
+      df_flat$p_raw <- NA_real_
+      p_used <- suppressWarnings(as.numeric(df_flat$p_value))
+    }
+
+    if (!nrow(gres$result)) {
+      if (isTRUE(verbose))
+        message("  [", title_prefix, "] (after filtering) no results remain.")
+      return(list(
+        n_genes      = n_query,
+        n_terms      = 0L,
+        csv_file     = NA_character_,
+        dotplot_file = NA_character_,
+        cnet_file    = NA_character_,
+        termnet_file = NA_character_
+      ))
+    }
+
+    # ---- CSV -----------------------------------------------------------------
+    csv_file <- file.path(layer_dir, paste0("gprof_", stub, ".csv"))
     utils::write.csv(df_flat, csv_file, row.names = FALSE)
     if (isTRUE(verbose))
-      message("  Saved CSV: ", normalizePath(csv_file, winslash = "/", mustWork = FALSE))
+      message("  [", title_prefix, "] CSV: ",
+              normalizePath(csv_file, winslash = "/", mustWork = FALSE))
 
-    # ---- gost dot plot (limited to top show_terms by p-value) ----
-    dotplot_file <- NA_character_
-    ord <- order(suppressWarnings(as.numeric(gres$result$p_value)), na.last = TRUE)
+    # ---- ordering for plots (always by p_used) ------------------------------
+    ord <- order(p_used, na.last = TRUE)
     gresTop <- gres
     gresTop$result <- gres$result[ord, , drop = FALSE]
     if (nrow(gresTop$result) > show_terms)
       gresTop$result <- head(gresTop$result, show_terms)
-    gp <- try(gprofiler2::gostplot(gresTop, capped = TRUE, interactive = FALSE), silent = TRUE)
+
+    # ---- gost dot plot ------------------------------------------------------
+    dotplot_file <- NA_character_
+    gp <- try(gprofiler2::gostplot(gresTop, capped = TRUE, interactive = FALSE),
+              silent = TRUE)
     if (!inherits(gp, "try-error")) {
-      dotplot_file <- file.path(layer_dir, paste0("gprof_dot_", ln, ".", format))
+      dotplot_file <- file.path(layer_dir, paste0("gprof_dot_", stub, ".", format))
       if (isTRUE(show_in_rstudio)) print(gp)
       ggplot2::ggsave(dotplot_file, plot = gp, width = width, height = height,
-                      dpi = if (identical(format, "pdf")) NA_integer_ else dpi, bg = "white")
+                      dpi = if (identical(format, "pdf")) NA_integer_ else dpi,
+                      bg = "white")
       if (isTRUE(verbose))
-        message("  Saved dot plot: ", normalizePath(dotplot_file, winslash = "/", mustWork = FALSE))
-    } else {
-      warning("  Could not build gostplot for '", ln, "'.")
+        message("  [", title_prefix, "] dot plot: ",
+                normalizePath(dotplot_file, winslash = "/", mustWork = FALSE))
     }
 
-    # ---- concept (term–gene) network ----
+    # ---- concept (term–gene) network ---------------------------------------
     cnet_file <- NA_character_
     if (show_terms > 0 && has_net) {
       dft <- gres$result[ord, , drop = FALSE]
@@ -399,42 +519,53 @@ gp_enrich_multinet <- function(
           )
           nodes <- rbind(nodes_term, nodes_gene)
           g_bi  <- igraph::graph_from_data_frame(
-            d = data.frame(from = edges$term_id, to = edges$gene, stringsAsFactors = FALSE),
+            d = data.frame(from = edges$term_id, to = edges$gene,
+                           stringsAsFactors = FALSE),
             directed = FALSE, vertices = nodes
           )
 
-          cnet_file <- file.path(layer_dir, paste0("gprof_cnet_", ln, ".", format))
+          cnet_file <- file.path(layer_dir, paste0("gprof_cnet_", stub, ".", format))
           pnet <- ggraph::ggraph(g_bi, layout = "fr") +
             ggraph::geom_edge_link(alpha = 0.25) +
-            ggraph::geom_node_point(ggplot2::aes(size = size,
-                                                 color = ifelse(nodes$node_type == "term", nodes$lp, NA_real_))) +
+            ggraph::geom_node_point(
+              ggplot2::aes(size = size,
+                           color = ifelse(nodes$node_type == "term", nodes$lp, NA_real_))
+            ) +
             ggplot2::scale_size_continuous(range = c(2, 9), guide = "none") +
-            ggplot2::scale_color_viridis_c(na.value = "grey60", name = expression(-log[10](p))) +
-            ggraph::geom_node_text(ggplot2::aes(label = label),
-                                   size = 3, color = "black", check_overlap = TRUE) +
-            ggplot2::labs(title = paste0("Term–gene concept network: ", ln)) +
+            ggplot2::scale_color_viridis_c(na.value = "grey60",
+                                           name = expression(-log[10](p))) +
+            ggraph::geom_node_text(
+              ggplot2::aes(label = label),
+              size = 3, color = "black", check_overlap = TRUE
+            ) +
+            ggplot2::labs(title = paste0("Term–gene concept network: ", title_prefix)) +
             ggplot2::theme_minimal(base_size = 12) +
             ggplot2::theme(legend.position = "right")
 
           if (isTRUE(show_in_rstudio)) print(pnet)
           ggplot2::ggsave(cnet_file, plot = pnet, width = width, height = height,
-                          dpi = if (identical(format, "pdf")) NA_integer_ else dpi, bg = "white")
+                          dpi = if (identical(format, "pdf")) NA_integer_ else dpi,
+                          bg = "white")
           if (isTRUE(verbose))
-            message("  Saved concept network: ", normalizePath(cnet_file, winslash = "/", mustWork = FALSE))
+            message("  [", title_prefix, "] concept net: ",
+                    normalizePath(cnet_file, winslash = "/", mustWork = FALSE))
         } else if (isTRUE(verbose)) {
-          message("  No term–gene intersections to draw for '", ln, "'.")
+          message("  [", title_prefix, "] no term–gene intersections to plot.")
         }
       }
     } else if (show_terms > 0 && !has_net) {
-      warning("  Skipping concept network for '", ln, "' (need ggraph + igraph).")
+      warning("Skipping concept network for '", title_prefix,
+              "' (need ggraph + igraph).")
     }
 
-    # ---- term-only overlap network ----
+    # ---- term-only overlap network -----------------------------------------
     termnet_file <- NA_character_
     if (isTRUE(ton_show) && has_net) {
-      dfo <- head(gres$result[ord, , drop = FALSE], n = min(ton_top_terms, nrow(gres$result)))
+      dfo <- head(gres$result[ord, , drop = FALSE],
+                  n = min(ton_top_terms, nrow(gres$result)))
       if (nrow(dfo) > 0) {
-        term_list <- lapply(seq_len(nrow(dfo)), function(i) .extract_symbols(dfo$intersection[[i]]))
+        term_list <- lapply(seq_len(nrow(dfo)),
+                            function(i) .extract_symbols(dfo$intersection[[i]]))
         names(term_list) <- dfo$term_id
         ids <- dfo$term_id
 
@@ -444,7 +575,11 @@ gp_enrich_multinet <- function(
             gi <- term_list[[pair[1]]]; gj <- term_list[[pair[2]]]
             if (length(gi) && length(gj)) {
               ov <- length(intersect(gi, gj))
-              if (ov >= ton_min_overlap) { e_from <- c(e_from, pair[1]); e_to <- c(e_to, pair[2]); e_w <- c(e_w, ov) }
+              if (ov >= ton_min_overlap) {
+                e_from <- c(e_from, pair[1])
+                e_to   <- c(e_to,   pair[2])
+                e_w    <- c(e_w,    ov)
+              }
             }
           }
         }
@@ -460,10 +595,14 @@ gp_enrich_multinet <- function(
 
         g_terms <- if (length(e_from)) {
           igraph::graph_from_data_frame(
-            d = data.frame(from = e_from, to = e_to, weight = e_w, stringsAsFactors = FALSE),
+            d = data.frame(from = e_from, to = e_to, weight = e_w,
+                           stringsAsFactors = FALSE),
             directed = FALSE, vertices = term_nodes
           )
-        } else igraph::graph_from_data_frame(d = NULL, directed = FALSE, vertices = term_nodes)
+        } else {
+          igraph::graph_from_data_frame(d = NULL, directed = FALSE,
+                                        vertices = term_nodes)
+        }
 
         lay <- .layout_terms(g_terms, ton_layout)
         nodes_df <- cbind(term_nodes, data.frame(x = lay[,1], y = lay[,2]))
@@ -474,7 +613,8 @@ gp_enrich_multinet <- function(
           x2 = nodes_df$x[match(e_to,   nodes_df$id)],
           y2 = nodes_df$y[match(e_to,   nodes_df$id)]
         ) else data.frame(from=character(0), to=character(0), weight=integer(0),
-                          x1=numeric(0), y1=numeric(0), x2=numeric(0), y2=numeric(0))
+                          x1=numeric(0), y1=numeric(0),
+                          x2=numeric(0), y2=numeric(0))
 
         p_ton <- ggplot2::ggplot() +
           ggplot2::geom_segment(
@@ -489,56 +629,163 @@ gp_enrich_multinet <- function(
           ggplot2::scale_size_continuous(range = c(3, 10), guide = "none") +
           ggplot2::scale_color_viridis_c(name = expression(-log[10](p))) +
           ggplot2::geom_text(
-            data = nodes_df, ggplot2::aes(x = x, y = y, label = label),
+            data = nodes_df,
+            ggplot2::aes(x = x, y = y, label = label),
             size = 4, color = "black", vjust = -0.8
           ) +
           ggplot2::geom_text(
-            data = nodes_df, ggplot2::aes(x = x, y = y, label = k),
+            data = nodes_df,
+            ggplot2::aes(x = x, y = y, label = k),
             size = 3.8, color = "grey20", vjust = 1.8
           ) +
-          ggplot2::labs(title = paste0("Term-only overlap network: ", ln), x = "x", y = "y") +
+          ggplot2::labs(
+            title = paste0("Term-only overlap network: ", title_prefix),
+            x = "x", y = "y"
+          ) +
           ggplot2::theme_minimal(base_size = 12) +
           ggplot2::theme(plot.margin = .unit_cm(ton_margin_cm))
 
-        termnet_file <- file.path(layer_dir, paste0("gprof_termnet_", ln, ".", format))
+        termnet_file <- file.path(layer_dir, paste0("gprof_termnet_", stub, ".", format))
         if (isTRUE(show_in_rstudio)) print(p_ton)
-        ggplot2::ggsave(termnet_file, plot = p_ton, width = ton_width, height = ton_height,
-                        dpi = if (identical(format, "pdf")) NA_integer_ else dpi, bg = "white")
+        ggplot2::ggsave(termnet_file, plot = p_ton,
+                        width = ton_width, height = ton_height,
+                        dpi = if (identical(format, "pdf")) NA_integer_ else dpi,
+                        bg = "white")
         if (isTRUE(verbose))
-          message("  Saved term-only overlap network: ", normalizePath(termnet_file, winslash = "/", mustWork = FALSE))
+          message("  [", title_prefix, "] term-only net: ",
+                  normalizePath(termnet_file, winslash = "/", mustWork = FALSE))
       }
     } else if (isTRUE(ton_show) && !has_net) {
-      warning("  Skipping term-only network for '", ln, "' (need ggraph + igraph).")
+      warning("Skipping term-only network for '", title_prefix,
+              "' (need ggraph + igraph).")
     }
 
-    by_layer[[ln]] <- list(
+    list(
+      n_genes      = n_query,
+      n_terms      = nrow(gres$result),
       csv_file     = csv_file,
       dotplot_file = if (!is.na(dotplot_file)) dotplot_file else NA_character_,
       cnet_file    = if (!is.na(cnet_file))    cnet_file    else NA_character_,
       termnet_file = if (!is.na(termnet_file)) termnet_file else NA_character_
     )
-    summary_rows[[length(summary_rows)+1L]] <- data.frame(
-      layer        = ln,
-      n_genes      = length(genes),
-      n_terms      = nrow(gres$result),
-      csv_file     = csv_file,
-      dotplot_file = if (!is.na(dotplot_file)) dotplot_file else NA_character_,
-      cnet_file    = if (!is.na(cnet_file))    cnet_file    else NA_character_,
-      termnet_file = if (!is.na(termnet_file)) termnet_file else NA_character_,
+  }
+
+  # ---- main loops ------------------------------------------------------------
+  by_layer     <- stats::setNames(vector("list", length(layers)), layers)
+  summary_rows <- list()
+
+  for (ln in layers) {
+    if (isTRUE(verbose)) message("Layer: ", ln)
+
+    layer_dir <- if (isTRUE(per_layer_subdirs)) {
+      .ensure_dir(file.path(run_dir, ln))
+    } else {
+      run_dir
+    }
+
+    if (enrich_scope == "layer") {
+      g <- glist[[ln]]
+      if (!inherits(g, "igraph")) {
+        warning("  Skipping '", ln, "' (not an igraph).")
+        next
+      }
+      genes <- unique(as.character(igraph::V(g)$name))
+      genes <- genes[nzchar(genes)]
+      if (!length(genes)) {
+        warning("  Skipping '", ln, "' (no vertex names).")
+        next
+      }
+
+      res <- .run_query(genes, stub = ln, title_prefix = ln, layer_dir = layer_dir)
+
+      by_layer[[ln]] <- res
+      summary_rows[[length(summary_rows) + 1L]] <- data.frame(
+        scope        = "layer",
+        layer        = ln,
+        cid          = NA_character_,
+        n_genes      = res$n_genes,
+        n_terms      = res$n_terms,
+        csv_file     = res$csv_file,
+        dotplot_file = res$dotplot_file,
+        cnet_file    = res$cnet_file,
+        termnet_file = res$termnet_file,
+        stringsAsFactors = FALSE
+      )
+
+    } else if (enrich_scope == "community") {
+
+      comm_l <- comm[comm$layer == ln, , drop = FALSE]
+      if (!nrow(comm_l)) {
+        if (isTRUE(verbose))
+          message("  No communities for layer ", ln, "; skipped.")
+        by_layer[[ln]] <- list()
+        next
+      }
+
+      cids <- sort(unique(comm_l$cid))
+      layer_list <- list()
+
+      for (cid in cids) {
+        mod_label <- paste0("cid_", cid)
+        title     <- paste0(ln, " / ", cid)
+
+        module_dir <- .ensure_dir(file.path(layer_dir, mod_label))
+        gset <- unique(as.character(comm_l$actor[comm_l$cid == cid]))
+        gset <- gset[nzchar(gset)]
+
+        res <- .run_query(gset,
+                          stub         = paste0(ln, "_", mod_label),
+                          title_prefix = title,
+                          layer_dir    = module_dir)
+
+        layer_list[[mod_label]] <- res
+        summary_rows[[length(summary_rows) + 1L]] <- data.frame(
+          scope        = "community",
+          layer        = ln,
+          cid          = cid,
+          n_genes      = res$n_genes,
+          n_terms      = res$n_terms,
+          csv_file     = res$csv_file,
+          dotplot_file = res$dotplot_file,
+          cnet_file    = res$cnet_file,
+          termnet_file = res$termnet_file,
+          stringsAsFactors = FALSE
+        )
+      }
+
+      by_layer[[ln]] <- layer_list
+    }
+  }
+
+  # ---- manifest --------------------------------------------------------------
+  summary_df <- if (length(summary_rows)) {
+    do.call(rbind, summary_rows)
+  } else {
+    data.frame(
+      scope        = character(),
+      layer        = character(),
+      cid          = character(),
+      n_genes      = integer(),
+      n_terms      = integer(),
+      csv_file     = character(),
+      dotplot_file = character(),
+      cnet_file    = character(),
+      termnet_file = character(),
       stringsAsFactors = FALSE
     )
   }
 
-  # ---- manifest ----
-  summary_df <- if (length(summary_rows)) do.call(rbind, summary_rows) else
-    data.frame(layer=character(), n_genes=integer(), n_terms=integer(),
-               csv_file=character(), dotplot_file=character(),
-               cnet_file=character(), termnet_file=character(),
-               stringsAsFactors = FALSE)
   summary_file <- file.path(run_dir, "SUMMARY.csv")
   utils::write.csv(summary_df, summary_file, row.names = FALSE)
-  message("Saved manifest: ", normalizePath(summary_file, winslash = "/", mustWork = FALSE))
+  if (isTRUE(verbose))
+    message("Saved manifest: ",
+            normalizePath(summary_file, winslash = "/", mustWork = FALSE))
 
-  invisible(list(run_dir = run_dir, by_layer = by_layer, summary_file = summary_file))
+  invisible(list(
+    run_dir      = run_dir,
+    by_layer     = by_layer,
+    summary_file = summary_file
+  ))
 }
+
 

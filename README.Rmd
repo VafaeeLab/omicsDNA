@@ -501,7 +501,7 @@ pc_genes <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
 
 Degree_protein_coding <- get_FeatureDeg(
   net,
-  featureList = pc_list,
+  featureList = pc_genes,
   layers      = multinet::layers_ml(net),
   write_csv = T 
 )
@@ -520,59 +520,390 @@ Degree_protein_coding[,1:6]
 
 
 
-### 20) `gp_enrich_multinet()` — g:Profiler enrichment **per layer**
+### 20) `gp_enrich_multinet()` — g:Profiler enrichment **per module and per layer**
 ```r
-gp <- gp_enrich_multinet(
+
+## 1) Per-layer enrichment
+gp_layer <- gp_enrich_multinet(
+  net                = net,
+  organism           = "hsapiens",
+  sources            = c("GO:BP","REAC"),
+  layer_order        = multinet::layers_ml(net),
+  significant        = TRUE,
+  user_threshold     = 0.05,
+  correction_method  = "fdr",   
+  exclude_iea        = FALSE,
+  domain_scope       = "annotated",
+  custom_bg          = NULL,
+  show_terms         = 10,
+  results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name           = paste0("gprof_byLayer_", format(Sys.time(), "%Y%m%d_%H%M%S")),
+  per_layer_subdirs  = TRUE,
+  format             = "png",
+  width              = 9, height = 7, dpi = 300,
+  show_in_rstudio    = TRUE,
+  verbose            = TRUE,
+  ton_show           = TRUE,
+  ton_top_terms      = 10,
+  ton_min_overlap    = 1,
+  ton_layout         = "fr",
+  communities        = NULL,
+  enrich_scope       = "layer",      # <-- per layer
+  restrict_genes     = NULL,         # use all genes in each layer
+  min_query_size     = 3
+)
+
+
+
+
+## 2) Per-community enrichment
+gp_comm <- gp_enrich_multinet(
+  net                = net,
+  organism           = "hsapiens",
+  sources            = c("GO:BP","REAC"),
+  layer_order        = multinet::layers_ml(net),
+  significant        = TRUE,
+  user_threshold     = 0.05,
+  correction_method  = "none",
+  exclude_iea        = FALSE,
+  domain_scope       = "annotated",
+  custom_bg          = NULL,
+  show_terms         = 10,
+  results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name           = paste0("gprof_byCommunity_", format(Sys.time(), "%Y%m%d_%H%M%S")),
+  per_layer_subdirs  = TRUE,
+  format             = "png",
+  width              = 9, height = 7, dpi = 300,
+  show_in_rstudio    = TRUE,
+  verbose            = TRUE,
+  ton_show           = TRUE,
+  ton_top_terms      = 10,
+  ton_min_overlap    = 1,
+  ton_layout         = "fr",
+  communities        = comm,         # actor/layer/cid (or com/community)
+  enrich_scope       = "community",  # <-- per community
+  restrict_genes     = NULL,         # all genes in each community
+  min_query_size     = 3
+)
+
+
+
+
+## 3) Per-layer enrichment restricted to a specific gene list; for example, common genes between layer E1 and layerE2
+
+plot_layer_diff(
   net,
-  organism    = "hsapiens",
-  sources     = c("GO:BP","REAC"),
-  layer_order = multinet::layers_ml(net),
-  show_terms  = 8,        # top terms in dot plot
-  ton_show    = TRUE,     # build term‑only overlap network
-  ton_top_terms   = 12,
-  ton_min_overlap = 1,
-  ton_layout      = "fr",
-  format      = "png",
-  width       = 10, height = 7, dpi = 300,
+  L1 = "E1", L2 = "E2",
+  layout = "fr", edge_alpha = 0.7, 
+  save_edge_csv = TRUE, file = "diff_E1_vs_E2.png"
+)
+
+edges_diff_E1_E2 <- read_csv("omicsDNA_results/edges_diff_E1_vs_E2_2025-12-01_222225.csv")
+head(edges_diff_E1_E2)
+# A tibble: 6 × 5
+#  from  to      category weight_L1 weight_L2
+#  <chr> <chr>   <chr>        <dbl>     <dbl>
+#1 BRCA2 RNF185  only_E1      0.643    NA    
+#2 BRCA2 SF3B2   only_E1      0.676    NA    
+#3 BRCA2 CFAP298 only_E1      0.586    NA    
+#4 BRCA2 MCM10   common       0.613     0.687
+#5 BRCA2 MKI67   only_E2     NA         0.807
+#6 BRCA2 HELLS   only_E2     NA         0.690
+
+E1_E2 <- edges_diff_E1_E2$from[edges_diff_E1_E2$category == "common"] %>% unique()
+head(E1_E2)
+#[1] "BRCA2"   "BIRC5"   "AURKB"   "RNF185"  "CFAP298" "RAB22A" 
+
+gp_layer_custom <- gp_enrich_multinet(
+  net                = net,
+  organism           = "hsapiens",
+  sources            = c("GO:BP","REAC"),
+  layer_order        = multinet::layers_ml(net),
+  significant        = TRUE,
+  user_threshold     = 0.05,
+  correction_method  = "fdr",
+  exclude_iea        = FALSE,
+  domain_scope       = "annotated",
+  custom_bg          = NULL,
+  show_terms         = 10,
+  results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name           = paste0("gprof_byLayer_oxidative_", format(Sys.time(), "%Y%m%d_%H%M%S")),
+  per_layer_subdirs  = TRUE,
+  format             = "png",
+  width              = 9, height = 7, dpi = 300,
+  show_in_rstudio    = TRUE,
+  verbose            = TRUE,
+  ton_show           = TRUE,
+  ton_top_terms      = 10,
+  ton_min_overlap    = 1,
+  ton_layout         = "fr",
+  communities        = NULL,
+  enrich_scope       = "layer",
+  restrict_genes     = layerE1andE2_diff,   # <-- only these per layer
+  min_query_size     = 3
+)
+
+
+
+## 4) Per-community enrichment restricted to a specific gene list like oxidative_stress_genes
+
+pc_genes <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
+
+oxidative_stress_genes <- pc_genes[1:100]   # your custom pathway gene set
+head(oxidative_stress_genes)
+#[1] "AAR2"  "ACBD6" "ACIN1" "ADNP"  "AGO1"  "ABCB5"
+
+gp_comm_custom <- gp_enrich_multinet(
+  net                = net,
+  organism           = "hsapiens",
+  sources            = c("GO:BP","REAC"),
+  layer_order        = multinet::layers_ml(net),
+  significant        = TRUE,
+  user_threshold     = 0.05,
+  correction_method  = "fdr",
+  exclude_iea        = FALSE,
+  domain_scope       = "annotated",
+  custom_bg          = NULL,
+  show_terms         = 10,
+  results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name           = paste0("gprof_byCommunity_oxidative_", format(Sys.time(), "%Y%m%d_%H%M%S")),
+  per_layer_subdirs  = TRUE,
+  format             = "png",
+  width              = 9, height = 7, dpi = 300,
+  show_in_rstudio    = TRUE,
+  verbose            = TRUE,
+  ton_show           = TRUE,
+  ton_top_terms      = 10,
+  ton_min_overlap    = 1,
+  ton_layout         = "fr",
+  communities        = comm,                    # actor / layer / cid/com
+  enrich_scope       = "community",
+  restrict_genes     = oxidative_stress_genes,  # <-- only these per community
+  min_query_size     = 3
+)
+
+```
+
+
+
+
+
+### 21) `gsea_msigdbr_layer_pairs()` — **GSEA** (MSigDB, fgsea) across **consecutive layer pairs**
+```r
+
+## 1) Community‑scope GSEA (all genes per community per pair)
+gsea_comm <- gsea_msigdbr_layer_pairs(
+  net                  = net,
+  layer_order          = multinet::layers_ml(net),
+  communities          = comm,                      # actor / layer / cid
+  enrich_scope         = "community",              # per pair × community
+  
+  msigdb_species       = "Homo sapiens",
+  msigdb_collections   = c("H","C2","C5"),
+  msigdb_subcategories = c("CP:KEGG","GO:BP"),
+  
+  minSize              = 15,
+  maxSize              = 500,
+  nperm                = NULL,
+  
+  results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name             = "gsea_pairs_byCommunity_allGenes",
+  top_n                = 8,
+  format               = "png",
+  show_in_rstudio      = TRUE,
+  seed                 = 1,
+  verbose              = TRUE
+)
+
+
+
+## 2) Layer‑scope GSEA (all genes per layer pair)
+gsea_layer <- gsea_msigdbr_layer_pairs(
+  net                  = net,
+  layer_order          = multinet::layers_ml(net),   # traversal order
+  scores_by_layer      = NULL,                       # use vertex attributes
+  cor_attr             = c("cor","r","rho","correlation"),
+  padj_attr            = c("padj","FDR","q","adj_p","p_adj","p.adj","p_fdr"),
+  enrich_scope         = "layer",                    # one GSEA per layer pair
+
+  msigdb_species       = "Homo sapiens",
+  msigdb_collections   = c("H","C2","C5"),
+  msigdb_subcategories = c("CP:KEGG","GO:BP"),
+
+  minSize              = 15,
+  maxSize              = 500,
+  nperm                = NULL,                       # fgseaMultilevel()
+
+  results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name             = "gsea_pairs_layer_allGenes",
+  top_n                = 10,
+  format               = "png",
+  show_in_rstudio      = TRUE,
+  seed                 = 1,
+  verbose              = TRUE
+)
+
+
+
+## 3) Community‑scope GSEA restricted to a custom gene list
+
+E1_M1 <- edges_diff_E1_M1$from[edges_diff_E1_E2$category == "common"] %>% unique()
+
+gsea_comm_ox <- gsea_msigdbr_layer_pairs(
+  net                  = net,
+  layer_order          = multinet::layers_ml(net),
+  communities          = comm,
+  enrich_scope         = "community",
+  restrict_genes       = E1_M1,  
+  min_rank_genes       = 10,
+
+  msigdb_species       = "Homo sapiens",
+  msigdb_collections   = c("H","C2"),
+  msigdb_subcategories = "CP:KEGG",
+
+  minSize              = 10,
+  maxSize              = 300,
+  nperm                = NULL,
+
+  results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name             = "gsea_pairs_byCommunity_oxidativeStress",
+  top_n                = 8,
+  format               = "pdf",
+  show_in_rstudio      = TRUE,
+  seed                 = 1,
+  verbose              = TRUE
+)
+
+
+
+4) Layer‑scope GSEA restricted to a custom gene list
+gsea_layer_ox <- gsea_msigdbr_layer_pairs(
+  net                  = net,
+  layer_order          = multinet::layers_ml(net),
+  scores_by_layer      = NULL,
+  enrich_scope         = "layer",
+  restrict_genes       = oxidative_stress_genes,   # only these genes in ranking
+  min_rank_genes       = 10,
+
+  msigdb_species       = "Homo sapiens",
+  msigdb_collections   = c("H","C2"),
+  msigdb_subcategories = "CP:KEGG",
+
+  minSize              = 10,
+  maxSize              = 300,
+  nperm                = NULL,
+
+  results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name             = "gsea_pairs_layer_oxidativeStress",
+  top_n                = 12,
+  format               = "pdf",
+  show_in_rstudio      = TRUE,
+  seed                 = 1,
+  verbose              = TRUE
+)
+
+```
+
+
+
+### 22) `go_enrichment_report()` — GO (clusterProfiler) **per module and per layer**
+
+```r
+
+## 1) Per-community (all genes per community)
+go_comm <- go_enrichment_report(
+  net                      = net,
+  communities              = comm,   # detectCom() output
+  OrgDb                    = org.Hs.eg.db,
+  id_from                  = "SYMBOL",
+  ont                      = "BP",
+  enrich_scope             = "community",
+  layer_order              = multinet::layers_ml(net),
+  universe_mode            = "union",
+  pAdjustMethod            = "none",
+  pvalueCutoff             = 0.05,
+  include_barplot_multinet = FALSE,
+  cnet_showCategory        = 8,
+  cnet_left_margin_pt      = 100,
+  show_in_rstudio          = TRUE,
+  save_pdf                 = TRUE,
+  one_pdf                  = FALSE,
+  file_prefix              = "GO_BP_byCommunity",
+  out_dir                  = getOption("mlnet.results_dir","omicsDNA_results")
+)
+
+
+
+## 2) Per-layer (all genes per layer)
+go_layer <- go_enrichment_report(
+  net                      = net,
+  OrgDb                    = org.Hs.eg.db,
+  id_from                  = "SYMBOL",
+  ont                      = "BP",
+  enrich_scope             = "layer",
+  layer_order              = multinet::layers_ml(net),
+  universe_mode            = "union",
+  pAdjustMethod            = "BH",
+  pvalueCutoff             = 0.05,
+  include_barplot_multinet = FALSE,
+  cnet_showCategory        = 8,
+  cnet_left_margin_pt      = 100,
+  show_in_rstudio          = TRUE,
+  save_pdf                 = TRUE,
+  one_pdf                  = TRUE,
+  file_prefix              = "GO_BP_byLayer",
+  out_dir                  = getOption("mlnet.results_dir","omicsDNA_results")
+)
+
+
+
+
+## 3) Per-community enrichment restricted to a specific gene list
+
+go_comm_ox <- go_enrichment_report(
+  net                      = net,
+  communities              = comm,
+  restrict_genes           = c("RHCG","SPRR1A","SPRR2A","SPRR3","KRT13","KRT4","CRNN"),
+  OrgDb                    = org.Hs.eg.db,
+  id_from                  = "SYMBOL",
+  ont                      = "BP",
+  enrich_scope             = "community",
+  layer_order              = multinet::layers_ml(net),
+  universe_mode            = "union",
+  pAdjustMethod            = "none",     # or "fdr", "bonferroni", "BH"
+  pvalueCutoff             = 0.05,
+  include_barplot_multinet = FALSE,
+  cnet_showCategory        = 8,
+  cnet_left_margin_pt      = 100,
+  show_in_rstudio          = TRUE,
+  save_pdf                 = TRUE,
+  one_pdf                  = FALSE,
+  file_prefix              = "customGenes",
+  out_dir                  = getOption("mlnet.results_dir","omicsDNA_results")
+)
+
+
+
+## 4) Per-layer enrichment restricted to a specific geneset like oxidative_stress_genes
+
+
+go_single <- go_enrichment_report(
+  genes           = oxidative_stress_genes,
+  OrgDb           = org.Hs.eg.db,
+  pAdjustMethod   = "none",
+  ont             = "BP",
+  file_prefix     = "demo_GO_BP_single",
   show_in_rstudio = TRUE
 )
+
 ```
 
-### 21) `go_enrichment_report()` — GO (clusterProfiler) for a vector **or** per‑layer
-```r
-## Single set (vector of symbols)
-go1 <- go_enrichment_report(
-  genes = c("RHCG","SPRR1A","SPRR2A","SPRR3","KRT13","KRT4","CRNN"),
-  OrgDb = org.Hs.eg.db, ont = "BP",
-  file_prefix = "demo_GO_BP", show_in_rstudio = TRUE
-)
 
-## Per layer (each layer’s vertex set)
-go2 <- go_enrichment_report(
-  net  = net,
-  OrgDb = org.Hs.eg.db, ont = "BP",
-  layer_order   = multinet::layers_ml(net),
-  universe_mode = "union",
-  one_pdf       = TRUE,     # stitch into one PDF
-  file_prefix   = "GO_BP_byLayer"
-)
-```
 
-### 22) `gsea_msigdbr_layer_pairs()` — **GSEA** (MSigDB, fgsea) across **consecutive layer pairs**
-```r
-gsea <- gsea_msigdbr_layer_pairs(
-  net,
-  layer_order     = multinet::layers_ml(net), # defines consecutive pairs
-  # scores_by_layer optional; defaults to vertex attrs (e.g., cor/padj)
-  collections     = c("H","CP:REACTOME"),     # MSigDB 2023+ style
-  top_n           = 10,                       # top up/down dot plots
-  format          = "png",
-  show_in_rstudio = TRUE
-)
-```
 
 ### 23) `animate_multiNet()` — interactive HTML animation
 ```r
+
 anim <- animate_multiNet(
   net,
   communities   = comm,      # data.frame: actor, layer, com
@@ -582,6 +913,7 @@ anim <- animate_multiNet(
   seed = 1
 )
 # => omicsDNA_results/multiNet_animation_<timestamp>.html
+
 ```
 
 ### 24) `filmstrip_multiNet()` — static grid (one panel per layer)
