@@ -2,11 +2,11 @@
 % Please edit documentation in R/detectCom.R
 \name{detectCom}
 \alias{detectCom}
-\title{Detect communities on a multilayer network via a layer‑collapsed supra‑graph}
+\title{Detect communities on a multilayer network via an undirected, layer‑collapsed supra‑graph}
 \usage{
 detectCom(
   net,
-  method = c("louvain", "infomap", "clique", "abacus"),
+  method = c("glouvain", "louvain", "infomap", "clique", "abacus"),
   layers = NULL,
   edgeWeight = c("count", "sum"),
   min.actors = 15,
@@ -26,44 +26,45 @@ detectCom(
 \arguments{
 \item{net}{A multilayer network compatible with \code{multinet::edges_ml()}.}
 
-\item{method}{Community detection method: one of
-\code{c("louvain","infomap","clique","abacus")}. Default \code{"louvain"}.}
+\item{method}{Community detection method. One of
+\code{c("glouvain","louvain","infomap","clique","abacus")}. Default \code{"glouvain"}.
+(Note: \code{"louvain"} is a deprecated alias for \code{"glouvain"}.)}
 
-\item{layers}{Character vector naming layers to include. Default: all
-layers present after intra‑layer filtering.}
+\item{layers}{Character vector naming layers to include. Default: all layers present
+after intra‑layer filtering.}
 
 \item{edgeWeight}{How to aggregate parallel edges across layers:
-\code{"count"} (number of layers where an edge appears) or \code{"sum"} (sum of
-edge weights across layers). Default \code{"count"}.}
+\code{"count"} (number of layers in which an edge appears) or \code{"sum"} (sum of edge weights
+across layers). Default \code{"count"}.}
 
-\item{min.actors}{Minimum number of unique actors required for a community to
-be kept (after mapping back to layers). Default \code{15}.}
+\item{min.actors}{Minimum number of unique actors required for a community to be kept
+(after mapping back to layers). Default \code{15}.}
 
-\item{min.layers}{Minimum number of \strong{distinct layers} in which a community
-must appear to be kept. Default \code{2}.}
+\item{min.layers}{Minimum number of \strong{distinct layers} in which a community must appear
+to be kept. Default \code{2}.}
 
-\item{clique.k}{For \code{method = "clique"}, minimum clique size \(k\). Default \code{3}.}
+\item{clique.k}{For \code{method = "clique"}, minimum clique size k (k‑clique union).
+Default \code{3}.}
 
-\item{seed}{Optional integer seed for Louvain/Infomap runs. Default \code{NULL}.}
+\item{seed}{Optional integer seed for glouvain/infomap runs. Default \code{NULL}.}
 
-\item{relabel_by_size}{Logical; if \code{TRUE}, relabel communities by decreasing
-size so \code{C1} is largest. Default \code{TRUE}.}
+\item{relabel_by_size}{Logical; if \code{TRUE}, relabel communities by decreasing size so \code{C1}
+is largest. Default \code{TRUE}.}
 
 \item{results_dir}{Output directory for saved artefacts. Default
 \code{getOption("mlnet.results_dir", "omicsDNA_results")}.}
 
 \item{save_to_rds}{Logical; write the assignments as an RDS file. Default \code{TRUE}.}
 
-\item{rds_file}{Optional file name for the RDS output; relative paths are
-resolved under \code{results_dir}, absolute paths are respected. Default \code{NULL}
-(auto‑named).}
+\item{rds_file}{Optional file name for the RDS output; relative paths are resolved
+under \code{results_dir}, absolute paths are respected. Default \code{NULL} (auto‑named).}
 
 \item{write_csv}{Logical; additionally write a CSV of assignments. Default \code{FALSE}.}
 
 \item{csv_prefix}{Basename prefix for CSV files. Default \code{"communities"}.}
 
-\item{write_summary_csv}{Logical; write a summary CSV (community size and
-layer span). Default \code{TRUE}.}
+\item{write_summary_csv}{Logical; write a summary CSV (community size and layer span).
+Default \code{TRUE}.}
 
 \item{verbose}{Logical; print progress and file locations. Default \code{TRUE}.}
 }
@@ -73,9 +74,8 @@ A data frame with columns:
 \item \code{actor}: actor identifier,
 \item \code{com}: community label (\code{C1}, \code{C2}, …),
 \item \code{layer}: layer name,
-\item \code{method}: the method used.
+\item \code{method}: the method used (e.g., \code{"glouvain"}).
 }
-
 The return value carries attributes:
 \itemize{
 \item \code{"community_sizes"} — named integer vector of community sizes (ordered),
@@ -84,102 +84,105 @@ The return value carries attributes:
 }
 }
 \description{
-This function performs community detection on a \strong{single, undirected supra‑graph}
-obtained by collapsing the selected layers of a multilayer network. Parallel
-edges across layers are aggregated either by \strong{presence count} (in how many
-layers an edge appears) or by \strong{weight sum} (sum of edge weights across
-layers). A community partition is then computed once on the supra‑graph and
-mapped back to each layer. Communities are labelled \code{C1}, \code{C2}, … with \code{C1}
-corresponding to the largest community by default.
+This function performs community detection on a \strong{single, layer‑collapsed supra‑graph}
+obtained by aggregating the selected layers of a multilayer network. \strong{By construction,
+the supra‑graph is undirected}: endpoint order is canonicalised (A–B ≡ B–A) and any
+direction in the input is \strong{ignored}. Parallel edges across layers are aggregated by
+either \strong{presence count} (in how many layers an edge appears) or \strong{weight sum} (sum of
+edge weights over layers). A community partition is computed once on the supra‑graph
+and then mapped back to each layer. Communities are labelled \code{C1}, \code{C2}, … with \code{C1}
+corresponding to the largest community (when \code{relabel_by_size = TRUE}).
 
-Supported methods: \code{"louvain"} (default), \code{"infomap"}, a simple \code{"clique"}
-(k‑clique union followed by connected components), and—when available—
-\code{"abacus"} via \code{multinet::abacus_ml()}.
+Supported methods:
+\itemize{
+\item \code{"glouvain"}: Louvain‑style modularity optimisation on the undirected supra‑graph
+(implemented via \code{igraph::cluster_louvain()}).
+\item \code{"louvain"}: \strong{deprecated alias} of \code{"glouvain"}; accepted for backward compatibility
+with a warning.
+\item \code{"infomap"}: flow‑based clustering via \code{igraph::cluster_infomap()}.
+\item \code{"clique"}: k‑clique union (cliques of size ≥ \code{clique.k}) followed by connected
+components.
+\item \code{"abacus"}: when available, communities are read directly from
+\code{multinet::abacus_ml()} and then filtered by \code{min.actors}/\code{min.layers}.
+}
 }
 \details{
 \strong{Input normalisation and scope}
 \itemize{
-\item Edges are retrieved from \code{net} using \code{multinet::edges_ml()}. If both
-\code{from_layer} and \code{to_layer} columns are present, only \strong{intra‑layer}
-edges are retained (\code{from_layer == to_layer}). Otherwise, a single \code{layer}
-column is used (or created as \code{"L1"} if absent).
-\item The \code{layers} argument limits the analysis to a subset of layers; by default
-all available layers are used (after intra‑layer restriction).
-\item Edge weights are taken from the first column found among
-\code{c("weight","Weight","w","value","score")}. If none is found, weights
-default to \code{1} per edge.
+\item Edges are retrieved from \code{net} using \code{multinet::edges_ml()}. If both \code{from_layer} and
+\code{to_layer} exist, only \emph{intra‑layer} edges are retained (\code{from_layer == to_layer});
+otherwise a single \code{layer} column is used (or created as \code{"L1"} if absent).
+\item \code{layers} restricts analysis to a subset of layers; by default, all available layers
+after the intra‑layer restriction are used.
+\item Edge weights are taken from the first present of
+\code{c("weight","Weight","w","value","score")}; if none is found, weights default to \code{1}.
 }
 
-\strong{Supra‑graph construction}
+\strong{Supra‑graph construction (always undirected)}
 \itemize{
-\item For each selected layer, edges are reduced to \verb{(from, to, weight)}, then
-endpoint order is canonicalised (\code{from = pmin(from, to)},
-\code{to = pmax(from, to)}), so the supra‑graph is undirected.
-\item If \code{edgeWeight = "count"}, an edge’s weight equals the \strong{number of distinct
-layers} in which that undirected pair appears. If \code{edgeWeight = "sum"},
-weights are \strong{summed across layers}. The supra‑graph is built with
-\code{igraph::graph_from_data_frame()} and simplified with \code{weight = "sum"}.
+\item For each selected layer, edges are reduced to \verb{(from, to, weight)} and endpoint order
+is canonicalised (\code{from = pmin(from, to)}, \code{to = pmax(from, to)}), so the supra‑graph
+is \strong{undirected} even if the original multilayer network was directed.
+\item If \code{edgeWeight = "count"}, an edge’s weight is the number of \strong{distinct layers} in
+which that undirected pair occurs. If \code{edgeWeight = "sum"}, weights are summed across
+layers. The supra‑graph is built with \code{igraph::graph_from_data_frame()} and simplified
+with \code{weight = "sum"}.
 }
 
 \strong{Community detection methods}
 \itemize{
-\item \code{"louvain"}: modularity maximisation via \code{igraph::cluster_louvain()} using
-supra‑graph edge weights.
-\item \code{"infomap"}: flow‑based clustering via \code{igraph::cluster_infomap()} using
-supra‑graph edge weights.
-\item \code{"clique"}: compute all cliques of size ≥ \code{clique.k} on the supra‑graph,
-connect every pair of actors co‑occurring in any such clique (k‑clique
-union), and take connected components as communities. This is a pragmatic
-fallback and may be costly for dense graphs and large \code{k}.
-\item \code{"abacus"}: if \code{multinet::abacus_ml()} is exported in your \code{multinet} build,
-community assignments are obtained directly from ABACUS, then \strong{filtered}
-by \code{min.actors} and \code{min.layers} (after any layer subsetting). The same
-relabelling and file‑output logic is applied.
+\item \code{"glouvain"}: calls \code{igraph::cluster_louvain()} with supra‑graph edge weights.
+\item \code{"infomap"}: calls \code{igraph::cluster_infomap()} with supra‑graph edge weights.
+\item \code{"clique"}: enumerates all cliques of size ≥ \code{clique.k}; connects every pair of actors
+that co‑occur in any such clique (k‑clique union); returns connected components as
+communities. This can be expensive for dense graphs and larger \code{clique.k}.
+\item \code{"abacus"}: if available in your \code{multinet} build, community assignments are obtained
+from \code{abacus_ml()} and then \strong{filtered} by \code{min.actors} and \code{min.layers} after any
+layer subsetting; the same relabelling and output logic applies.
 }
 
-\strong{Mapping back to layers and filtering}
+\strong{Mapping back to layers & filtering}
 \itemize{
-\item After detecting communities on the supra‑graph, assignments are mapped back
-to each selected layer by keeping only actors that actually appear in that
-layer’s edges. Communities are then \strong{filtered} to retain only those
-meeting both criteria: at least \code{min.actors} unique actors (pooled across
-all selected layers) and presence in at least \code{min.layers} \strong{distinct}
-layers.
+\item After detection on the supra‑graph, assignments are mapped back to each layer by
+retaining only actors that appear in that layer’s edges. Communities are then
+\strong{filtered} to keep those with at least \code{min.actors} unique actors (pooled across the
+selected layers) and present in at least \code{min.layers} \strong{distinct} layers.
+\item For \code{"clique"}, note the distinction: \code{clique.k} controls \emph{how} communities are formed
+(cohesion threshold), whereas \code{min.actors}/\code{min.layers} control \emph{which} detected
+communities are retained.
 }
 
-\strong{Reproducibility and labels}
+\strong{Reproducibility & labels}
 \itemize{
-\item If \code{seed} is provided, the random seed is set before running Louvain or
-Infomap. (Note that some implementations may still exhibit mild
-non‑determinism.) When \code{relabel_by_size = TRUE}, community IDs are re‑coded
-so that \code{C1} is largest, \code{C2} next, and so on.
+\item If \code{seed} is provided, the random seed is set before running glouvain/infomap (mild
+non‑determinism may persist depending on BLAS/threading). When \code{relabel_by_size = TRUE},
+community IDs are recoded so that \code{C1} is largest, \code{C2} next, etc.
 }
 
 \strong{Persistence}
 \itemize{
-\item When \code{save_to_rds = TRUE}, the assignments are written to
-\code{file.path(results_dir, sprintf("communities_\%s_\%s_<timestamp>.rds", tolower(method), tolower(edgeWeight)))}. If \code{write_csv = TRUE}, a CSV with
-the same basename is also produced. If \code{write_summary_csv = TRUE}, an
-additional CSV summarises each community’s size and layer span.
+\item When \code{save_to_rds = TRUE}, an RDS is written under \code{results_dir} with a timestamped
+name derived from the method and edge‑weight aggregation. If \code{write_csv = TRUE}, a CSV
+of assignments is also produced. If \code{write_summary_csv = TRUE}, a per‑community summary
+(size and layer span) is saved.
 }
 }
 \section{Practical notes}{
 
 \itemize{
-\item Cross‑layer edges (if present) are ignored; only intra‑layer edges contribute
-to the supra‑graph and to per‑layer mappings.
+\item Cross‑layer edges (if present) are ignored; only intra‑layer edges contribute to both
+the supra‑graph and per‑layer mappings.
 \item If no weight column is detected, all edges are treated as weight \code{1}.
-\item The \code{"clique"} method may be computationally expensive for dense graphs or
-larger \code{clique.k} due to clique enumeration.
+\item \code{"clique"} may be computationally expensive for dense graphs or larger \code{clique.k}.
 }
 }
 
 \examples{
 \dontrun{
-# Louvain on all layers; edge weight = number of layers in which an edge appears
+# Glouvain (Louvain‑style) on all layers; edge weight = count of layers
 comm <- detectCom(
   net,
-  method      = "louvain",
+  method      = "glouvain",
   edgeWeight  = "count",
   min.actors  = 15,
   min.layers  = 2,
@@ -189,15 +192,23 @@ comm <- detectCom(
   verbose     = TRUE
 )
 
-# Clique-based communities using k = 4, focusing on selected layers
+# Backward‑compatible alias (deprecated): will warn and run as glouvain
+comm2 <- detectCom(net, method = "louvain")
+
+# Clique‑based communities using k = 4; retain communities with >= 20 actors and in >= 2 layers
 comm_clq <- detectCom(
   net,
-  method     = "clique",
-  layers     = c("GroupA","GroupB"),
-  clique.k   = 4,
-  edgeWeight = "sum",
+  method      = "clique",
+  clique.k    = 4,
+  min.actors  = 20,
+  min.layers  = 2,
+  edgeWeight  = "sum",
   write_summary_csv = TRUE
 )
+
+# Infomap with selected layers
+sel <- c("Endothelium","Immune","N.LoH")
+comm_infomap <- detectCom(net, method = "infomap", layers = sel, edgeWeight = "count")
 }
 
 }

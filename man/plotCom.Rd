@@ -32,164 +32,134 @@ plotCom(
 )
 }
 \arguments{
-\item{net}{A \code{multinet::ml.network} to be plotted (must be compatible with
-\code{multinet::edges_ml()} and the multilayer \code{plot()} method).}
+\item{net}{A \code{multinet::ml.network}. Must be compatible with
+\code{multinet::edges_ml()} and the multilayer \code{plot()} method.}
 
-\item{communities}{A data frame containing at least \code{actor} and \code{layer}, plus
-one of \code{cid}, \code{com}, or \code{community} indicating community membership.}
+\item{communities}{\code{data.frame} with at least \code{actor} and \code{layer}, plus one of
+\code{cid}, \code{com}, or \code{community} describing community membership.}
 
-\item{layout}{Character; multilayer layout to use: \code{"multiforce"} (force‑
-directed; supports \code{gravity}) or \code{"circular"}. Default \code{c("multiforce","circular")}
-(matched to \code{"multiforce"}).}
+\item{layout}{Character; \code{"multiforce"} (force‑directed; supports \code{gravity})
+or \code{"circular"}. Default \code{c("multiforce","circular")} (matched to \code{"multiforce"}).}
 
-\item{layersToPlot}{Optional character vector selecting which layers to draw.
-By default, plots the intersection of layers present in \code{communities} and
-in the network.}
+\item{layersToPlot}{Optional character vector of layer names to draw. If
+\code{NULL}, plots the intersection of layers present in \code{communities} and in
+the network.}
 
-\item{grid}{\code{NULL} (automatic near‑square arrangement) or an integer vector
-\code{c(nrow, ncol)} specifying the panel grid. Default \code{NULL}.}
+\item{grid}{\code{NULL} (auto near‑square) or integer vector \code{c(nrow, ncol)}.}
 
-\item{vertex.size}{Numeric; node size passed to the plotting backend.
-Default \code{5}.}
+\item{vertex.size}{Numeric; node size passed to the plotting backend. Default \code{5}.}
 
-\item{vertex.cex}{Numeric; node size multiplier passed to the plotting
-backend. Default \code{1.2}.}
+\item{vertex.cex}{Numeric; node size multiplier. Default \code{1.2}.}
 
-\item{show.labels}{Logical; show vertex labels (\code{TRUE}) or suppress them
-(\code{FALSE}, default). Internally this toggles \code{vertex.labels}.}
+\item{show.labels}{Logical; whether to show vertex labels. Default \code{FALSE}.}
 
-\item{gravity}{Numeric in roughly \verb{[0, 1]}; attraction strength for the
-multiforce layout. Ignored when \code{layout = "circular"}. Default \code{0.3}.}
+\item{gravity}{Numeric (roughly \verb{[0, 1]}); attraction for multiforce layout.
+Ignored when \code{layout = "circular"}. Default \code{0.3}.}
 
-\item{seed}{Optional integer seed for reproducible layout initialisation.
-Default \code{NULL}.}
+\item{seed}{Optional integer seed for reproducible layout initialisation. Default \code{NULL}.}
 
 \item{results_dir}{Directory where outputs are written. Default
 \code{getOption("mlnet.results_dir", "omicsDNA_results")}.}
 
-\item{show_in_rstudio}{Logical; if \code{TRUE} (default), draw to the current
-device (e.g., RStudio \emph{Plots} pane) for interactive inspection.}
+\item{show_in_rstudio}{Logical; if \code{TRUE} (default) draw to current device
+(interactive preview).}
 
 \item{save_plot}{Logical; if \code{TRUE}, save the figure to a file. Default \code{TRUE}.}
 
-\item{file}{Optional output path for the figure. If \code{NULL}, an informative
-name is constructed under \code{results_dir}. Relative paths are resolved under
-\code{results_dir}; absolute paths are respected.}
+\item{file}{Optional output path for the figure. If \code{NULL}, constructed under
+\code{results_dir}. Relative paths are resolved under \code{results_dir}; absolute paths are respected.}
 
 \item{format}{Image format for the saved figure: \code{"png"} or \code{"pdf"}. Default
 \code{c("png","pdf")} (matched to \code{"png"}).}
 
 \item{width, height}{Numeric dimensions of the saved figure. Interpreted in
-\code{units} for PNG and in inches for PDF. Defaults \code{10} × \code{8}.}
+\code{units} for PNG; inches for PDF. Defaults \code{10} × \code{8}.}
 
-\item{units}{Character; units for PNG dimensions (\code{"in"}, \code{"cm"}, or \code{"mm"}).
-Default \code{"in"}. Ignored for PDF.}
+\item{units}{Character units for PNG dimensions (\code{"in"}, \code{"cm"}, or \code{"mm"}).
+Ignored for PDF. Default \code{"in"}.}
 
 \item{dpi}{Numeric; raster resolution (PNG only). Default \code{300}.}
 
 \item{save_df}{Logical; if \code{TRUE}, save the long \verb{(actor, layer, cid)} table.
 Default \code{TRUE}.}
 
-\item{df_format}{Either \code{"rds"}, \code{"csv"}, or both (e.g., \code{c("rds","csv")}).
-Default \code{"rds"}.}
+\item{df_format}{\code{"rds"}, \code{"csv"}, or both (e.g., \code{c("rds","csv")}). Default \code{"rds"}.}
 
-\item{df_file}{Optional file name for the RDS output. If relative, it is
-created under \code{results_dir}; absolute paths are respected. (For CSV, the
-base name of \code{df_file} is used under \code{results_dir}.)}
+\item{df_file}{Optional file name for the \strong{RDS} output. Relative paths are
+created under \code{results_dir}; absolute paths are respected. For CSV, the base
+name of \code{df_file} is used under \code{results_dir}.}
 
 \item{verbose}{Logical; print informative messages (dropped rows, file paths).
 Default \code{TRUE}.}
 
 \item{...}{Additional arguments forwarded to the multilayer network \code{plot()}
-method (e.g., colour palettes or edge styling parameters supported by your
-plotting backend).}
+method (e.g., colour palette or edge styling supported by your plotting backend).}
 }
 \value{
-(Invisibly) the normalised community table used for plotting with
-columns \code{actor}, \code{layer}, \code{cid}. The returned object carries attributes:
+(Invisibly) the normalised \code{data.frame} used for plotting with
+columns \code{actor}, \code{layer}, \code{cid}. The object carries attributes:
 \itemize{
-\item \code{file}: path to the saved figure (if \code{save_plot = TRUE});
-\item \code{df_file}: character vector of paths to the saved RDS/CSV (if any);
-\item \code{grid}: the panel grid used;
-\item \code{layers}: the layers actually plotted.
+\item \code{file}: path to the saved figure (if \code{save_plot = TRUE})
+\item \code{df_file}: character vector of saved RDS/CSV paths (if any)
+\item \code{grid}: the panel grid used
+\item \code{layers}: the layers actually plotted
 }
 }
 \description{
-This routine visualises community assignments on a multilayer network and
-simultaneously supports reproducible export of the figure and the underlying
-long table of assignments. By default it:
-(i) draws to the current graphics device (e.g., the RStudio \emph{Plots} pane) so
-you can inspect or manually \emph{Export}; (ii) writes a high‑resolution image to
-disk; and (iii) saves a tidy \verb{(actor, layer, cid)} table for downstream use.
+Visualise community assignments on a multilayer network while \strong{also}
+exporting (i) a high‑resolution image and (ii) a tidy long table
+\verb{(actor, layer, cid)} for downstream analyses. By default the function
+(1) draws to the current graphics device (e.g., the RStudio \emph{Plots} pane),
+(2) writes an image to disk, and (3) saves the normalised assignment table.
 }
 \details{
-\strong{What it does}
+\strong{What this function guarantees}
 \enumerate{
-\item Validates and normalises the \code{communities} table to ensure one community ID
-(\code{cid}) per \verb{(actor, layer)} pair. If multiple rows exist for the same pair,
-the first is kept (a message is printed when \code{verbose = TRUE}).
-\item Intersects the requested layers with those actually present in the network
-(queried via \code{multinet::edges_ml()}), and drops community rows whose actors
-do not appear in the corresponding layer. This prevents plotting nodes that
-are absent from the chosen layers.
-\item Computes a multilayer layout using either
-\code{multinet::layout_multiforce_ml()} (force‑directed; parameterised by
-\code{gravity}) or \code{multinet::layout_circular_ml()} (arranged on circles).
-\item Calls the multilayer network \code{plot()} method once, passing the community
-mapping as a three‑column data frame (\code{actor}, \code{layer}, \code{cid}) and laying
-out the selected layers on a user‑controlled grid of panels.
-\item Optionally duplicates the on‑screen plot to a file with
-\code{grDevices::dev.copy()} (when \code{show_in_rstudio = TRUE}) or renders directly
-to an off‑screen device (when \code{show_in_rstudio = FALSE}). It also saves the
-long community table in \code{.rds} and/or \code{.csv} format without printing it.
+\item \strong{Normalisation} — The \code{communities} input is validated and reduced to a
+single \code{cid} per \verb{(actor, layer)} pair. If duplicates exist, the first is
+kept (message shown when \code{verbose = TRUE}). The community column can be
+any of \code{cid}, \code{com}, or \code{community}. Non‑numeric labels are factor‑coded to
+integers for plotting; your original labels are unaffected upstream.
+\item \strong{Layer & actor intersection} — Only layers present in the network are
+plotted, and only actors that actually appear in those layers are kept.
+Intra‑layer edges are detected via \code{multinet::edges_ml()}; cross‑layer
+edges are discarded for the purpose of per‑layer drawing.
+\item \strong{Layout} — Choose either a force‑directed layout
+(\code{"multiforce"}, accepts \code{gravity}) or a \code{"circular"} arrangement via
+\code{multinet::layout_multiforce_ml()} / \code{layout_circular_ml()}.
+\item \strong{Grid arrangement} — Layers are laid out on a near‑square panel grid
+unless you supply \code{grid = c(nrow, ncol)}.
+\item \strong{Reproducible export} — If \code{show_in_rstudio = TRUE}, you see the plot on
+screen and the same content is copied to file via \code{grDevices::dev.copy()}.
+If \code{show_in_rstudio = FALSE}, the figure is rendered directly to an
+off‑screen device. The long \verb{(actor, layer, cid)} table is saved as RDS
+and/or CSV without printing to the console.
 }
 
-\strong{How community labels are handled}
+\strong{File naming & persistence}
 \itemize{
-\item The function accepts one of \code{cid}, \code{com}, or \code{community} in \code{communities}.
-If the column is numeric, it is used as‑is; otherwise labels are converted
-to integer IDs via factor coding for plotting purposes. This does not alter
-your original labels upstream (e.g., \code{"C1"}, \code{"C2"})—only the numeric
-encoding passed to the plotting backend.
-}
-
-\strong{Layer selection and grid arrangement}
-\itemize{
-\item If \code{layersToPlot = NULL}, the function visualises the intersection of the
-layers present in \code{communities} and in the network. Otherwise, the supplied
-subset is intersected with available layers.
-\item When \code{grid = NULL}, a near‑square arrangement is chosen automatically
-(number of rows ≈ \verb{sqrt(#layers)}); you may override with \code{grid = c(nr, nc)}.
-}
-
-\strong{Persistence and file names}
-\itemize{
-\item Figures are written under \code{results_dir} using an informative stem that
-includes the layout and number of layers, e.g.,
-\verb{plotCom_multiforce_4layers_<timestamp>.png}. Provide \code{file} to override.
-\item The long table is saved as RDS and/or CSV. When \code{df_file} is provided, it
-is honoured \strong{for the RDS} (absolute paths are respected; relative paths
-are created under \code{results_dir}). For CSV, the base name of \code{df_file}
-(without extension) is used under \code{results_dir}.
+\item Output files live under \code{results_dir} unless you pass absolute paths.
+\item If \code{file} is \code{NULL}, a descriptive stem is generated, e.g.:
+\verb{plotCom_multiforce_4layers_<timestamp>.png}.
+\item For the table, if \code{df_file} is provided, it is used for the \strong{RDS} path
+(relative paths resolved under \code{results_dir}, absolute respected). For CSV,
+the \strong{base name} of \code{df_file} (sans extension) is used under \code{results_dir}.
 }
 }
 \section{Practical notes}{
 
 \itemize{
-\item When \code{show_in_rstudio = TRUE} and \code{save_plot = TRUE}, the function clones
-the current plot to a file using \code{grDevices::dev.copy()}. To render only to
-an off‑screen file (without drawing in the Plots pane), set
-\code{show_in_rstudio = FALSE}.
-\item The function only plots actors that appear in the chosen layers of the
-network; assignments for absent actors/layers are dropped (reported when
-\code{verbose = TRUE}).
+\item To draw \strong{only} to file (without preview), set \code{show_in_rstudio = FALSE}.
+\item Assignments for actors absent from the chosen layers are dropped
+(reported when \code{verbose = TRUE}).
+\item \code{vertex.labels} is suppressed by passing \code{NA} unless \code{show.labels = TRUE}.
 }
 }
 
 \examples{
 \dontrun{
 # Minimal usage: preview in RStudio, save PNG and the long table as RDS
-plotCom(
+out <- plotCom(
   net, comm,
   layout          = "multiforce",
   gravity         = 0.3,
@@ -200,8 +170,10 @@ plotCom(
   df_format       = "rds",
   seed            = 1
 )
+attr(out, "file")     # path to the image
+attr(out, "df_file")  # path(s) to saved table(s)
 
-# Custom grid and both table formats
+# Custom layer subset, custom grid, and both table formats
 plotCom(
   net, comm,
   layersToPlot    = c("Young","Old"),
@@ -213,6 +185,6 @@ plotCom(
 
 }
 \seealso{
-\code{\link{detectCom}} for obtaining community assignments;
+\code{\link{detectCom}} for community detection;
 \code{\link{build_multiNet}} for assembling multilayer networks.
 }

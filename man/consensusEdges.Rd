@@ -96,6 +96,14 @@ If \code{as_list = FALSE}, a single tidy data frame with an additional \code{lay
 are first converted with \code{edgesFromAdjacency()} (which must be available).
 }
 
+\strong{Pre‑filter applied for list inputs (Option B)}
+\itemize{
+\item Within each iteration, \strong{remove only empty layer snapshots} (0‑row edge
+frames or 0‑edge adjacencies) and report the removal.
+\item After that, if a layer appears with ≥1 edge in \strong{< 20\%} of iterations,
+\strong{drop the layer entirely} and report it (prevents downstream raggedness).
+}
+
 \strong{How it works (per layer)}
 \enumerate{
 \item Normalise the input into a tidy table with columns \code{layer}, \code{rep}, \code{from},
@@ -155,39 +163,6 @@ Identify edges that reproducibly occur across repeated networks within each
 layer (e.g., age group, condition), then summarise their weights across
 repetitions. The procedure is domain‑agnostic and applies equally to
 co‑expression graphs, interaction networks, or infrastructure graphs.
-}
-\section{Practical tips}{
-
-\itemize{
-\item If you start from adjacencies obtained via resampling (e.g., bootstrap),
-pass the nested list of matrices directly; the function will label layers
-and repetitions deterministically from the list structure.
-\item When your repetitions are unlabelled, you can leave \code{rep_col} unset;
-the function will treat all rows as belonging to repetition \code{"1"}.
-}
-}
-
-\examples{
-\dontrun{
-## Example 1: tidy edges with explicit layer/rep columns
-df <- data.frame(
-  layer  = rep(c("A","A","B","B"), each = 3),
-  rep    = rep(c("r1","r2"), times = 6),
-  from   = c("g1","g2","g1","g1","g2","g2","g1","g3","g1","g2","g3","g1"),
-  to     = c("g2","g3","g3","g2","g3","g1","g3","g2","g2","g1","g1","g3"),
-  weight = rnorm(12)
-)
-cons_A_list <- consensusEdges(df, prop_present = 0.7, summary = "median", as_list = TRUE)
-
-## Example 2: nested list of adjacency matrices (repeat -> layer)
-## (requires edgesFromAdjacency)
-adj_list <- list(
-  `1` = list(A = diag(0, 3), B = diag(0, 3)),
-  `2` = list(A = diag(0, 3), B = diag(0, 3))
-)
-cons_df <- consensusEdges(adj_list, prop_present = 0.5, summary = "mean", as_list = FALSE)
-}
-
 }
 \seealso{
 \code{\link{edgesFromAdjacency}} for converting adjacency matrices to edge tables.

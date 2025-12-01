@@ -406,6 +406,13 @@ Eov <- analyze_edge_overlap(
 LM <- layer_metrics(net)
 
 LM$summary[, c("layer","n_nodes","n_edges","density")]
+   layer n_nodes n_edges    density
+E1    E1     675   12665 0.05567645
+E2    E2     661    8480 0.03887590
+M1    M1     654    8683 0.04066388
+M2    M2     651    8134 0.03844500
+M3    M3     639    6114 0.02999397
+M4    M4     715   28110 0.11012517
 
 ```
 
@@ -426,8 +433,19 @@ comm_annot <- annotateCom(
 )
 
 head(comm_annot)
+  actor com layer   method       GeneType
+1  AAR2  C4    E1 glouvain protein_coding
+2 ACBD6  C4    E1 glouvain protein_coding
+3 ACIN1  C5    E1 glouvain protein_coding
+4  ADNP  C2    E1 glouvain protein_coding
+5  AGO1  C2    E1 glouvain protein_coding
+6 ABCB5  C1    E1 glouvain protein_coding
+
 table(comm_annot$GeneType, useNA = "ifany")
 
+        lncRNA protein_coding 
+           308           3687 
+           
 ```
 
 
@@ -442,6 +460,17 @@ lnc_summary <- sumComFeat(
   write_csv     = TRUE
 )
 
+
+lnc_summary$by_actor %>% head()
+                          actor CIDs                 Layers n_cids n_layers
+CLLU1-AS1             CLLU1-AS1    3     E1, E2, M2, M3, M4      1        5
+ENSG00000198358 ENSG00000198358    1             E2, M2, M4      1        3
+ENSG00000224549 ENSG00000224549    1     E1, E2, M1, M3, M4      1        5
+ENSG00000224969 ENSG00000224969    2         E1, M2, M3, M4      1        4
+ENSG00000226994 ENSG00000226994    1             E1, E2, M4      1        3
+ENSG00000228826 ENSG00000228826    5 E1, E2, M1, M2, M3, M4      1        6
+
+
 attr(lnc_summary, "files")  # where the three CSVs were written
 
 # protein-coding
@@ -450,32 +479,41 @@ pc_summary <- sumComFeat(comm_annot, feature_col = "GeneType", feature_type = "p
 # multiple feature types at once
 mix_summary <- sumComFeat(comm_annot, feature_col = "GeneType", feature_type = c("lncRNA","TF"), write_csv = TRUE)
 
+
+pc_summary$by_actor %>% head()
+        actor CIDs                 Layers n_cids n_layers
+AAR2     AAR2    4 E1, E2, M1, M2, M3, M4      1        6
+ABCB5   ABCB5    1     E1, E2, M1, M2, M4      1        5
+ACBD6   ACBD6    4     E1, E2, M1, M3, M4      1        5
+ACIN1   ACIN1    5 E1, E2, M1, M2, M3, M4      1        6
+ADAM12 ADAM12    5 E1, E2, M1, M2, M3, M4      1        6
+ADNP     ADNP    2 E1, E2, M1, M2, M3, M4      1        6
+
 ```
 
 
 ### 19) `get_FeatureDeg()` — degrees (per layer / long)
 ```r
-degTF <- get_FeatureDeg(
-  net,
-  featureList = subset(commA, GeneType == "TF")$actor,
-  layers      = multinet::layers_ml(net)
-)
 
 # 1) Use any feature set you like (lncRNAs, TFs, enzymes, …)
-feat_list  <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
-head(feat_list)
-all_layers <- multinet::layers_ml(net)
 
-deg_lnc <- get_FeatureDeg(
-  net, featureList = feat_list, layers = all_layers,
-  directed = FALSE, mode = "all",
-  write_csv   = TRUE,
-  output_file = "protein_coding_degree_byLayer.csv"  # saved under getOption("mlnet.results_dir","results")
+pc_genes <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
+
+Degree_protein_coding <- get_FeatureDeg(
+  net,
+  featureList = pc_list,
+  layers      = multinet::layers_ml(net),
+  write_csv = T 
 )
 
-# 2) Protein-coding instead (no file written)
-pc_list <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
-deg_pc  <- get_FeatureDeg(net, featureList = pc_list, layers = all_layers)
+Degree_protein_coding[,1:6]
+  Layer AAR2 ACBD6 ACIN1 ADNP AGO1
+1    E1   84    74    22   70   16
+2    M4  185    31    46   45    9
+3    M3   49    10    14   67    1
+4    E2   46    25    18   49    0
+5    M1   62     9     7   89   10
+6    M2   48     0    64   19    5
 
 ```
 
