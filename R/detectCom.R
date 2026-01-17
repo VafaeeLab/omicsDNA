@@ -1,208 +1,583 @@
-# ---------------------------------------
-# 11 - detectCom
-# ---------------------------------------
-
-#' Detect communities on a multilayer network via an undirected, layer‑collapsed supra‑graph
+#' Community detection in multilayer networks (multinet)
 #'
+#' @md
 #' @description
-#' This function performs community detection on a **single, layer‑collapsed supra‑graph**
-#' obtained by aggregating the selected layers of a multilayer network. **By construction,
-#' the supra‑graph is undirected**: endpoint order is canonicalised (A–B ≡ B–A) and any
-#' direction in the input is **ignored**. Parallel edges across layers are aggregated by
-#' either **presence count** (in how many layers an edge appears) or **weight sum** (sum of
-#' edge weights over layers). A community partition is computed once on the supra‑graph
-#' and then mapped back to each layer. Communities are labelled `C1`, `C2`, … with `C1`
-#' corresponding to the largest community (when `relabel_by_size = TRUE`).
+#' Detect communities in a `multinet::ml.network` using either:
 #'
-#' Supported methods:
-#' - `"glouvain"`: Louvain‑style modularity optimisation on the undirected supra‑graph
-#'   (implemented via `igraph::cluster_louvain()`).
-#' - `"louvain"`: **deprecated alias** of `"glouvain"`; accepted for backward compatibility
-#'   with a warning.
-#' - `"infomap"`: flow‑based clustering via `igraph::cluster_infomap()`.
-#' - `"clique"`: k‑clique union (cliques of size ≥ `clique.k`) followed by connected
-#'   components.
-#' - `"abacus"`: when available, communities are read directly from
-#'   `multinet::abacus_ml()` and then filtered by `min.actors`/`min.layers`.
+#' - **Multilayer-native algorithms from the `multinet` package** (default,
+#'   `supra_graph = FALSE`):
+#'   - `multinet::glouvain_ml()`
+#'   - `multinet::infomap_ml()`
+#'   - `multinet::clique_percolation_ml()`
+#'   - `multinet::abacus_ml()`
+#'
+#' - A **layer-collapsed supra-graph approach** (`supra_graph = TRUE`) for
+#'   `method = "glouvain"`, `"infomap"`, or `"clique"`.
+#'
+#' This function standardizes outputs to a tidy edge-independent table and keeps
+#' the output structure compatible with downstream analysis:
+#'
+#' - Columns: `actor`, `com`, `layer`, `method`
+#' - Attributes:
+#'   - `community_sizes`: named integer vector (# unique actors per community)
+#'   - `layer_span`: named integer vector (# layers per community)
+#'   - `files`: list of written file paths (`rds`, `csv`, `summary_csv`)
 #'
 #' @details
-#' **Input normalisation and scope**
-#' - Edges are retrieved from `net` using `multinet::edges_ml()`. If both `from_layer` and
-#'   `to_layer` exist, only *intra‑layer* edges are retained (`from_layer == to_layer`);
-#'   otherwise a single `layer` column is used (or created as `"L1"` if absent).
-#' - `layers` restricts analysis to a subset of layers; by default, all available layers
-#'   after the intra‑layer restriction are used.
-#' - Edge weights are taken from the first present of
-#'   `c("weight","Weight","w","value","score")`; if none is found, weights default to `1`.
+#' ## Multilayer-native mode (`supra_graph = FALSE`)
+#' The community assignment is computed by calling the corresponding
+#' `multinet::*_ml()` function **directly**. Therefore, if you call:
 #'
-#' **Supra‑graph construction (always undirected)**
-#' - For each selected layer, edges are reduced to `(from, to, weight)` and endpoint order
-#'   is canonicalised (`from = pmin(from, to)`, `to = pmax(from, to)`), so the supra‑graph
-#'   is **undirected** even if the original multilayer network was directed.
-#' - If `edgeWeight = "count"`, an edge’s weight is the number of **distinct layers** in
-#'   which that undirected pair occurs. If `edgeWeight = "sum"`, weights are summed across
-#'   layers. The supra‑graph is built with `igraph::graph_from_data_frame()` and simplified
-#'   with `weight = "sum"`.
+#' ```r
+#' comm1 <- multinet::glouvain_ml(net, gamma = 1, omega = 1)
+#' comm2 <- detectCom(net, method = "glouvain",
+#'                    supra_graph = FALSE,
+#'                    glouvain_gamma = 1,
+#'                    glouvain_omega = 1,
+#'                    min.actors = 1,
+#'                    min.layers = 1,
+#'                    relabel_by_size = FALSE)
+#' ```
 #'
-#' **Community detection methods**
-#' - `"glouvain"`: calls `igraph::cluster_louvain()` with supra‑graph edge weights.
-#' - `"infomap"`: calls `igraph::cluster_infomap()` with supra‑graph edge weights.
-#' - `"clique"`: enumerates all cliques of size ≥ `clique.k`; connects every pair of actors
-#'   that co‑occur in any such clique (k‑clique union); returns connected components as
-#'   communities. This can be expensive for dense graphs and larger `clique.k`.
-#' - `"abacus"`: if available in your `multinet` build, community assignments are obtained
-#'   from `abacus_ml()` and then **filtered** by `min.actors` and `min.layers` after any
-#'   layer subsetting; the same relabelling and output logic applies.
+#' then `comm1` and `comm2` will represent the **same partition** (up to
+#' community identifier naming), because `detectCom()` delegates to
+#' `multinet::glouvain_ml()` with the same parameters.
 #'
-#' **Mapping back to layers & filtering**
-#' - After detection on the supra‑graph, assignments are mapped back to each layer by
-#'   retaining only actors that appear in that layer’s edges. Communities are then
-#'   **filtered** to keep those with at least `min.actors` unique actors (pooled across the
-#'   selected layers) and present in at least `min.layers` **distinct** layers.
-#' - For `"clique"`, note the distinction: `clique.k` controls *how* communities are formed
-#'   (cohesion threshold), whereas `min.actors`/`min.layers` control *which* detected
-#'   communities are retained.
+#' ## Supra-graph mode (`supra_graph = TRUE`)
+#' The function first **collapses** the selected layers into a single undirected
+#' graph (the *supra-graph*), then runs an `igraph` community method on that
+#' collapsed graph:
 #'
-#' **Reproducibility & labels**
-#' - If `seed` is provided, the random seed is set before running glouvain/infomap (mild
-#'   non‑determinism may persist depending on BLAS/threading). When `relabel_by_size = TRUE`,
-#'   community IDs are recoded so that `C1` is largest, `C2` next, etc.
+#' - `method = "glouvain"`  -> `igraph::cluster_louvain()`
+#' - `method = "infomap"`   -> `igraph::cluster_infomap()`
+#' - `method = "clique"`    -> k-clique union components (based on
+#'   `igraph::cliques()` + `igraph::components()`)
 #'
-#' **Persistence**
-#' - When `save_to_rds = TRUE`, an RDS is written under `results_dir` with a timestamped
-#'   name derived from the method and edge‑weight aggregation. If `write_csv = TRUE`, a CSV
-#'   of assignments is also produced. If `write_summary_csv = TRUE`, a per‑community summary
-#'   (size and layer span) is saved.
+#' Community membership is then **mapped back** to each layer.
 #'
-#' @param net        A multilayer network compatible with `multinet::edges_ml()`.
-#' @param method     Community detection method. One of
-#'   `c("glouvain","louvain","infomap","clique","abacus")`. Default `"glouvain"`.
-#'   (Note: `"louvain"` is a deprecated alias for `"glouvain"`.)
-#' @param layers     Character vector naming layers to include. Default: all layers present
-#'   after intra‑layer filtering.
-#' @param edgeWeight How to aggregate parallel edges across layers:
-#'   `"count"` (number of layers in which an edge appears) or `"sum"` (sum of edge weights
-#'   across layers). Default `"count"`.
-#' @param min.actors Minimum number of unique actors required for a community to be kept
-#'   (after mapping back to layers). Default `15`.
-#' @param min.layers Minimum number of **distinct layers** in which a community must appear
-#'   to be kept. Default `2`.
-#' @param clique.k   For `method = "clique"`, minimum clique size k (k‑clique union).
-#'   Default `3`.
-#' @param seed       Optional integer seed for glouvain/infomap runs. Default `NULL`.
-#' @param relabel_by_size Logical; if `TRUE`, relabel communities by decreasing size so `C1`
-#'   is largest. Default `TRUE`.
-#' @param results_dir Output directory for saved artefacts. Default
-#'   `getOption("mlnet.results_dir", "omicsDNA_results")`.
-#' @param save_to_rds Logical; write the assignments as an RDS file. Default `TRUE`.
-#' @param rds_file   Optional file name for the RDS output; relative paths are resolved
-#'   under `results_dir`, absolute paths are respected. Default `NULL` (auto‑named).
-#' @param write_csv  Logical; additionally write a CSV of assignments. Default `FALSE`.
-#' @param csv_prefix Basename prefix for CSV files. Default `"communities"`.
-#' @param write_summary_csv Logical; write a summary CSV (community size and layer span).
-#'   Default `TRUE`.
-#' @param verbose    Logical; print progress and file locations. Default `TRUE`.
+#' The `edgeWeight` argument controls how supra-graph edge weights are
+#' constructed across layers:
+#'
+#' - `"count"`: the supra-edge weight equals the number of layers in which the
+#'   pair appears at least once.
+#' - `"sum"`: the supra-edge weight equals the sum of per-layer edge weights.
+#'
+#' ## Filtering and relabeling
+#' After any method finishes, communities are retained only if:
+#'
+#' - `#unique_actors >= min.actors`, and
+#' - `#layers_present >= min.layers`.
+#'
+#' If `relabel_by_size = TRUE`, communities are relabeled `C1, C2, ...` ordered by
+#' decreasing community size (ties broken arbitrarily).
+#'
+#' @param net A multilayer network of class `multinet::ml.network`.
+#'
+#' @param method Community detection method. One of:
+#' - `"glouvain"` (default): generalized Louvain
+#' - `"infomap"`
+#' - `"clique"` (k-clique percolation in multilayer mode; k-clique union in supra mode)
+#' - `"abacus"`
+#' - `"louvain"` is accepted as an alias of `"glouvain"`.
+#'
+#' @param supra_graph Logical. If `FALSE` (default), run multilayer-native
+#' `multinet::*_ml()` algorithms. If `TRUE`, collapse layers into a single
+#' supra-graph and run an `igraph` method (`glouvain`, `infomap`, or `clique`).
+#'
+#' @param layers Optional character vector of layer names to include.
+#' If `NULL`, all layers are used.
+#'
+#' @param min.actors Minimum number of unique actors required to keep a community.
+#' Applied as a post-filter to all methods.
+#'
+#' @param min.layers Minimum number of layers required for a community to be kept.
+#' Applied as a post-filter to all methods.
+#'
+#' @param relabel_by_size Logical. If `TRUE` (default), relabel communities as
+#' `C1, C2, ...` ordered by decreasing community size.
+#'
+#' @param seed Optional integer seed for reproducibility. When provided, this
+#' function calls `set.seed(seed)` before invoking algorithms that may be
+#' non-deterministic.
+#'
+#' @param glouvain_gamma Resolution parameter passed to `multinet::glouvain_ml()`
+#' when `method = "glouvain"` and `supra_graph = FALSE`.
+#'
+#' @param glouvain_omega Inter-layer coupling parameter passed to
+#' `multinet::glouvain_ml()` when `method = "glouvain"` and `supra_graph = FALSE`.
+#'
+#' @param clique.k Clique size threshold.
+#' - In multilayer mode (`supra_graph = FALSE`), passed as `k` to
+#'   `multinet::clique_percolation_ml()` (must be >= 3).
+#' - In supra-graph mode (`supra_graph = TRUE`), used as the minimum clique size
+#'   in `igraph::cliques()`.
+#'
+#' @param clique.m Multilayer-only parameter passed as `m` to
+#' `multinet::clique_percolation_ml()` when `supra_graph = FALSE`.
+#' Ignored when `supra_graph = TRUE`.
+#'
+#' @param infomap_overlapping Passed to `multinet::infomap_ml()` when
+#' `method = "infomap"` and `supra_graph = FALSE`.
+#'
+#' @param infomap_directed Passed to `multinet::infomap_ml()` when
+#' `method = "infomap"` and `supra_graph = FALSE`.
+#'
+#' @param infomap_self_links Passed to `multinet::infomap_ml()` when
+#' `method = "infomap"` and `supra_graph = FALSE`.
+#'
+#' @param edgeWeight How to aggregate edge weights across layers when
+#' `supra_graph = TRUE`. One of `"count"` or `"sum"`. Ignored when
+#' `supra_graph = FALSE`.
+#'
+#' @param results_dir Output directory for optional files.
+#'
+#' @param save_to_rds Logical; save the community table to an RDS file.
+#'
+#' @param rds_file Optional RDS filename. If relative, it is created inside
+#' `results_dir`. If `NULL`, a timestamped name is generated.
+#'
+#' @param write_csv Logical; write the community table to CSV.
+#'
+#' @param csv_prefix Prefix used for CSV and summary CSV files.
+#'
+#' @param write_summary_csv Logical; write a small community summary CSV
+#' (community id, size, span).
+#'
+#' @param verbose Logical; print progress messages.
 #'
 #' @return
 #' A data frame with columns:
-#' \itemize{
-#'   \item `actor`: actor identifier,
-#'   \item `com`: community label (`C1`, `C2`, …),
-#'   \item `layer`: layer name,
-#'   \item `method`: the method used (e.g., `"glouvain"`).
-#' }
-#' The return value carries attributes:
-#' \itemize{
-#'   \item `"community_sizes"` — named integer vector of community sizes (ordered),
-#'   \item `"layer_span"`      — named integer vector of number of layers per community,
-#'   \item `"files"`           — named list of output paths (if artefacts were written).
-#' }
 #'
-#' @section Practical notes:
-#' - Cross‑layer edges (if present) are ignored; only intra‑layer edges contribute to both
-#'   the supra‑graph and per‑layer mappings.
-#' - If no weight column is detected, all edges are treated as weight `1`.
-#' - `"clique"` may be computationally expensive for dense graphs or larger `clique.k`.
+#' - `actor`: actor (gene) identifier
+#' - `com`: community identifier (`C1`, `C2`, ... if relabeled)
+#' - `layer`: layer name
+#' - `method`: method used (e.g. `"glouvain"`)
+#'
+#' with attributes `community_sizes`, `layer_span`, and `files`.
 #'
 #' @examples
-#' \dontrun{
-#' # Glouvain (Louvain‑style) on all layers; edge weight = count of layers
-#' comm <- detectCom(
+#' # -------------------------------------------------------------------------
+#' # Minimal reproducible examples using igraph objects (one graph per layer)
+#' # -------------------------------------------------------------------------
+#'
+#' # Build a tiny 2-layer multiplex from igraph graphs
+#' g1 <- igraph::graph_from_data_frame(
+#'   data.frame(from = c("a","b","c"), to = c("b","c","d"), w_ = c(1,1,1)),
+#'   directed = FALSE
+#' )
+#' g2 <- igraph::graph_from_data_frame(
+#'   data.frame(from = c("a","a","d"), to = c("c","d","e"), w_ = c(1,1,1)),
+#'   directed = FALSE
+#' )
+#'
+#' net <- multinet::ml_empty()
+#' multinet::add_igraph_layer_ml(net, g1, name = "E1")
+#' multinet::add_igraph_layer_ml(net, g2, name = "E2")
+#'
+#' # -------------------------
+#' # GLouvain (multinet) mode
+#' # -------------------------
+#' comm_gl_mn <- detectCom(
+#'   net,
+#'   method         = "glouvain",
+#'   supra_graph    = FALSE,
+#'   glouvain_gamma = 1,
+#'   glouvain_omega = 1,
+#'   min.actors     = 1,
+#'   min.layers     = 1,
+#'   relabel_by_size = FALSE,
+#'   seed           = 1,
+#'   save_to_rds    = FALSE
+#' )
+#'
+#' # Direct call (should match the same partition, up to naming)
+#' comm_gl_direct <- multinet::glouvain_ml(net, gamma = 1, omega = 1)
+#'
+#' # -------------------------
+#' # GLouvain (supra-graph) mode
+#' # -------------------------
+#' comm_gl_supra <- detectCom(
 #'   net,
 #'   method      = "glouvain",
+#'   supra_graph = TRUE,
 #'   edgeWeight  = "count",
-#'   min.actors  = 15,
-#'   min.layers  = 2,
+#'   min.actors  = 1,
+#'   min.layers  = 1,
 #'   seed        = 1,
-#'   save_to_rds = TRUE,
-#'   write_csv   = FALSE,
-#'   verbose     = TRUE
+#'   save_to_rds = FALSE
 #' )
 #'
-#' # Backward‑compatible alias (deprecated): will warn and run as glouvain
-#' comm2 <- detectCom(net, method = "louvain")
-#'
-#' # Clique‑based communities using k = 4; retain communities with >= 20 actors and in >= 2 layers
-#' comm_clq <- detectCom(
+#' # -------------------------
+#' # Clique percolation (multinet) mode: clique.k + clique.m
+#' # -------------------------
+#' comm_clq_mn <- detectCom(
 #'   net,
 #'   method      = "clique",
-#'   clique.k    = 4,
-#'   min.actors  = 20,
-#'   min.layers  = 2,
-#'   edgeWeight  = "sum",
-#'   write_summary_csv = TRUE
+#'   supra_graph = FALSE,
+#'   clique.k    = 3,
+#'   clique.m    = 1,
+#'   min.actors  = 1,
+#'   min.layers  = 1,
+#'   save_to_rds = FALSE
 #' )
 #'
-#' # Infomap with selected layers
-#' sel <- c("Endothelium","Immune","N.LoH")
-#' comm_infomap <- detectCom(net, method = "infomap", layers = sel, edgeWeight = "count")
+#' # -------------------------
+#' # Clique (supra-graph) mode: clique.m ignored
+#' # -------------------------
+#' comm_clq_supra <- detectCom(
+#'   net,
+#'   method      = "clique",
+#'   supra_graph = TRUE,
+#'   clique.k    = 3,
+#'   edgeWeight  = "count",
+#'   min.actors  = 1,
+#'   min.layers  = 1,
+#'   save_to_rds = FALSE
+#' )
+#'
+#' # -------------------------
+#' # Infomap (multinet) mode: infomap_* parameters
+#' # -------------------------
+#' comm_info_mn <- detectCom(
+#'   net,
+#'   method              = "infomap",
+#'   supra_graph         = FALSE,
+#'   infomap_overlapping = FALSE,
+#'   infomap_directed    = FALSE,
+#'   infomap_self_links  = TRUE,
+#'   min.actors          = 1,
+#'   min.layers          = 1,
+#'   seed                = 1,
+#'   save_to_rds         = FALSE
+#' )
+#'
+#' # -------------------------
+#' # Infomap (supra-graph) mode
+#' # -------------------------
+#' comm_info_supra <- detectCom(
+#'   net,
+#'   method      = "infomap",
+#'   supra_graph = TRUE,
+#'   edgeWeight  = "sum",
+#'   min.actors  = 1,
+#'   min.layers  = 1,
+#'   seed        = 1,
+#'   save_to_rds = FALSE
+#' )
+#'
+#' # -------------------------
+#' # ABACUS (multinet) mode
+#' # -------------------------
+#' comm_abacus <- detectCom(
+#'   net,
+#'   method      = "abacus",
+#'   supra_graph = FALSE,
+#'   min.actors  = 1,
+#'   min.layers  = 1,
+#'   save_to_rds = FALSE
+#' )
+#'
+#' # -------------------------------------------------------------------------
+#' # Example using an existing list of igraph objects on disk (your workflow)
+#' # -------------------------------------------------------------------------
+#' \dontrun{
+#' setwd("~/Abir/test_data1/")
+#' load("igraph_objects.RData")  # loads graph_list_A
+#'
+#' # Build ml.network from your igraph list (any equivalent builder works)
+#' net_A <- multinet::ml_empty()
+#' for (ln in names(graph_list_A)) {
+#'   g <- graph_list_A[[ln]]
+#'   # OPTIONAL: if you want weighted glouvain in multinet, ensure edge attr w_ exists:
+#'   # igraph::E(g)$w_ <- igraph::E(g)$correlation
+#'   multinet::add_igraph_layer_ml(net_A, g, name = ln)
 #' }
 #'
-#' @seealso
-#'   \code{\link{build_multiNet}} to assemble multilayer graphs,
-#'   \code{\link{consensusEdges}} for robust per‑layer edges,
-#'   \code{\link{add_network_attributes}} to enrich networks prior to clustering.
+#' # Multilayer glouvain (multinet)
+#' comm_ml <- detectCom(net_A, method = "glouvain",
+#'                      supra_graph = FALSE,
+#'                      glouvain_gamma = 1,
+#'                      glouvain_omega = 1,
+#'                      min.actors = 15,
+#'                      min.layers = 2,
+#'                      seed = 1)
 #'
-#' @importFrom multinet edges_ml
-#' @importFrom igraph graph_from_data_frame simplify cluster_louvain cluster_infomap cliques components E V membership ecount
-#' @importFrom utils write.csv
+#' # Direct call (compare partitions; labels may differ if relabel_by_size=TRUE)
+#' comm_direct <- multinet::glouvain_ml(net_A, gamma = 1, omega = 1)
+#'
+#' # Supra-graph glouvain (legacy-style collapse)
+#' comm_supra <- detectCom(net_A, method = "glouvain",
+#'                         supra_graph = TRUE,
+#'                         edgeWeight  = "count",
+#'                         min.actors  = 15,
+#'                         min.layers  = 2,
+#'                         seed        = 1)
+#' }
+#'
+#' @importFrom multinet layers_ml ml_empty add_igraph_layer_ml as.igraph
+#' @importFrom multinet edges_ml glouvain_ml infomap_ml clique_percolation_ml abacus_ml
+#' @importFrom igraph graph_from_data_frame simplify cliques components cluster_louvain cluster_infomap V E
 #' @importFrom stats aggregate
 #' @export
-detectCom <- function(net,
-                      method            = c("glouvain","louvain","infomap","clique","abacus"),
-                      layers            = NULL,
-                      edgeWeight        = c("count","sum"),
-                      min.actors        = 15,
-                      min.layers        = 2,
-                      clique.k          = 3,
-                      seed              = NULL,
-                      relabel_by_size   = TRUE,
-                      results_dir       = getOption("mlnet.results_dir","omicsDNA_results"),
-                      save_to_rds       = TRUE,
-                      rds_file          = NULL,
-                      write_csv         = FALSE,
-                      csv_prefix        = "communities",
-                      write_summary_csv = TRUE,
-                      verbose           = TRUE) {
+detectCom <- function(
+    net,
+    method              = c("glouvain","louvain","infomap","clique","abacus"),
+    supra_graph         = FALSE,
+    layers              = NULL,
+    min.actors          = 15,
+    min.layers          = 2,
+    relabel_by_size     = TRUE,
+    seed                = NULL,
+    glouvain_gamma      = 1,
+    glouvain_omega      = 1,
+    clique.k            = 3,
+    clique.m            = 1,
+    infomap_overlapping = FALSE,
+    infomap_directed    = FALSE,
+    infomap_self_links  = TRUE,
+    edgeWeight          = c("count","sum"),
+    results_dir         = getOption("mlnet.results_dir","omicsDNA_results"),
+    save_to_rds         = TRUE,
+    rds_file            = NULL,
+    write_csv           = FALSE,
+    csv_prefix          = "communities",
+    write_summary_csv   = TRUE,
+    verbose             = TRUE
+) {
 
-  # ---- method/args normalization ----
-  method     <- match.arg(method)
+  # ---- normalize and validate ----
+  method <- match.arg(method)
   if (identical(method, "louvain")) {
     warning("`method = \"louvain\"` is deprecated; use `method = \"glouvain\"`.", call. = FALSE)
     method <- "glouvain"
   }
   edgeWeight <- match.arg(edgeWeight)
-  stopifnot(is.numeric(min.actors), min.actors >= 1,
-            is.numeric(min.layers), min.layers >= 1)
-  if (method == "clique") stopifnot(is.numeric(clique.k), clique.k >= 2)
+
+  stopifnot(is.numeric(min.actors), length(min.actors) == 1L, min.actors >= 1,
+            is.numeric(min.layers), length(min.layers) == 1L, min.layers >= 1)
+
+  stopifnot(is.logical(relabel_by_size), length(relabel_by_size) == 1L,
+            is.logical(supra_graph), length(supra_graph) == 1L,
+            is.logical(verbose), length(verbose) == 1L)
+
+  stopifnot(is.numeric(glouvain_gamma), length(glouvain_gamma) == 1L, glouvain_gamma > 0,
+            is.numeric(glouvain_omega), length(glouvain_omega) == 1L, glouvain_omega >= 0)
+
+  if (method == "clique") {
+    stopifnot(is.numeric(clique.k), length(clique.k) == 1L, clique.k >= 3,
+              is.numeric(clique.m), length(clique.m) == 1L, clique.m >= 1)
+  }
+
+  stopifnot(is.logical(infomap_overlapping), length(infomap_overlapping) == 1L,
+            is.logical(infomap_directed), length(infomap_directed) == 1L,
+            is.logical(infomap_self_links), length(infomap_self_links) == 1L)
 
   # ---- helpers ----
   .ensure_dir <- function(d) if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
   .is_abs     <- function(p) grepl("^(/|[A-Za-z]:[\\/])", p)
-  .sanitize   <- function(s) gsub("[^[:alnum:]_.-]+", "_", s)
-  .pick <- function(cands, nms) { z <- cands[cands %in% nms]; if (length(z)) z[1] else NA_character_ }
+  .pick       <- function(cands, nms) { z <- cands[cands %in% nms]; if (length(z)) z[1] else NA_character_ }
 
-  # ---- 0) Pull all multilayer edges once ----
+  # Subset layers by rebuilding a temporary ml.network (so the detection itself
+  # only sees the requested layers).
+  .subset_layers_ml <- function(n, layers_vec) {
+    if (is.null(layers_vec)) return(n)
+    avail <- try(multinet::layers_ml(n), silent = TRUE)
+    if (inherits(avail, "try-error") || is.null(avail)) return(n)
+
+    layers_vec <- intersect(as.character(layers_vec), as.character(avail))
+    if (!length(layers_vec)) stop("No layers available after intersection with requested `layers`.")
+
+    # no-op if already all
+    if (length(layers_vec) == length(avail) && all(sort(layers_vec) == sort(avail))) return(n)
+
+    n2 <- multinet::ml_empty()
+    for (ly in layers_vec) {
+      g <- multinet::as.igraph(n, layers = ly, merge.actors = TRUE, all.actors = FALSE)
+      multinet::add_igraph_layer_ml(n2, g, name = ly)
+    }
+    n2
+  }
+
+  # Build and return the standardized result + write optional files.
+  .finalize_result <- function(res_df, size_by, span_by, method_used, mode_tag, weight_tag = NULL) {
+    res_df$method <- method_used
+
+    files <- list()
+    .ensure_dir(results_dir)
+    stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
+
+    # Filenames include mode to avoid accidental overwrites when comparing
+    # multilayer-native vs supra-graph runs.
+    if (is.null(weight_tag)) {
+      base <- sprintf("%s_%s_%s_%s", csv_prefix, tolower(method_used), mode_tag, stamp)
+    } else {
+      base <- sprintf("%s_%s_%s_%s_%s", csv_prefix, tolower(method_used), mode_tag, tolower(weight_tag), stamp)
+    }
+
+    if (isTRUE(save_to_rds)) {
+      if (is.null(rds_file)) {
+        rds_file_use <- paste0(base, ".rds")
+      } else {
+        rds_file_use <- rds_file
+      }
+      if (!.is_abs(rds_file_use)) rds_file_use <- file.path(results_dir, rds_file_use)
+      saveRDS(res_df, rds_file_use)
+      files$rds <- rds_file_use
+      if (verbose) message("Saved RDS: ", normalizePath(rds_file_use, winslash = "/", mustWork = FALSE))
+    }
+
+    if (isTRUE(write_csv)) {
+      csv_file <- file.path(results_dir, paste0(base, ".csv"))
+      utils::write.csv(res_df, csv_file, row.names = FALSE)
+      files$csv <- csv_file
+      if (verbose) message("Saved CSV: ", normalizePath(csv_file, winslash = "/", mustWork = FALSE))
+    }
+
+    if (isTRUE(write_summary_csv) && length(size_by)) {
+      sm <- data.frame(
+        com  = names(size_by),
+        size = as.integer(size_by),
+        span = as.integer(span_by[names(size_by)]),
+        stringsAsFactors = FALSE
+      )
+      sum_file <- file.path(results_dir, paste0(base, "_summary.csv"))
+      utils::write.csv(sm, sum_file, row.names = FALSE)
+      files$summary_csv <- sum_file
+      if (verbose) message("Saved summary CSV: ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
+    }
+
+    attr(res_df, "community_sizes") <- if (length(size_by)) as.integer(size_by) else integer(0)
+    attr(res_df, "layer_span")      <- if (length(size_by)) as.integer(span_by[names(size_by)]) else integer(0)
+    attr(res_df, "files")           <- files
+
+    res_df
+  }
+
+  # ---- decide mode ----
+  # abacus has no supra-graph variant here; always run multilayer-native.
+  use_ml_native <- (!isTRUE(supra_graph)) || method == "abacus"
+
+  # ========================================================================
+  # 1) Multilayer-native mode: delegate to multinet::*_ml()
+  # ========================================================================
+  if (use_ml_native) {
+    if (verbose) {
+      msg <- paste0("Running multilayer-native community detection (multinet), method = \"", method, "\".")
+      if (isTRUE(supra_graph) && method == "abacus") {
+        msg <- paste0(msg, " Note: `supra_graph = TRUE` is ignored for method = \"abacus\".")
+      }
+      if (!isTRUE(supra_graph)) {
+        msg <- paste0(msg, " Note: `edgeWeight` is ignored when supra_graph = FALSE.")
+      }
+      message(msg)
+    }
+
+    net_use <- .subset_layers_ml(net, layers)
+
+    if (!is.null(seed) && method %in% c("glouvain","infomap")) {
+      set.seed(as.integer(seed))
+    }
+
+    cm_raw <- switch(method,
+                     glouvain = multinet::glouvain_ml(net_use, gamma = glouvain_gamma, omega = glouvain_omega),
+                     infomap  = multinet::infomap_ml(net_use,
+                                                     overlapping = infomap_overlapping,
+                                                     directed    = infomap_directed,
+                                                     self.links  = infomap_self_links),
+                     clique   = multinet::clique_percolation_ml(net_use, k = clique.k, m = clique.m),
+                     abacus   = multinet::abacus_ml(net_use, min.actors = min.actors, min.layers = min.layers),
+                     stop("Unsupported method: ", method)
+    )
+
+    if (!is.data.frame(cm_raw)) {
+      cm_raw <- try(as.data.frame(cm_raw, stringsAsFactors = FALSE), silent = TRUE)
+      if (inherits(cm_raw, "try-error") || is.null(cm_raw))
+        stop("Community detection did not return a data frame.")
+    }
+
+    if (!nrow(cm_raw)) {
+      res     <- data.frame(actor = character(), com = character(), layer = character(), stringsAsFactors = FALSE)
+      size_by <- integer(0)
+      span_by <- integer(0)
+      return(.finalize_result(res, size_by, span_by, method, mode_tag = "ml"))
+    }
+
+    nm <- names(cm_raw)
+    actor_col <- .pick(c("actor","Actor","node","Node","vertex","Vertex"), nm)
+    layer_col <- .pick(c("layer","Layer"), nm)
+    com_col   <- .pick(c("com","community","cluster","cid","community_id","Community"), nm)
+    if (any(is.na(c(actor_col, layer_col, com_col)))) {
+      stop("Unexpected output format from multinet community algorithm: could not detect actor/layer/community columns.")
+    }
+
+    res <- data.frame(
+      actor = as.character(cm_raw[[actor_col]]),
+      com   = as.character(cm_raw[[com_col]]),
+      layer = as.character(cm_raw[[layer_col]]),
+      stringsAsFactors = FALSE
+    )
+
+    # Safety: filter to requested layers if the upstream network could not be subset
+    if (!is.null(layers)) {
+      layers_use <- intersect(as.character(layers), unique(res$layer))
+      res <- res[res$layer %in% layers_use, , drop = FALSE]
+    }
+
+    if (!nrow(res)) {
+      if (verbose) message("No community assignments remain after applying `layers` filter.")
+      res     <- data.frame(actor = character(), com = character(), layer = character(), stringsAsFactors = FALSE)
+      size_by <- integer(0)
+      span_by <- integer(0)
+      return(.finalize_result(res, size_by, span_by, method, mode_tag = "ml"))
+    }
+
+    # Post-filter by size/span (even if abacus already filtered)
+    size_by <- tapply(res$actor, res$com, function(v) length(unique(v)))
+    span_by <- tapply(res$layer, res$com, function(v) length(unique(v)))
+    keep    <- names(size_by)[size_by >= min.actors & span_by >= min.layers]
+    res     <- res[res$com %in% keep, , drop = FALSE]
+
+    if (!length(keep) || !nrow(res)) {
+      if (verbose) message("No communities satisfy min.actors/min.layers after filtering.")
+      res     <- data.frame(actor = character(), com = character(), layer = character(), stringsAsFactors = FALSE)
+      size_by <- integer(0)
+      span_by <- integer(0)
+      return(.finalize_result(res, size_by, span_by, method, mode_tag = "ml"))
+    }
+
+    if (isTRUE(relabel_by_size)) {
+      ord <- order(size_by[keep], decreasing = TRUE)
+      map <- setNames(paste0("C", seq_along(ord)), names(size_by[keep])[ord])
+      res$com <- unname(map[res$com])
+      size_by <- size_by[keep][ord]; names(size_by) <- unname(map[names(size_by)])
+      span_by <- span_by[keep][ord]; names(span_by) <- names(size_by)
+    } else {
+      size_by <- size_by[keep]
+      span_by <- span_by[keep]
+      ord <- order(size_by, decreasing = TRUE)
+      size_by <- size_by[ord]
+      span_by <- span_by[ord]
+    }
+
+    return(.finalize_result(res, size_by, span_by, method, mode_tag = "ml"))
+  }
+
+  # ========================================================================
+  # 2) Supra-graph mode: collapse layers and run igraph algorithms
+  # ========================================================================
+
+  if (!method %in% c("glouvain","infomap","clique")) {
+    stop("`supra_graph = TRUE` is only supported for methods 'glouvain', 'infomap', and 'clique'.")
+  }
+
+  if (verbose) {
+    message("Running supra-graph community detection (layer-collapsed), method = \"", method, "\".")
+    if (method == "glouvain") message("Note: glouvain_gamma/glouvain_omega are ignored in supra-graph mode.")
+    if (method == "infomap")  message("Note: infomap_* parameters are ignored in supra-graph mode.")
+    if (method == "clique")   message("Note: clique.m is ignored in supra-graph mode.")
+  }
+
+  # Pull multilayer edge table
   Eraw <- try(multinet::edges_ml(net), silent = TRUE)
   if (inherits(Eraw, "try-error") || is.null(Eraw)) {
     stop("Could not retrieve edges from `net` via multinet::edges_ml().")
@@ -216,23 +591,25 @@ detectCom <- function(net,
   }
   nm <- names(Eall)
 
-  # Endpoint columns (robust heuristics)
+  # Identify endpoint columns
   pairs <- list(
     c("from_actor","to_actor"), c("from","to"), c("source","target"),
     c("actor1","actor2"), c("i","j"), c("v1","v2")
   )
   a_col <- b_col <- NA_character_
-  for (p in pairs) if (all(p %in% nm)) { a_col <- p[1]; b_col <- p[2]; break }
+  for (p in pairs) {
+    if (all(p %in% nm)) { a_col <- p[1]; b_col <- p[2]; break }
+  }
   if (is.na(a_col)) {
     layer_like <- c("layer","Layer","from_layer","to_layer","l1","l2")
     char_cols  <- which(vapply(Eall, function(x) is.character(x) || is.factor(x), logical(1)))
     char_cols  <- setdiff(char_cols, match(layer_like, nm, nomatch = 0))
-    if (length(char_cols) < 2)
-      stop("Could not identify two endpoint columns in the global edge table.")
-    a_col <- nm[char_cols[1]]; b_col <- nm[char_cols[2]]
+    if (length(char_cols) < 2) stop("Could not identify two endpoint columns in the global edge table.")
+    a_col <- nm[char_cols[1]]
+    b_col <- nm[char_cols[2]]
   }
 
-  # Layer column(s); keep intra-layer
+  # Layer columns; keep intra-layer edges
   if ("from_layer" %in% nm && "to_layer" %in% nm) {
     Eall <- Eall[Eall$from_layer == Eall$to_layer, , drop = FALSE]
     Eall$layer <- as.character(Eall$from_layer)
@@ -245,15 +622,16 @@ detectCom <- function(net,
 
   # Select layers
   if (is.null(layers)) {
-    layers <- sort(unique(Eall$layer))
+    layers_use <- sort(unique(Eall$layer))
   } else {
-    layers <- intersect(as.character(layers), unique(Eall$layer))
+    layers_use <- intersect(as.character(layers), unique(Eall$layer))
   }
-  if (!length(layers)) stop("No layers available after intersection with requested `layers`.")
+  if (!length(layers_use)) stop("No layers available after intersection with requested `layers`.")
 
-  # ---- 1) Minimal per-layer tables ----
-  w_col_global <- .pick(c("weight","Weight","w","value","score"), nm)
-  edge_list <- lapply(layers, function(ly) {
+  # Choose weight column if present
+  w_col_global <- .pick(c("weight","Weight","w","w_","value","score","correlation"), nm)
+
+  edge_list <- lapply(layers_use, function(ly) {
     ed <- Eall[Eall$layer == ly, , drop = FALSE]
     if (!nrow(ed)) return(ed[FALSE, , drop = FALSE])
     from <- as.character(ed[[a_col]])
@@ -261,28 +639,24 @@ detectCom <- function(net,
     w    <- if (!is.na(w_col_global) && w_col_global %in% names(ed)) as.numeric(ed[[w_col_global]]) else rep(1, length(from))
     data.frame(layer = ly, from = from, to = to, weight = w, stringsAsFactors = FALSE)
   })
-  names(edge_list) <- layers
+  names(edge_list) <- layers_use
 
-  # ---- 2) Supra-graph (always undirected) ----
-  if (isTRUE(verbose)) {
-    message("Building a layer-collapsed supra-graph as UNDIRECTED: ",
-            "input edge directions (if any) are ignored.")
-  }
   edges_all <- do.call(rbind, edge_list)
-  if (is.null(edges_all) || !nrow(edges_all))
-    stop("No edges found in the selected layers.")
+  if (is.null(edges_all) || !nrow(edges_all)) stop("No edges found in the selected layers.")
 
-  # canonicalize pairs (undirected)
+  # Canonicalize for undirected supra-graph
   aa <- pmin(edges_all$from, edges_all$to)
   bb <- pmax(edges_all$from, edges_all$to)
-  edges_all$from <- aa; edges_all$to <- bb
+  edges_all$from <- aa
+  edges_all$to   <- bb
 
+  # Aggregate weights across layers
   if (edgeWeight == "count") {
     per_layer_unique <- unique(edges_all[, c("layer","from","to")])
     agg <- stats::aggregate(rep(1L, nrow(per_layer_unique)),
                             by = per_layer_unique[c("from","to")], FUN = sum)
     names(agg)[3] <- "weight"
-  } else { # "sum"
+  } else {
     agg <- stats::aggregate(weight ~ from + to, data = edges_all, FUN = sum, na.rm = TRUE)
   }
 
@@ -291,120 +665,43 @@ detectCom <- function(net,
   g <- igraph::simplify(g, edge.attr.comb = list(weight = "sum", "ignore"))
 
   if (!is.null(seed)) set.seed(as.integer(seed))
-  if (verbose) message("• Built supra-graph: |V|=", length(igraph::V(g)),
-                       " |E|=", igraph::ecount(g),
-                       "  (edgeWeight=", edgeWeight, ", method=", method, ")")
+  if (verbose) message("Built supra-graph: |V|=", length(igraph::V(g)), " |E|=", igraph::ecount(g),
+                       " (edgeWeight=", edgeWeight, ")")
 
-  # ---- 3) Community detection ----
   memb <- NULL
   if (method == "glouvain") {
     co <- igraph::cluster_louvain(g, weights = igraph::E(g)$weight)
     memb <- igraph::membership(co)
-
   } else if (method == "infomap") {
     co <- igraph::cluster_infomap(g, e.weights = igraph::E(g)$weight)
     memb <- igraph::membership(co)
-
   } else if (method == "clique") {
-    if (isTRUE(verbose))
-      message("Clique-based detection: using clique.k = ", clique.k,
-              " (increase for more stringent, denser communities).")
     cls <- igraph::cliques(g, min = clique.k)
     if (!length(cls)) stop("No cliques of size >= ", clique.k, " found.")
 
-    # Build k-clique union graph: connect pairs co-occurring in any k-clique
     pairs_df <- do.call(rbind, lapply(cls, function(cl) {
       vs <- igraph::V(g)$name[cl]
       if (length(vs) < 2) return(NULL)
       m <- utils::combn(vs, 2)
-      data.frame(from = m[1,], to = m[2,], stringsAsFactors = FALSE)
+      data.frame(from = m[1, ], to = m[2, ], stringsAsFactors = FALSE)
     }))
     pairs_df <- unique(pairs_df)
+
     h <- igraph::graph_from_data_frame(pairs_df, directed = FALSE, vertices = igraph::V(g)$name)
     comp <- igraph::components(h)
-    if (isTRUE(verbose)) {
-      message("k-clique union produced ", comp$no, " components before size/layer filtering.")
-    }
-    memb <- comp$membership; names(memb) <- igraph::V(h)$name
-
-  } else if (method == "abacus") {
-    if (!"abacus_ml" %in% getNamespaceExports("multinet"))
-      stop("`abacus_ml` is not available in this multinet build.")
-    ab <- multinet::abacus_ml(net, min.actors = min.actors, min.layers = min.layers)
-    if (!all(c("actor","com","layer") %in% names(ab)))
-      stop("Unexpected ABACUS output format.")
-
-    # If user selected a subset of layers, filter and re-check span/size.
-    if (!is.null(layers)) ab <- ab[ab$layer %in% layers, , drop = FALSE]
-    size_by <- tapply(ab$actor, ab$com, function(v) length(unique(v)))
-    span_by <- tapply(ab$layer, ab$com, function(v) length(unique(v)))
-    keep    <- names(size_by)[size_by >= min.actors & span_by >= min.layers]
-    res <- ab[ab$com %in% keep, c("actor","com","layer")]
-    res$method <- "abacus"
-
-    # relabel by size if requested
-    if (relabel_by_size && length(keep)) {
-      ord <- order(size_by[keep], decreasing = TRUE)
-      map <- setNames(paste0("C", seq_along(ord)), names(size_by[keep])[ord])
-      res$com <- unname(map[res$com])
-      size_by <- setNames(as.integer(size_by[keep][ord]), names(map))   # temporarily old names
-      names(size_by) <- unname(map[names(size_by)])                     # rename to C1, C2, ...
-      span_by <- span_by[keep][ord]; names(span_by) <- names(size_by)
-    }
-
-    # save artifacts
-    files <- list()
-    .ensure_dir(results_dir); stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
-    method_tag <- "glouvain" %in% tolower("abacus") # dummy to avoid R CMD check note
-    method_tag <- "abacus"  # label consistently
-    weight_tag <- tolower(edgeWeight)
-
-    if (isTRUE(save_to_rds)) {
-      if (is.null(rds_file)) rds_file <- sprintf("communities_%s_%s_%s.rds", method_tag, weight_tag, stamp)
-      if (!.is_abs(rds_file)) rds_file <- file.path(results_dir, rds_file)
-      saveRDS(res, rds_file); files$rds <- rds_file
-      if (verbose) message("Saved RDS: ", normalizePath(rds_file, FALSE))
-    }
-    if (isTRUE(write_csv)) {
-      csv_file <- file.path(results_dir, sprintf("%s_%s_%s_%s.csv", csv_prefix, method_tag, weight_tag, stamp))
-      utils::write.csv(res, csv_file, row.names = FALSE); files$csv <- csv_file
-      if (verbose) message("Saved CSV: ", normalizePath(csv_file, FALSE))
-    }
-    if (isTRUE(write_summary_csv) && length(size_by)) {
-      sm <- data.frame(
-        com   = names(size_by),
-        size  = as.integer(size_by),
-        span  = as.integer(span_by[names(size_by)]),
-        stringsAsFactors = FALSE
-      )
-      sum_file <- file.path(results_dir, sprintf("%s_summary_%s_%s_%s.csv", csv_prefix, method_tag, weight_tag, stamp))
-      utils::write.csv(sm, sum_file, row.names = FALSE); files$summary_csv <- sum_file
-      if (isTRUE(verbose)) message("Saved summary CSV: ", normalizePath(sum_file, FALSE))
-    }
-
-    attr(res, "community_sizes") <- if (length(keep)) as.integer(size_by) else integer(0)
-    attr(res, "layer_span")      <- if (length(keep)) as.integer(span_by[names(size_by)]) else integer(0)
-    attr(res, "files")           <- files
-    return(res)
+    memb <- comp$membership
+    names(memb) <- igraph::V(h)$name
   }
 
   if (is.null(memb) || !length(memb)) stop("Community detection failed.")
 
-  # ---- 4) Relabel by size (C1 largest, …) ----
+  # Standardize membership to a character community id (numeric labels).
   memb_vec <- as.integer(memb)
   names(memb_vec) <- names(memb)
-  if (relabel_by_size) {
-    sizes <- sort(table(memb_vec), decreasing = TRUE)
-    map   <- setNames(paste0("C", seq_along(sizes)), names(sizes))
-    com_str <- unname(map[as.character(memb_vec)])
-  } else {
-    com_str <- paste0("C", memb_vec)
-  }
-  memb_df <- data.frame(actor = names(memb_vec), com = com_str, stringsAsFactors = FALSE)
+  memb_df <- data.frame(actor = names(memb_vec), com = as.character(memb_vec), stringsAsFactors = FALSE)
 
-  # ---- 5) Expand to each layer & filter ----
+  # Map back to each layer
   actors_by_layer <- lapply(edge_list, function(ed) unique(c(ed$from, ed$to)))
-  names(actors_by_layer) <- layers
   pieces <- lapply(names(actors_by_layer), function(ly) {
     a <- actors_by_layer[[ly]]
     if (!length(a)) return(NULL)
@@ -412,63 +709,37 @@ detectCom <- function(net,
     if (!nrow(df)) return(NULL)
     transform(df, layer = ly, stringsAsFactors = FALSE)
   })
-  communities <- do.call(rbind, Filter(Negate(is.null), pieces))
-  if (is.null(communities) || !nrow(communities))
-    stop("No community assignments found for selected layers (after mapping actors).")
-  communities$method <- method
+  res <- do.call(rbind, Filter(Negate(is.null), pieces))
+  if (is.null(res) || !nrow(res)) stop("No community assignments found after mapping back to layers.")
 
-  size_by <- tapply(communities$actor, communities$com, function(v) length(unique(v)))
-  span_by <- tapply(communities$layer, communities$com, function(v) length(unique(v)))
+  # Filter by size/span across layers
+  size_by <- tapply(res$actor, res$com, function(v) length(unique(v)))
+  span_by <- tapply(res$layer, res$com, function(v) length(unique(v)))
   keep    <- names(size_by)[size_by >= min.actors & span_by >= min.layers]
-  communities <- communities[communities$com %in% keep, , drop = FALSE]
+  res     <- res[res$com %in% keep, , drop = FALSE]
 
-  # Keep attributes (sorted by size desc for readability)
-  if (length(keep)) {
-    ord <- order(size_by[keep], decreasing = TRUE)
-    size_by <- size_by[keep][ord]
-    span_by <- span_by[keep][ord]
-  } else {
-    size_by <- integer(0); span_by <- integer(0)
-  }
-  attr(communities, "community_sizes") <- size_by
-  attr(communities, "layer_span")      <- span_by
-
-  if (verbose) {
-    message("• Communities kept: ", length(size_by),
-            " (min.actors=", min.actors, ", min.layers=", min.layers, ")")
+  if (!length(keep) || !nrow(res)) {
+    if (verbose) message("No communities satisfy min.actors/min.layers after filtering.")
+    res     <- data.frame(actor = character(), com = character(), layer = character(), stringsAsFactors = FALSE)
+    size_by <- integer(0)
+    span_by <- integer(0)
+    return(.finalize_result(res, size_by, span_by, method, mode_tag = "supra", weight_tag = edgeWeight))
   }
 
-  # ---- 6) Save artifacts under results_dir ----
-  files <- list()
-  .ensure_dir(results_dir)
-  stamp <- format(Sys.time(), "%Y-%m-%d_%H%M%S")
-  method_tag <- tolower(method)
-  method_tag <- sub("^louvain$", "glouvain", method_tag)  # normalize alias in filenames
-  weight_tag <- tolower(edgeWeight)
+  # Keep summary stats only for retained communities and order by size
+  size_by <- size_by[keep]
+  span_by <- span_by[keep]
+  ord     <- order(size_by, decreasing = TRUE)
+  size_by <- size_by[ord]
+  span_by <- span_by[ord]
 
-  if (isTRUE(save_to_rds)) {
-    if (is.null(rds_file)) rds_file <- sprintf("communities_%s_%s_%s.rds", method_tag, weight_tag, stamp)
-    if (!.is_abs(rds_file)) rds_file <- file.path(results_dir, rds_file)
-    saveRDS(communities, rds_file); files$rds <- rds_file
-    if (verbose) message("Saved RDS: ", normalizePath(rds_file, FALSE))
-  }
-  if (isTRUE(write_csv)) {
-    csv_file <- file.path(results_dir, sprintf("%s_%s_%s_%s.csv", csv_prefix, method_tag, weight_tag, stamp))
-    utils::write.csv(communities, csv_file, row.names = FALSE); files$csv <- csv_file
-    if (verbose) message("Saved CSV: ", normalizePath(csv_file, FALSE))
-  }
-  if (isTRUE(write_summary_csv) && length(size_by)) {
-    sm <- data.frame(
-      com  = names(size_by),
-      size = as.integer(size_by),
-      span = as.integer(span_by[names(size_by)]),
-      stringsAsFactors = FALSE
-    )
-    sum_file <- file.path(results_dir, sprintf("%s_summary_%s_%s_%s.csv", csv_prefix, method_tag, weight_tag, stamp))
-    utils::write.csv(sm, sum_file, row.names = FALSE); files$summary_csv <- sum_file
-    if (verbose) message("Saved summary CSV: ", normalizePath(sum_file, FALSE))
+  # Optionally relabel kept communities to C1, C2, ... (consecutive)
+  if (isTRUE(relabel_by_size)) {
+    map <- setNames(paste0("C", seq_along(size_by)), names(size_by))
+    res$com  <- unname(map[res$com])
+    names(size_by) <- unname(map[names(size_by)])
+    names(span_by) <- names(size_by)
   }
 
-  attr(communities, "files") <- files
-  communities
+  .finalize_result(res, size_by, span_by, method, mode_tag = "supra", weight_tag = edgeWeight)
 }
