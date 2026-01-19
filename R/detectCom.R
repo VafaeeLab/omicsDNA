@@ -2,164 +2,184 @@
 #'
 #' @md
 #' @description
-#' Detect communities in a `multinet::ml.network` using either:
+#' Detect communities in a multilayer network of class [multinet::ml.network].
 #'
-#' - **Multilayer-native algorithms from the `multinet` package** (default,
-#'   `supra_graph = FALSE`):
-#'   - `multinet::glouvain_ml()`
-#'   - `multinet::infomap_ml()`
-#'   - `multinet::clique_percolation_ml()`
-#'   - `multinet::abacus_ml()`
+#' This function supports **two analysis modes**:
 #'
-#' - A **layer-collapsed supra-graph approach** (`supra_graph = TRUE`) for
-#'   `method = "glouvain"`, `"infomap"`, or `"clique"`.
+#' 1. **Multilayer-native mode** (`supra_graph = FALSE`, default): calls a
+#'    multilayer community algorithm from the **`multinet`** package directly:
+#'    - [multinet::glouvain_ml()]
+#'    - [multinet::infomap_ml()]
+#'    - [multinet::clique_percolation_ml()]
+#'    - [multinet::abacus_ml()]
 #'
-#' This function standardizes outputs to a tidy edge-independent table and keeps
-#' the output structure compatible with downstream analysis:
+#' 2. **Supra-graph (layer-collapsed) mode** (`supra_graph = TRUE`): collapses the
+#'    chosen layers into a single undirected graph (a *supra-graph*), runs a
+#'    community method from **`igraph`**, then maps community membership back to
+#'    each layer.
+#'    - `method = "glouvain"` -> [igraph::cluster_louvain()]
+#'    - `method = "infomap"`  -> [igraph::cluster_infomap()]
+#'    - `method = "clique"`   -> clique-union components (based on
+#'      [igraph::cliques()] + [igraph::components()])
 #'
-#' - Columns: `actor`, `com`, `layer`, `method`
-#' - Attributes:
-#'   - `community_sizes`: named integer vector (# unique actors per community)
-#'   - `layer_span`: named integer vector (# layers per community)
-#'   - `files`: list of written file paths (`rds`, `csv`, `summary_csv`)
+#' In both modes, the result is standardized to a **tidy, edge-independent**
+#' membership table (one row per *actor–layer* membership) and optionally written
+#' to disk.
 #'
 #' @details
+#' ## Output format (always the same)
+#' The returned object is a data frame with columns:
+#' - `actor`: actor identifier (e.g., gene name)
+#' - `com`: community id (e.g., `"C1"`, `"C2"`, ... if relabeled; otherwise the
+#'   algorithm’s raw ids coerced to character)
+#' - `layer`: layer name
+#' - `method`: the method used (`"glouvain"`, `"infomap"`, `"clique"`, `"abacus"`)
+#'
+#' The object also carries attributes:
+#' - `community_sizes`: named integer vector = number of **unique actors** per community
+#' - `layer_span`: named integer vector = number of **unique layers** spanned by each community
+#' - `files`: list with file paths that were written (`rds`, `csv`, `summary_csv`)
+#'
 #' ## Multilayer-native mode (`supra_graph = FALSE`)
-#' The community assignment is computed by calling the corresponding
-#' `multinet::*_ml()` function **directly**. Therefore, if you call:
+#' In this mode, `detectCom()` delegates community detection to the corresponding
+#' `multinet::*_ml()` function using your parameters (e.g., `gamma`, `omega` for
+#' multilayer generalized Louvain).
 #'
-#' ```r
-#' comm1 <- multinet::glouvain_ml(net, gamma = 1, omega = 1)
-#' comm2 <- detectCom(net, method = "glouvain",
-#'                    supra_graph = FALSE,
-#'                    glouvain_gamma = 1,
-#'                    glouvain_omega = 1,
-#'                    min.actors = 1,
-#'                    min.layers = 1,
-#'                    relabel_by_size = FALSE)
-#' ```
+#' **Important practical note:** even in multilayer-native mode, `detectCom()`
+#' may **change** the final output compared to the raw `multinet::*_ml()` result
+#' because it can apply **post-filtering** (`min.actors`, `min.layers`) and
+#' **optional relabeling** (`relabel_by_size`).
 #'
-#' then `comm1` and `comm2` will represent the **same partition** (up to
-#' community identifier naming), because `detectCom()` delegates to
-#' `multinet::glouvain_ml()` with the same parameters.
+#' If you want the wrapper output to be as close as possible to the direct
+#' multilayer algorithm output, use:
+#' - `min.actors = 1`, `min.layers = 1`, and
+#' - `relabel_by_size = FALSE`.
 #'
 #' ## Supra-graph mode (`supra_graph = TRUE`)
-#' The function first **collapses** the selected layers into a single undirected
-#' graph (the *supra-graph*), then runs an `igraph` community method on that
-#' collapsed graph:
+#' In supra-graph mode, the function:
+#' 1. Extracts intra-layer edges from the multilayer network.
+#' 2. Builds a single undirected graph where vertices are actors and edges are
+#'    aggregated across layers.
+#' 3. Runs an `igraph` community method on this collapsed graph.
+#' 4. Maps each actor’s community membership back to the layers in which the
+#'    actor appears.
 #'
-#' - `method = "glouvain"`  -> `igraph::cluster_louvain()`
-#' - `method = "infomap"`   -> `igraph::cluster_infomap()`
-#' - `method = "clique"`    -> k-clique union components (based on
-#'   `igraph::cliques()` + `igraph::components()`)
+#' Edge aggregation across layers is controlled by `edgeWeight`:
+#' - `"count"`: supra-edge weight = number of layers in which the edge appears
+#'   at least once.
+#' - `"sum"`: supra-edge weight = sum of per-layer edge weights across layers
+#'   (when available; otherwise edges default to weight 1).
 #'
-#' Community membership is then **mapped back** to each layer.
+#' **Important:** supra-graph mode is a different analysis pipeline than
+#' multilayer-native mode. You should not expect identical partitions between
+#' these modes, even with similar settings.
 #'
-#' The `edgeWeight` argument controls how supra-graph edge weights are
-#' constructed across layers:
+#' ## Filtering and relabeling (applies to all modes)
+#' After community detection, communities are retained only if:
+#' - number of **unique actors** in the community `>= min.actors`, and
+#' - number of **distinct layers** represented in the community `>= min.layers`.
 #'
-#' - `"count"`: the supra-edge weight equals the number of layers in which the
-#'   pair appears at least once.
-#' - `"sum"`: the supra-edge weight equals the sum of per-layer edge weights.
+#' If `relabel_by_size = TRUE`, communities are renamed to `"C1"`, `"C2"`, ...
+#' in decreasing order of community size (ties broken arbitrarily).
 #'
-#' ## Filtering and relabeling
-#' After any method finishes, communities are retained only if:
-#'
-#' - `#unique_actors >= min.actors`, and
-#' - `#layers_present >= min.layers`.
-#'
-#' If `relabel_by_size = TRUE`, communities are relabeled `C1, C2, ...` ordered by
-#' decreasing community size (ties broken arbitrarily).
-#'
-#' @param net A multilayer network of class `multinet::ml.network`.
+#' @param net A multilayer network of class [multinet::ml.network].
 #'
 #' @param method Community detection method. One of:
 #' - `"glouvain"` (default): generalized Louvain
-#' - `"infomap"`
-#' - `"clique"` (k-clique percolation in multilayer mode; k-clique union in supra mode)
-#' - `"abacus"`
-#' - `"louvain"` is accepted as an alias of `"glouvain"`.
+#' - `"infomap"`: Infomap community detection
+#' - `"clique"`: clique-based communities
+#'   - multilayer-native mode: k-clique percolation via `multinet`
+#'   - supra-graph mode: clique-union components via `igraph`
+#' - `"abacus"`: ABACUS multilayer community detection (multilayer-native only)
+#' - `"louvain"` is accepted as an alias of `"glouvain"` (deprecated; converted
+#'   internally with a warning).
 #'
-#' @param supra_graph Logical. If `FALSE` (default), run multilayer-native
-#' `multinet::*_ml()` algorithms. If `TRUE`, collapse layers into a single
-#' supra-graph and run an `igraph` method (`glouvain`, `infomap`, or `clique`).
+#' @param supra_graph Logical.
+#' - `FALSE` (default): **multilayer-native** algorithms from `multinet` are used.
+#' - `TRUE`: layers are collapsed into a single supra-graph and an `igraph`
+#'   method is used (only for `method = "glouvain"`, `"infomap"`, `"clique"`).
 #'
 #' @param layers Optional character vector of layer names to include.
-#' If `NULL`, all layers are used.
+#' - If `NULL`, all layers are used.
+#' - If provided, only those layers (intersected with available layers) are used.
 #'
-#' @param min.actors Minimum number of unique actors required to keep a community.
-#' Applied as a post-filter to all methods.
+#' @param min.actors Integer (>= 1). Minimum number of **unique actors** required
+#' for a community to be kept. Applied as a post-filter to all methods.
 #'
-#' @param min.layers Minimum number of layers required for a community to be kept.
-#' Applied as a post-filter to all methods.
+#' @param min.layers Integer (>= 1). Minimum number of **distinct layers**
+#' required for a community to be kept. Applied as a post-filter to all methods.
 #'
-#' @param relabel_by_size Logical. If `TRUE` (default), relabel communities as
-#' `C1, C2, ...` ordered by decreasing community size.
+#' @param relabel_by_size Logical.
+#' - `TRUE` (default): relabel communities as `"C1"`, `"C2"`, ... ordered by
+#'   decreasing community size.
+#' - `FALSE`: keep the algorithm’s original community ids (converted to character).
 #'
-#' @param seed Optional integer seed for reproducibility. When provided, this
-#' function calls `set.seed(seed)` before invoking algorithms that may be
-#' non-deterministic.
+#' @param seed Optional integer. If supplied, `set.seed(seed)` is called before
+#' running algorithms that may be stochastic.
+#' - In multilayer-native mode: used for `"glouvain"` and `"infomap"`.
+#' - In supra-graph mode: used before the `igraph` clustering step.
 #'
-#' @param glouvain_gamma Resolution parameter passed to `multinet::glouvain_ml()`
-#' when `method = "glouvain"` and `supra_graph = FALSE`.
+#' @param glouvain_gamma Numeric (> 0). Resolution parameter passed to
+#' [multinet::glouvain_ml()] **only when** `method = "glouvain"` and
+#' `supra_graph = FALSE`. Ignored otherwise.
 #'
-#' @param glouvain_omega Inter-layer coupling parameter passed to
-#' `multinet::glouvain_ml()` when `method = "glouvain"` and `supra_graph = FALSE`.
+#' @param glouvain_omega Numeric (>= 0). Inter-layer coupling parameter passed to
+#' [multinet::glouvain_ml()] **only when** `method = "glouvain"` and
+#' `supra_graph = FALSE`. Ignored otherwise.
 #'
-#' @param clique.k Clique size threshold.
-#' - In multilayer mode (`supra_graph = FALSE`), passed as `k` to
-#'   `multinet::clique_percolation_ml()` (must be >= 3).
-#' - In supra-graph mode (`supra_graph = TRUE`), used as the minimum clique size
-#'   in `igraph::cliques()`.
+#' @param clique.k Integer (>= 3). Clique size threshold.
+#' - Multilayer-native mode (`supra_graph = FALSE`): forwarded as `k` to
+#'   [multinet::clique_percolation_ml()].
+#' - Supra-graph mode (`supra_graph = TRUE`): used as the minimum clique size in
+#'   [igraph::cliques()].
 #'
-#' @param clique.m Multilayer-only parameter passed as `m` to
-#' `multinet::clique_percolation_ml()` when `supra_graph = FALSE`.
-#' Ignored when `supra_graph = TRUE`.
+#' @param clique.m Integer (>= 1). Multilayer-only clique parameter forwarded as
+#' `m` to [multinet::clique_percolation_ml()] **only when**
+#' `method = "clique"` and `supra_graph = FALSE`. Ignored in supra-graph mode.
 #'
-#' @param infomap_overlapping Passed to `multinet::infomap_ml()` when
-#' `method = "infomap"` and `supra_graph = FALSE`.
+#' @param infomap_overlapping Logical. Passed to [multinet::infomap_ml()] as
+#' `overlapping` **only when** `method = "infomap"` and `supra_graph = FALSE`.
+#' Ignored in supra-graph mode.
 #'
-#' @param infomap_directed Passed to `multinet::infomap_ml()` when
-#' `method = "infomap"` and `supra_graph = FALSE`.
+#' @param infomap_directed Logical. Passed to [multinet::infomap_ml()] as
+#' `directed` **only when** `method = "infomap"` and `supra_graph = FALSE`.
+#' Ignored in supra-graph mode.
 #'
-#' @param infomap_self_links Passed to `multinet::infomap_ml()` when
-#' `method = "infomap"` and `supra_graph = FALSE`.
+#' @param infomap_self_links Logical. Passed to [multinet::infomap_ml()] as
+#' `self.links` **only when** `method = "infomap"` and `supra_graph = FALSE`.
+#' Ignored in supra-graph mode.
 #'
-#' @param edgeWeight How to aggregate edge weights across layers when
-#' `supra_graph = TRUE`. One of `"count"` or `"sum"`. Ignored when
-#' `supra_graph = FALSE`.
+#' @param edgeWeight How to aggregate edge weights across layers in supra-graph mode.
+#' One of `"count"` or `"sum"`.
+#' - `"count"`: weight = number of layers in which the edge appears at least once
+#' - `"sum"`: weight = sum of per-layer weights across layers (when available)
+#' Ignored when `supra_graph = FALSE`.
 #'
-#' @param results_dir Output directory for optional files.
+#' @param results_dir Output directory for optional files (RDS/CSV/summary CSV).
+#' If it does not exist, it is created. Defaults to
+#' `getOption("mlnet.results_dir", "omicsDNA_results")`.
 #'
-#' @param save_to_rds Logical; save the community table to an RDS file.
+#' @param save_to_rds Logical. If `TRUE`, saves the community membership table as
+#' an `.rds` file in `results_dir` (unless `rds_file` is absolute).
 #'
-#' @param rds_file Optional RDS filename. If relative, it is created inside
-#' `results_dir`. If `NULL`, a timestamped name is generated.
+#' @param rds_file Optional character filename for the RDS output.
+#' - If `NULL`, a timestamped filename is generated automatically.
+#' - If relative, it is created inside `results_dir`.
+#' - If absolute, it is used as-is.
 #'
-#' @param write_csv Logical; write the community table to CSV.
+#' @param write_csv Logical. If `TRUE`, writes the membership table to a CSV file.
 #'
-#' @param csv_prefix Prefix used for CSV and summary CSV files.
+#' @param csv_prefix Character prefix used to build output CSV filenames.
 #'
-#' @param write_summary_csv Logical; write a small community summary CSV
-#' (community id, size, span).
+#' @param write_summary_csv Logical. If `TRUE`, writes a small summary CSV with:
+#' `com`, `size` (unique actors), `span` (layers).
 #'
-#' @param verbose Logical; print progress messages.
+#' @param verbose Logical. If `TRUE`, prints progress messages and file paths.
 #'
-#' @return
-#' A data frame with columns:
-#'
-#' - `actor`: actor (gene) identifier
-#' - `com`: community identifier (`C1`, `C2`, ... if relabeled)
-#' - `layer`: layer name
-#' - `method`: method used (e.g. `"glouvain"`)
-#'
-#' with attributes `community_sizes`, `layer_span`, and `files`.
+#' @return A data frame with columns `actor`, `com`, `layer`, `method`, plus
+#' attributes `community_sizes`, `layer_span`, and `files`.
 #'
 #' @examples
-#' # -------------------------------------------------------------------------
-#' # Minimal reproducible examples using igraph objects (one graph per layer)
-#' # -------------------------------------------------------------------------
-#'
 #' # Build a tiny 2-layer multiplex from igraph graphs
 #' g1 <- igraph::graph_from_data_frame(
 #'   data.frame(from = c("a","b","c"), to = c("b","c","d"), w_ = c(1,1,1)),
@@ -174,145 +194,36 @@
 #' multinet::add_igraph_layer_ml(net, g1, name = "E1")
 #' multinet::add_igraph_layer_ml(net, g2, name = "E2")
 #'
-#' # -------------------------
-#' # GLouvain (multinet) mode
-#' # -------------------------
-#' comm_gl_mn <- detectCom(
+#' # Multilayer-native GLouvain (supra_graph = FALSE)
+#' comm_ml <- detectCom(
 #'   net,
-#'   method         = "glouvain",
-#'   supra_graph    = FALSE,
-#'   glouvain_gamma = 1,
-#'   glouvain_omega = 1,
-#'   min.actors     = 1,
-#'   min.layers     = 1,
+#'   method          = "glouvain",
+#'   supra_graph     = FALSE,
+#'   glouvain_gamma  = 1,
+#'   glouvain_omega  = 1,
+#'   min.actors      = 1,
+#'   min.layers      = 1,
 #'   relabel_by_size = FALSE,
-#'   seed           = 1,
-#'   save_to_rds    = FALSE
+#'   seed            = 1,
+#'   save_to_rds     = FALSE,
+#'   write_summary_csv = FALSE,
+#'   verbose         = FALSE
 #' )
 #'
-#' # Direct call (should match the same partition, up to naming)
-#' comm_gl_direct <- multinet::glouvain_ml(net, gamma = 1, omega = 1)
-#'
-#' # -------------------------
-#' # GLouvain (supra-graph) mode
-#' # -------------------------
-#' comm_gl_supra <- detectCom(
+#' # Supra-graph GLouvain (supra_graph = TRUE)
+#' comm_supra <- detectCom(
 #'   net,
-#'   method      = "glouvain",
-#'   supra_graph = TRUE,
-#'   edgeWeight  = "count",
-#'   min.actors  = 1,
-#'   min.layers  = 1,
-#'   seed        = 1,
-#'   save_to_rds = FALSE
+#'   method          = "glouvain",
+#'   supra_graph     = TRUE,
+#'   edgeWeight      = "count",
+#'   min.actors      = 1,
+#'   min.layers      = 1,
+#'   relabel_by_size = FALSE,
+#'   seed            = 1,
+#'   save_to_rds     = FALSE,
+#'   write_summary_csv = FALSE,
+#'   verbose         = FALSE
 #' )
-#'
-#' # -------------------------
-#' # Clique percolation (multinet) mode: clique.k + clique.m
-#' # -------------------------
-#' comm_clq_mn <- detectCom(
-#'   net,
-#'   method      = "clique",
-#'   supra_graph = FALSE,
-#'   clique.k    = 3,
-#'   clique.m    = 1,
-#'   min.actors  = 1,
-#'   min.layers  = 1,
-#'   save_to_rds = FALSE
-#' )
-#'
-#' # -------------------------
-#' # Clique (supra-graph) mode: clique.m ignored
-#' # -------------------------
-#' comm_clq_supra <- detectCom(
-#'   net,
-#'   method      = "clique",
-#'   supra_graph = TRUE,
-#'   clique.k    = 3,
-#'   edgeWeight  = "count",
-#'   min.actors  = 1,
-#'   min.layers  = 1,
-#'   save_to_rds = FALSE
-#' )
-#'
-#' # -------------------------
-#' # Infomap (multinet) mode: infomap_* parameters
-#' # -------------------------
-#' comm_info_mn <- detectCom(
-#'   net,
-#'   method              = "infomap",
-#'   supra_graph         = FALSE,
-#'   infomap_overlapping = FALSE,
-#'   infomap_directed    = FALSE,
-#'   infomap_self_links  = TRUE,
-#'   min.actors          = 1,
-#'   min.layers          = 1,
-#'   seed                = 1,
-#'   save_to_rds         = FALSE
-#' )
-#'
-#' # -------------------------
-#' # Infomap (supra-graph) mode
-#' # -------------------------
-#' comm_info_supra <- detectCom(
-#'   net,
-#'   method      = "infomap",
-#'   supra_graph = TRUE,
-#'   edgeWeight  = "sum",
-#'   min.actors  = 1,
-#'   min.layers  = 1,
-#'   seed        = 1,
-#'   save_to_rds = FALSE
-#' )
-#'
-#' # -------------------------
-#' # ABACUS (multinet) mode
-#' # -------------------------
-#' comm_abacus <- detectCom(
-#'   net,
-#'   method      = "abacus",
-#'   supra_graph = FALSE,
-#'   min.actors  = 1,
-#'   min.layers  = 1,
-#'   save_to_rds = FALSE
-#' )
-#'
-#' # -------------------------------------------------------------------------
-#' # Example using an existing list of igraph objects on disk (your workflow)
-#' # -------------------------------------------------------------------------
-#' \dontrun{
-#' setwd("~/Abir/test_data1/")
-#' load("igraph_objects.RData")  # loads graph_list_A
-#'
-#' # Build ml.network from your igraph list (any equivalent builder works)
-#' net_A <- multinet::ml_empty()
-#' for (ln in names(graph_list_A)) {
-#'   g <- graph_list_A[[ln]]
-#'   # OPTIONAL: if you want weighted glouvain in multinet, ensure edge attr w_ exists:
-#'   # igraph::E(g)$w_ <- igraph::E(g)$correlation
-#'   multinet::add_igraph_layer_ml(net_A, g, name = ln)
-#' }
-#'
-#' # Multilayer glouvain (multinet)
-#' comm_ml <- detectCom(net_A, method = "glouvain",
-#'                      supra_graph = FALSE,
-#'                      glouvain_gamma = 1,
-#'                      glouvain_omega = 1,
-#'                      min.actors = 15,
-#'                      min.layers = 2,
-#'                      seed = 1)
-#'
-#' # Direct call (compare partitions; labels may differ if relabel_by_size=TRUE)
-#' comm_direct <- multinet::glouvain_ml(net_A, gamma = 1, omega = 1)
-#'
-#' # Supra-graph glouvain (legacy-style collapse)
-#' comm_supra <- detectCom(net_A, method = "glouvain",
-#'                         supra_graph = TRUE,
-#'                         edgeWeight  = "count",
-#'                         min.actors  = 15,
-#'                         min.layers  = 2,
-#'                         seed        = 1)
-#' }
 #'
 #' @importFrom multinet layers_ml ml_empty add_igraph_layer_ml
 #' @importFrom multinet edges_ml glouvain_ml infomap_ml clique_percolation_ml abacus_ml
