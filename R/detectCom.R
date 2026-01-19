@@ -314,7 +314,7 @@
 #'                         seed        = 1)
 #' }
 #'
-#' @importFrom multinet layers_ml ml_empty add_igraph_layer_ml as.igraph
+#' @importFrom multinet layers_ml ml_empty add_igraph_layer_ml
 #' @importFrom multinet edges_ml glouvain_ml infomap_ml clique_percolation_ml abacus_ml
 #' @importFrom igraph graph_from_data_frame simplify cliques components cluster_louvain cluster_infomap V E
 #' @importFrom stats aggregate
