@@ -392,7 +392,7 @@ detectCom <- function(
 
     n2 <- multinet::ml_empty()
     for (ly in layers_vec) {
-      g <- multinet::as.igraph(n, layers = ly, merge.actors = TRUE, all.actors = FALSE)
+      g <- igraph::as.igraph(n, layers = ly, merge.actors = TRUE, all.actors = FALSE)
       multinet::add_igraph_layer_ml(n2, g, name = ly)
     }
     n2

@@ -7,18 +7,24 @@
 convert_to_entrez(genes, fromType = "SYMBOL", OrgDb, verbose = TRUE)
 }
 \arguments{
-\item{genes}{Character vector of gene identifiers.}
+\item{genes}{Character vector of gene identifiers (e.g. gene symbols).}
 
-\item{fromType}{Input ID type (e.g., "SYMBOL", "ENSEMBL", "ALIAS", "ENTREZID").}
+\item{fromType}{Input ID type (e.g., \code{"SYMBOL"}, \code{"ENSEMBL"},
+\code{"ALIAS"}, \code{"ENTREZID"}).}
 
 \item{OrgDb}{Annotation package (e.g., \code{org.Hs.eg.db}).}
 
-\item{verbose}{Logical; print coverage. Default TRUE.}
+\item{verbose}{Logical; print coverage information. Default \code{TRUE}.}
 }
 \value{
-list(table = data.frame, entrez = character())
+A list with components:
+\itemize{
+\item \code{table} — data.frame with columns \code{fromType} and \code{ENTREZID}.
+\item \code{entrez} — character vector of unique Entrez IDs.
+}
 }
 \description{
-Wraps \code{clusterProfiler::bitr()} to convert input IDs to \strong{ENTREZID}.
-Returns a conversion table and the unique Entrez vector, with a brief coverage message.
+Wraps \code{clusterProfiler::bitr()} to convert input IDs to
+\strong{ENTREZID}. Returns a conversion table and the unique
+Entrez vector, with a coverage message.
 }

@@ -2,12 +2,15 @@
 % Please edit documentation in R/go_enrichment_report.R
 \name{go_enrichment_report}
 \alias{go_enrichment_report}
-\title{GO enrichment with compact plots — single set or per‑layer multinet}
+\title{GO enrichment with compact plots — single set, per‑layer or per‑community}
 \usage{
 go_enrichment_report(
   genes = NULL,
   net = NULL,
   OrgDb,
+  communities = NULL,
+  restrict_genes = NULL,
+  enrich_scope = c("layer", "community"),
   id_from = c("SYMBOL", "ENSEMBL", "ALIAS", "ENTREZID"),
   ont = c("BP", "MF", "CC"),
   layer_order = NULL,
@@ -15,7 +18,7 @@ go_enrichment_report(
   min_genes = 3,
   universe = NULL,
   universe_mode = c("none", "union"),
-  pAdjustMethod = c("BH", "bonferroni", "BY", "fdr"),
+  pAdjustMethod = c("BH", "bonferroni", "BY", "fdr", "none"),
   pvalueCutoff = 0.05,
   qvalueCutoff = 0.2,
   simplify = TRUE,
@@ -39,86 +42,240 @@ go_enrichment_report(
 )
 }
 \arguments{
-\item{genes}{Character vector of genes (single‑set mode).}
+\item{genes}{Character vector of genes (single‑set mode; ignored when
+\code{net} is not \code{NULL}). IDs must be of type \code{id_from}.}
 
-\item{net}{Optional \code{multinet::ml.network} (per‑layer mode).}
+\item{net}{Optional \code{multinet::ml.network} (multinet mode).}
 
 \item{OrgDb}{Annotation package (e.g., \code{org.Hs.eg.db}).}
 
-\item{id_from, ont}{See \code{clusterProfiler::bitr}, \code{enrichGO} (default id_from="SYMBOL", ont="BP").}
+\item{communities}{Optional data.frame with at least columns \code{actor}
+and \code{layer}, plus one of \code{cid}, \code{com}, or \code{community}
+(community ID). Required when \code{enrich_scope = "community"}.}
 
-\item{layer_order}{Optional vector giving the order of layers (multinet mode).}
+\item{restrict_genes}{Optional character vector of genes (same ID type as
+\code{id_from}). In multinet mode, query genes are intersected with this
+set at the chosen scope (layer or community).}
 
-\item{genes_by_layer}{Optional \strong{named list} layer -> character vector of genes.
-If provided, overrides the default (all vertex names per layer).}
+\item{enrich_scope}{Character; when \code{net} is not \code{NULL}, controls
+whether enrichment is per-layer (\code{"layer"}, default) or per-community
+(\code{"community"}). Ignored in single-set mode.}
 
-\item{min_genes}{Minimum number of mapped genes to run enrichment. Default 3.}
+\item{id_from, ont}{See \code{clusterProfiler::bitr},
+\code{clusterProfiler::enrichGO} (defaults: \code{id_from = "SYMBOL"},
+\code{ont = "BP"}).}
 
-\item{universe}{Optional background (Entrez IDs). If \code{universe_mode="union"},
-the background is the union of all mapped genes across layers.}
+\item{layer_order}{Optional character vector giving the order of layers
+(multinet mode).}
 
-\item{universe_mode}{One of c("none","union"). Default "none".}
+\item{genes_by_layer}{Optional named list \code{layer -> character vector}
+of genes. If provided, overrides the default “vertex names per layer”.
+Only used in multinet mode.}
 
-\item{pAdjustMethod, pvalueCutoff, qvalueCutoff}{Enrichment thresholds.}
+\item{min_genes}{Minimum number of mapped genes to run enrichment.
+Default \code{3}.}
 
-\item{simplify, simplify_cutoff, simplify_by, simplify_measure}{Redundancy reduction options.}
+\item{universe}{Optional background (Entrez IDs). If \code{universe_mode =
+"union"}, the background is the union of all mapped genes across layers.}
 
-\item{showCategory}{Number of categories in dotplot; \code{cnet_showCategory} for cnet.}
+\item{universe_mode}{One of \code{c("none","union")}. Default \code{"none"}.}
 
-\item{cnet_showCategory}{Integer, often fewer than dotplot for legibility (default 8).}
+\item{pAdjustMethod}{P-value adjustment method passed to
+\code{enrichGO()}. One of \code{"BH"}, \code{"bonferroni"},
+\code{"BY"}, \code{"fdr"}, or \code{"none"}. If \code{"none"}, raw
+\code{pvalue} is used internally for redundancy reduction.}
 
-\item{cnet_left_margin_pt}{Left margin (pt) added to cnet plot to avoid label clipping (default 80).}
+\item{pvalueCutoff, qvalueCutoff}{Significance thresholds passed to
+\code{enrichGO()}.}
 
-\item{include_barplot}{Logical; include a bar plot in single‑set mode. Default TRUE.}
+\item{simplify}{Logical; apply \code{clusterProfiler::simplify()}?
+Default \code{TRUE}.}
 
-\item{include_barplot_multinet}{Logical; include a bar plot per layer in multinet mode. Default FALSE.}
+\item{simplify_cutoff, simplify_by, simplify_measure}{Simplification options.}
+
+\item{showCategory}{Number of categories in dotplot; \code{cnet_showCategory}
+controls cnet.}
+
+\item{cnet_showCategory}{Integer; often fewer than dotplot for legibility.}
+
+\item{cnet_left_margin_pt}{Left margin (pt) for cnet plot to avoid
+clipping of labels.}
+
+\item{include_barplot}{Logical; include a bar plot in single‑set mode.}
+
+\item{include_barplot_multinet}{Logical; include a bar plot per layer or
+per community in multinet mode.}
 
 \item{out_dir, file_prefix}{Output directory and file basename.}
 
-\item{save_pdf, save_csv}{Write PDFs and CSVs? Defaults TRUE.}
+\item{save_pdf, save_csv}{Write PDFs and CSVs? Defaults \code{TRUE}.}
 
-\item{one_pdf}{If TRUE (multinet), use one combined PDF; else one file per layer. Default TRUE.}
+\item{one_pdf}{Multinet mode: if \code{TRUE}, save one combined PDF; else
+one PDF per layer (scope = "layer") or per community (scope = "community").}
 
-\item{show_in_rstudio}{Print plots to current device (RStudio Plots). Default TRUE.}
+\item{show_in_rstudio}{Print plots to current device (RStudio Plots).
+Default \code{TRUE}.}
 
 \item{width, height}{Figure size for PDFs (inches).}
 
-\item{verbose}{Verbose messages. Default TRUE.}
+\item{verbose}{Verbose messages. Default \code{TRUE}.}
 }
 \value{
 \itemize{
-\item Single‑set: list(ego, table, pdf_file, csv_file, mapping).
-\item Multinet: list(by_layer = \if{html}{\out{<named list>}}, combined_pdf, layer_files).
+\item \strong{Single‑set:}
+\code{list(ego, table, pdf_file, csv_file, mapping)}.
+\item \strong{Multinet, \code{enrich_scope = "layer"}:}
+\code{list(run_dir, by_layer, combined_pdf, layer_files)}, where
+\code{by_layer[[layer]]} contains \code{ego}, the result table and
+mapping.
+\item \strong{Multinet, \code{enrich_scope = "community"}:}
+\code{list(run_dir, by_layer, combined_pdf, module_files)}, where
+\code{by_layer[[layer]][["module<cid>"]]} holds the enrichment for that
+community.
 }
 }
 \description{
-Runs GO enrichment (\pkg{clusterProfiler}) and produces a dotplot and a cnet plot.
-In \strong{single‑set mode}, supply a vector of genes. In \strong{multinet mode}, supply a
-\code{multinet::ml.network}; the function uses each layer's vertex set (by default)
-as the genes for that layer. Plots are shown in RStudio (once) and then saved to PDF
-(one combined file or one file per layer) — \strong{no duplicate pages}.
+Runs GO enrichment (\pkg{clusterProfiler}) and produces barplots (optional),
+dotplots and cnet plots.
+
+Modes:
+\itemize{
+\item \strong{Single‑set} — supply \code{genes} (character vector).
+\item \strong{Per‑layer} — supply a \code{multinet::ml.network} in
+\code{net}; each layer’s vertex set is treated as a gene list.
+\item \strong{Per‑community} — supply \code{net} and a community table
+\code{communities} with columns \code{actor}, \code{layer}, and
+\code{cid} (from \code{detectCom()}); enrichment is performed for
+each community (\code{cid}) in each layer.
+}
+
+Additionally, a \strong{restriction gene set} can be supplied via
+\code{restrict_genes}. In multinet mode this restricts the query genes:
+\itemize{
+\item \code{enrich_scope = "layer"}: query genes for layer \eqn{L} are
+\code{intersect( layer_genes(L), restrict_genes )}.
+\item \code{enrich_scope = "community"}: query genes for community
+(\eqn{L}, \eqn{cid}) are
+\code{intersect( community_genes(L,cid), restrict_genes )}.
+}
 }
 \details{
+\strong{ID handling.}
+Input IDs are converted to \strong{ENTREZID} via
+\code{\link{convert_to_entrez}} using \code{id_from}. GO enrichment is
+computed with \code{clusterProfiler::enrichGO()}, and optional redundancy
+reduction is performed with \code{clusterProfiler::simplify()}.
+
+\strong{Background.}
 \itemize{
-\item IDs are harmonised to ENTREZ; multiple testing via \code{pAdjustMethod} (default "BH").
-\item Cnet labels can be protected from clipping via \code{cnet_left_margin_pt}.
-\item Layers with too few mapped genes or no significant terms are skipped (with messages).
+\item If \code{universe} is supplied, it is passed directly to
+\code{enrichGO()} (assumed to be Entrez IDs).
+\item If \code{universe_mode = "union"} and \code{universe = NULL},
+the background is the union of mapped genes across layers (using
+\code{genes_by_layer} or vertex names per layer).
+\item If \code{universe_mode = "none"} and \code{universe = NULL},
+the default background of \pkg{clusterProfiler} is used.
 }
+
+\strong{Multinet scopes.}
+\itemize{
+\item \code{enrich_scope = "layer"} (default) — one enrichment per layer.
+\item \code{enrich_scope = "community"} — one enrichment per community
+(\code{cid}) per layer, using the \code{communities} table.
+}
+
+For each enrichment, the CSV output contains all columns from
+\code{as.data.frame(enrichResult)}, plus an additional column
+\code{overlap_genes} which lists the overlapping genes (symbols) between
+the GO term and the query set (layer, community, or restricted gene set).
+
+Plots are optionally shown in the current device (e.g. RStudio Plots) and
+saved to PDF. In multinet mode you can request a single combined PDF
+(\code{one_pdf = TRUE}) or one PDF per layer / per community.
 }
 \examples{
 \dontrun{
-## Single set
-g <- c("RHCG","SPRR1A","SPRR2A","SPRR3","KRT13","KRT4","CRNN")
-res <- go_enrichment_report(genes = g, OrgDb = org.Hs.eg.db, ont = "BP",
-                            file_prefix = "g5l7_1_GO_BP", show_in_rstudio = TRUE)
+## Example objects:
+##   - net  : your multilayer network (multinet::ml.network)
+##   - comm : detectCom() output with columns actor / layer / cid (or com)
 
-## Multinet (per layer), using each layer's vertex set as the gene list
-out <- go_enrichment_report(net = net, OrgDb = org.Hs.eg.db, ont = "BP",
-                            layer_order = multinet::layers_ml(net),
-                            universe_mode = "union",
-                            cnet_left_margin_pt = 100,
-                            include_barplot_multinet = FALSE,
-                            one_pdf = TRUE, file_prefix = "GO_BP_byLayer")
-out$combined_pdf
+## 1) Single set (vector of symbols) ----------------------------------------
+go_single <- go_enrichment_report(
+  genes           = c("RHCG","SPRR1A","SPRR2A","SPRR3","KRT13","KRT4","CRNN"),
+  OrgDb           = org.Hs.eg.db,
+  ont             = "BP",
+  file_prefix     = "demo_GO_BP_single",
+  show_in_rstudio = TRUE
+)
+
+## 2) Per-layer enrichment (each layer’s vertex set) ------------------------
+go_layer <- go_enrichment_report(
+  net                      = net,
+  OrgDb                    = org.Hs.eg.db,
+  id_from                  = "SYMBOL",
+  ont                      = "BP",
+  enrich_scope             = "layer",
+  layer_order              = multinet::layers_ml(net),
+  universe_mode            = "union",
+  pAdjustMethod            = "BH",
+  pvalueCutoff             = 0.05,
+  include_barplot_multinet = FALSE,
+  cnet_showCategory        = 8,
+  cnet_left_margin_pt      = 100,
+  show_in_rstudio          = TRUE,
+  save_pdf                 = TRUE,
+  one_pdf                  = TRUE,    # one combined PDF
+  file_prefix              = "GO_BP_byLayer",
+  out_dir                  = getOption("mlnet.results_dir","omicsDNA_results")
+)
+
+## 3) Per-community enrichment (all genes per community) --------------------
+go_comm <- go_enrichment_report(
+  net                      = net,
+  communities              = comm,    # actor / layer / cid (or com)
+  OrgDb                    = org.Hs.eg.db,
+  id_from                  = "SYMBOL",
+  ont                      = "BP",
+  enrich_scope             = "community",
+  layer_order              = multinet::layers_ml(net),
+  universe_mode            = "union",
+  pAdjustMethod            = "BH",
+  pvalueCutoff             = 0.05,
+  include_barplot_multinet = FALSE,
+  cnet_showCategory        = 8,
+  cnet_left_margin_pt      = 100,
+  show_in_rstudio          = TRUE,
+  save_pdf                 = TRUE,
+  one_pdf                  = FALSE,   # one PDF per community
+  file_prefix              = "GO_BP_byCommunity",
+  out_dir                  = getOption("mlnet.results_dir","omicsDNA_results")
+)
+
+## 4) Per-community enrichment restricted to a custom gene set -------------
+## e.g. oxidative stress gene list:
+## oxidative_stress_genes <- pc_genes[1:100]
+
+go_comm_ox <- go_enrichment_report(
+  net                      = net,
+  communities              = comm,
+  restrict_genes           = oxidative_stress_genes,
+  OrgDb                    = org.Hs.eg.db,
+  id_from                  = "SYMBOL",
+  ont                      = "BP",
+  enrich_scope             = "community",
+  layer_order              = multinet::layers_ml(net),
+  universe_mode            = "union",
+  pAdjustMethod            = "BH",    # or "fdr", "bonferroni", "none"
+  pvalueCutoff             = 0.05,
+  include_barplot_multinet = FALSE,
+  cnet_showCategory        = 8,
+  cnet_left_margin_pt      = 100,
+  show_in_rstudio          = TRUE,
+  save_pdf                 = TRUE,
+  one_pdf                  = FALSE,
+  file_prefix              = "customGenes_for_oxidative_stress",
+  out_dir                  = getOption("mlnet.results_dir","omicsDNA_results")
+)
 }
+
 }

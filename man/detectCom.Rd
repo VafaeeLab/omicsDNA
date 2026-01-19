@@ -2,18 +2,25 @@
 % Please edit documentation in R/detectCom.R
 \name{detectCom}
 \alias{detectCom}
-\title{Detect communities on a multilayer network via an undirected, layer‑collapsed supra‑graph}
+\title{Community detection in multilayer networks (multinet)}
 \usage{
 detectCom(
   net,
   method = c("glouvain", "louvain", "infomap", "clique", "abacus"),
+  supra_graph = FALSE,
   layers = NULL,
-  edgeWeight = c("count", "sum"),
   min.actors = 15,
   min.layers = 2,
-  clique.k = 3,
-  seed = NULL,
   relabel_by_size = TRUE,
+  seed = NULL,
+  glouvain_gamma = 1,
+  glouvain_omega = 1,
+  clique.k = 3,
+  clique.m = 1,
+  infomap_overlapping = FALSE,
+  infomap_directed = FALSE,
+  infomap_self_links = TRUE,
+  edgeWeight = c("count", "sum"),
   results_dir = getOption("mlnet.results_dir", "omicsDNA_results"),
   save_to_rds = TRUE,
   rds_file = NULL,
@@ -24,196 +31,335 @@ detectCom(
 )
 }
 \arguments{
-\item{net}{A multilayer network compatible with \code{multinet::edges_ml()}.}
+\item{net}{A multilayer network of class \code{multinet::ml.network}.}
 
-\item{method}{Community detection method. One of
-\code{c("glouvain","louvain","infomap","clique","abacus")}. Default \code{"glouvain"}.
-(Note: \code{"louvain"} is a deprecated alias for \code{"glouvain"}.)}
+\item{method}{Community detection method. One of:
+\itemize{
+\item \code{"glouvain"} (default): generalized Louvain
+\item \code{"infomap"}
+\item \code{"clique"} (k-clique percolation in multilayer mode; k-clique union in supra mode)
+\item \code{"abacus"}
+\item \code{"louvain"} is accepted as an alias of \code{"glouvain"}.
+}}
 
-\item{layers}{Character vector naming layers to include. Default: all layers present
-after intra‑layer filtering.}
+\item{supra_graph}{Logical. If \code{FALSE} (default), run multilayer-native
+\verb{multinet::*_ml()} algorithms. If \code{TRUE}, collapse layers into a single
+supra-graph and run an \code{igraph} method (\code{glouvain}, \code{infomap}, or \code{clique}).}
 
-\item{edgeWeight}{How to aggregate parallel edges across layers:
-\code{"count"} (number of layers in which an edge appears) or \code{"sum"} (sum of edge weights
-across layers). Default \code{"count"}.}
+\item{layers}{Optional character vector of layer names to include.
+If \code{NULL}, all layers are used.}
 
-\item{min.actors}{Minimum number of unique actors required for a community to be kept
-(after mapping back to layers). Default \code{15}.}
+\item{min.actors}{Minimum number of unique actors required to keep a community.
+Applied as a post-filter to all methods.}
 
-\item{min.layers}{Minimum number of \strong{distinct layers} in which a community must appear
-to be kept. Default \code{2}.}
+\item{min.layers}{Minimum number of layers required for a community to be kept.
+Applied as a post-filter to all methods.}
 
-\item{clique.k}{For \code{method = "clique"}, minimum clique size k (k‑clique union).
-Default \code{3}.}
+\item{relabel_by_size}{Logical. If \code{TRUE} (default), relabel communities as
+\verb{C1, C2, ...} ordered by decreasing community size.}
 
-\item{seed}{Optional integer seed for glouvain/infomap runs. Default \code{NULL}.}
+\item{seed}{Optional integer seed for reproducibility. When provided, this
+function calls \code{set.seed(seed)} before invoking algorithms that may be
+non-deterministic.}
 
-\item{relabel_by_size}{Logical; if \code{TRUE}, relabel communities by decreasing size so \code{C1}
-is largest. Default \code{TRUE}.}
+\item{glouvain_gamma}{Resolution parameter passed to \code{multinet::glouvain_ml()}
+when \code{method = "glouvain"} and \code{supra_graph = FALSE}.}
 
-\item{results_dir}{Output directory for saved artefacts. Default
-\code{getOption("mlnet.results_dir", "omicsDNA_results")}.}
+\item{glouvain_omega}{Inter-layer coupling parameter passed to
+\code{multinet::glouvain_ml()} when \code{method = "glouvain"} and \code{supra_graph = FALSE}.}
 
-\item{save_to_rds}{Logical; write the assignments as an RDS file. Default \code{TRUE}.}
+\item{clique.k}{Clique size threshold.
+\itemize{
+\item In multilayer mode (\code{supra_graph = FALSE}), passed as \code{k} to
+\code{multinet::clique_percolation_ml()} (must be >= 3).
+\item In supra-graph mode (\code{supra_graph = TRUE}), used as the minimum clique size
+in \code{igraph::cliques()}.
+}}
 
-\item{rds_file}{Optional file name for the RDS output; relative paths are resolved
-under \code{results_dir}, absolute paths are respected. Default \code{NULL} (auto‑named).}
+\item{clique.m}{Multilayer-only parameter passed as \code{m} to
+\code{multinet::clique_percolation_ml()} when \code{supra_graph = FALSE}.
+Ignored when \code{supra_graph = TRUE}.}
 
-\item{write_csv}{Logical; additionally write a CSV of assignments. Default \code{FALSE}.}
+\item{infomap_overlapping}{Passed to \code{multinet::infomap_ml()} when
+\code{method = "infomap"} and \code{supra_graph = FALSE}.}
 
-\item{csv_prefix}{Basename prefix for CSV files. Default \code{"communities"}.}
+\item{infomap_directed}{Passed to \code{multinet::infomap_ml()} when
+\code{method = "infomap"} and \code{supra_graph = FALSE}.}
 
-\item{write_summary_csv}{Logical; write a summary CSV (community size and layer span).
-Default \code{TRUE}.}
+\item{infomap_self_links}{Passed to \code{multinet::infomap_ml()} when
+\code{method = "infomap"} and \code{supra_graph = FALSE}.}
 
-\item{verbose}{Logical; print progress and file locations. Default \code{TRUE}.}
+\item{edgeWeight}{How to aggregate edge weights across layers when
+\code{supra_graph = TRUE}. One of \code{"count"} or \code{"sum"}. Ignored when
+\code{supra_graph = FALSE}.}
+
+\item{results_dir}{Output directory for optional files.}
+
+\item{save_to_rds}{Logical; save the community table to an RDS file.}
+
+\item{rds_file}{Optional RDS filename. If relative, it is created inside
+\code{results_dir}. If \code{NULL}, a timestamped name is generated.}
+
+\item{write_csv}{Logical; write the community table to CSV.}
+
+\item{csv_prefix}{Prefix used for CSV and summary CSV files.}
+
+\item{write_summary_csv}{Logical; write a small community summary CSV
+(community id, size, span).}
+
+\item{verbose}{Logical; print progress messages.}
 }
 \value{
 A data frame with columns:
 \itemize{
-\item \code{actor}: actor identifier,
-\item \code{com}: community label (\code{C1}, \code{C2}, …),
-\item \code{layer}: layer name,
-\item \code{method}: the method used (e.g., \code{"glouvain"}).
+\item \code{actor}: actor (gene) identifier
+\item \code{com}: community identifier (\code{C1}, \code{C2}, ... if relabeled)
+\item \code{layer}: layer name
+\item \code{method}: method used (e.g. \code{"glouvain"})
 }
-The return value carries attributes:
-\itemize{
-\item \code{"community_sizes"} — named integer vector of community sizes (ordered),
-\item \code{"layer_span"}      — named integer vector of number of layers per community,
-\item \code{"files"}           — named list of output paths (if artefacts were written).
-}
+
+with attributes \code{community_sizes}, \code{layer_span}, and \code{files}.
 }
 \description{
-This function performs community detection on a \strong{single, layer‑collapsed supra‑graph}
-obtained by aggregating the selected layers of a multilayer network. \strong{By construction,
-the supra‑graph is undirected}: endpoint order is canonicalised (A–B ≡ B–A) and any
-direction in the input is \strong{ignored}. Parallel edges across layers are aggregated by
-either \strong{presence count} (in how many layers an edge appears) or \strong{weight sum} (sum of
-edge weights over layers). A community partition is computed once on the supra‑graph
-and then mapped back to each layer. Communities are labelled \code{C1}, \code{C2}, … with \code{C1}
-corresponding to the largest community (when \code{relabel_by_size = TRUE}).
-
-Supported methods:
+Detect communities in a \code{multinet::ml.network} using either:
 \itemize{
-\item \code{"glouvain"}: Louvain‑style modularity optimisation on the undirected supra‑graph
-(implemented via \code{igraph::cluster_louvain()}).
-\item \code{"louvain"}: \strong{deprecated alias} of \code{"glouvain"}; accepted for backward compatibility
-with a warning.
-\item \code{"infomap"}: flow‑based clustering via \code{igraph::cluster_infomap()}.
-\item \code{"clique"}: k‑clique union (cliques of size ≥ \code{clique.k}) followed by connected
-components.
-\item \code{"abacus"}: when available, communities are read directly from
-\code{multinet::abacus_ml()} and then filtered by \code{min.actors}/\code{min.layers}.
+\item \strong{Multilayer-native algorithms from the \code{multinet} package} (default,
+\code{supra_graph = FALSE}):
+\itemize{
+\item \code{multinet::glouvain_ml()}
+\item \code{multinet::infomap_ml()}
+\item \code{multinet::clique_percolation_ml()}
+\item \code{multinet::abacus_ml()}
+}
+\item A \strong{layer-collapsed supra-graph approach} (\code{supra_graph = TRUE}) for
+\code{method = "glouvain"}, \code{"infomap"}, or \code{"clique"}.
+}
+
+This function standardizes outputs to a tidy edge-independent table and keeps
+the output structure compatible with downstream analysis:
+\itemize{
+\item Columns: \code{actor}, \code{com}, \code{layer}, \code{method}
+\item Attributes:
+\itemize{
+\item \code{community_sizes}: named integer vector (# unique actors per community)
+\item \code{layer_span}: named integer vector (# layers per community)
+\item \code{files}: list of written file paths (\code{rds}, \code{csv}, \code{summary_csv})
+}
 }
 }
 \details{
-\strong{Input normalisation and scope}
-\itemize{
-\item Edges are retrieved from \code{net} using \code{multinet::edges_ml()}. If both \code{from_layer} and
-\code{to_layer} exist, only \emph{intra‑layer} edges are retained (\code{from_layer == to_layer});
-otherwise a single \code{layer} column is used (or created as \code{"L1"} if absent).
-\item \code{layers} restricts analysis to a subset of layers; by default, all available layers
-after the intra‑layer restriction are used.
-\item Edge weights are taken from the first present of
-\code{c("weight","Weight","w","value","score")}; if none is found, weights default to \code{1}.
+\subsection{Multilayer-native mode (\code{supra_graph = FALSE})}{
+
+The community assignment is computed by calling the corresponding
+\verb{multinet::*_ml()} function \strong{directly}. Therefore, if you call:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{comm1 <- multinet::glouvain_ml(net, gamma = 1, omega = 1)
+comm2 <- detectCom(net, method = "glouvain",
+                   supra_graph = FALSE,
+                   glouvain_gamma = 1,
+                   glouvain_omega = 1,
+                   min.actors = 1,
+                   min.layers = 1,
+                   relabel_by_size = FALSE)
+}\if{html}{\out{</div>}}
+
+then \code{comm1} and \code{comm2} will represent the \strong{same partition} (up to
+community identifier naming), because \code{detectCom()} delegates to
+\code{multinet::glouvain_ml()} with the same parameters.
 }
 
-\strong{Supra‑graph construction (always undirected)}
+\subsection{Supra-graph mode (\code{supra_graph = TRUE})}{
+
+The function first \strong{collapses} the selected layers into a single undirected
+graph (the \emph{supra-graph}), then runs an \code{igraph} community method on that
+collapsed graph:
 \itemize{
-\item For each selected layer, edges are reduced to \verb{(from, to, weight)} and endpoint order
-is canonicalised (\code{from = pmin(from, to)}, \code{to = pmax(from, to)}), so the supra‑graph
-is \strong{undirected} even if the original multilayer network was directed.
-\item If \code{edgeWeight = "count"}, an edge’s weight is the number of \strong{distinct layers} in
-which that undirected pair occurs. If \code{edgeWeight = "sum"}, weights are summed across
-layers. The supra‑graph is built with \code{igraph::graph_from_data_frame()} and simplified
-with \code{weight = "sum"}.
+\item \code{method = "glouvain"}  -> \code{igraph::cluster_louvain()}
+\item \code{method = "infomap"}   -> \code{igraph::cluster_infomap()}
+\item \code{method = "clique"}    -> k-clique union components (based on
+\code{igraph::cliques()} + \code{igraph::components()})
 }
 
-\strong{Community detection methods}
-\itemize{
-\item \code{"glouvain"}: calls \code{igraph::cluster_louvain()} with supra‑graph edge weights.
-\item \code{"infomap"}: calls \code{igraph::cluster_infomap()} with supra‑graph edge weights.
-\item \code{"clique"}: enumerates all cliques of size ≥ \code{clique.k}; connects every pair of actors
-that co‑occur in any such clique (k‑clique union); returns connected components as
-communities. This can be expensive for dense graphs and larger \code{clique.k}.
-\item \code{"abacus"}: if available in your \code{multinet} build, community assignments are obtained
-from \code{abacus_ml()} and then \strong{filtered} by \code{min.actors} and \code{min.layers} after any
-layer subsetting; the same relabelling and output logic applies.
-}
+Community membership is then \strong{mapped back} to each layer.
 
-\strong{Mapping back to layers & filtering}
+The \code{edgeWeight} argument controls how supra-graph edge weights are
+constructed across layers:
 \itemize{
-\item After detection on the supra‑graph, assignments are mapped back to each layer by
-retaining only actors that appear in that layer’s edges. Communities are then
-\strong{filtered} to keep those with at least \code{min.actors} unique actors (pooled across the
-selected layers) and present in at least \code{min.layers} \strong{distinct} layers.
-\item For \code{"clique"}, note the distinction: \code{clique.k} controls \emph{how} communities are formed
-(cohesion threshold), whereas \code{min.actors}/\code{min.layers} control \emph{which} detected
-communities are retained.
-}
-
-\strong{Reproducibility & labels}
-\itemize{
-\item If \code{seed} is provided, the random seed is set before running glouvain/infomap (mild
-non‑determinism may persist depending on BLAS/threading). When \code{relabel_by_size = TRUE},
-community IDs are recoded so that \code{C1} is largest, \code{C2} next, etc.
-}
-
-\strong{Persistence}
-\itemize{
-\item When \code{save_to_rds = TRUE}, an RDS is written under \code{results_dir} with a timestamped
-name derived from the method and edge‑weight aggregation. If \code{write_csv = TRUE}, a CSV
-of assignments is also produced. If \code{write_summary_csv = TRUE}, a per‑community summary
-(size and layer span) is saved.
-}
-}
-\section{Practical notes}{
-
-\itemize{
-\item Cross‑layer edges (if present) are ignored; only intra‑layer edges contribute to both
-the supra‑graph and per‑layer mappings.
-\item If no weight column is detected, all edges are treated as weight \code{1}.
-\item \code{"clique"} may be computationally expensive for dense graphs or larger \code{clique.k}.
+\item \code{"count"}: the supra-edge weight equals the number of layers in which the
+pair appears at least once.
+\item \code{"sum"}: the supra-edge weight equals the sum of per-layer edge weights.
 }
 }
 
+\subsection{Filtering and relabeling}{
+
+After any method finishes, communities are retained only if:
+\itemize{
+\item \verb{#unique_actors >= min.actors}, and
+\item \verb{#layers_present >= min.layers}.
+}
+
+If \code{relabel_by_size = TRUE}, communities are relabeled \verb{C1, C2, ...} ordered by
+decreasing community size (ties broken arbitrarily).
+}
+}
 \examples{
-\dontrun{
-# Glouvain (Louvain‑style) on all layers; edge weight = count of layers
-comm <- detectCom(
+# -------------------------------------------------------------------------
+# Minimal reproducible examples using igraph objects (one graph per layer)
+# -------------------------------------------------------------------------
+
+# Build a tiny 2-layer multiplex from igraph graphs
+g1 <- igraph::graph_from_data_frame(
+  data.frame(from = c("a","b","c"), to = c("b","c","d"), w_ = c(1,1,1)),
+  directed = FALSE
+)
+g2 <- igraph::graph_from_data_frame(
+  data.frame(from = c("a","a","d"), to = c("c","d","e"), w_ = c(1,1,1)),
+  directed = FALSE
+)
+
+net <- multinet::ml_empty()
+multinet::add_igraph_layer_ml(net, g1, name = "E1")
+multinet::add_igraph_layer_ml(net, g2, name = "E2")
+
+# -------------------------
+# GLouvain (multinet) mode
+# -------------------------
+comm_gl_mn <- detectCom(
+  net,
+  method         = "glouvain",
+  supra_graph    = FALSE,
+  glouvain_gamma = 1,
+  glouvain_omega = 1,
+  min.actors     = 1,
+  min.layers     = 1,
+  relabel_by_size = FALSE,
+  seed           = 1,
+  save_to_rds    = FALSE
+)
+
+# Direct call (should match the same partition, up to naming)
+comm_gl_direct <- multinet::glouvain_ml(net, gamma = 1, omega = 1)
+
+# -------------------------
+# GLouvain (supra-graph) mode
+# -------------------------
+comm_gl_supra <- detectCom(
   net,
   method      = "glouvain",
+  supra_graph = TRUE,
   edgeWeight  = "count",
-  min.actors  = 15,
-  min.layers  = 2,
+  min.actors  = 1,
+  min.layers  = 1,
   seed        = 1,
-  save_to_rds = TRUE,
-  write_csv   = FALSE,
-  verbose     = TRUE
+  save_to_rds = FALSE
 )
 
-# Backward‑compatible alias (deprecated): will warn and run as glouvain
-comm2 <- detectCom(net, method = "louvain")
-
-# Clique‑based communities using k = 4; retain communities with >= 20 actors and in >= 2 layers
-comm_clq <- detectCom(
+# -------------------------
+# Clique percolation (multinet) mode: clique.k + clique.m
+# -------------------------
+comm_clq_mn <- detectCom(
   net,
   method      = "clique",
-  clique.k    = 4,
-  min.actors  = 20,
-  min.layers  = 2,
-  edgeWeight  = "sum",
-  write_summary_csv = TRUE
+  supra_graph = FALSE,
+  clique.k    = 3,
+  clique.m    = 1,
+  min.actors  = 1,
+  min.layers  = 1,
+  save_to_rds = FALSE
 )
 
-# Infomap with selected layers
-sel <- c("Endothelium","Immune","N.LoH")
-comm_infomap <- detectCom(net, method = "infomap", layers = sel, edgeWeight = "count")
+# -------------------------
+# Clique (supra-graph) mode: clique.m ignored
+# -------------------------
+comm_clq_supra <- detectCom(
+  net,
+  method      = "clique",
+  supra_graph = TRUE,
+  clique.k    = 3,
+  edgeWeight  = "count",
+  min.actors  = 1,
+  min.layers  = 1,
+  save_to_rds = FALSE
+)
+
+# -------------------------
+# Infomap (multinet) mode: infomap_* parameters
+# -------------------------
+comm_info_mn <- detectCom(
+  net,
+  method              = "infomap",
+  supra_graph         = FALSE,
+  infomap_overlapping = FALSE,
+  infomap_directed    = FALSE,
+  infomap_self_links  = TRUE,
+  min.actors          = 1,
+  min.layers          = 1,
+  seed                = 1,
+  save_to_rds         = FALSE
+)
+
+# -------------------------
+# Infomap (supra-graph) mode
+# -------------------------
+comm_info_supra <- detectCom(
+  net,
+  method      = "infomap",
+  supra_graph = TRUE,
+  edgeWeight  = "sum",
+  min.actors  = 1,
+  min.layers  = 1,
+  seed        = 1,
+  save_to_rds = FALSE
+)
+
+# -------------------------
+# ABACUS (multinet) mode
+# -------------------------
+comm_abacus <- detectCom(
+  net,
+  method      = "abacus",
+  supra_graph = FALSE,
+  min.actors  = 1,
+  min.layers  = 1,
+  save_to_rds = FALSE
+)
+
+# -------------------------------------------------------------------------
+# Example using an existing list of igraph objects on disk (your workflow)
+# -------------------------------------------------------------------------
+\dontrun{
+setwd("~/Abir/test_data1/")
+load("igraph_objects.RData")  # loads graph_list_A
+
+# Build ml.network from your igraph list (any equivalent builder works)
+net_A <- multinet::ml_empty()
+for (ln in names(graph_list_A)) {
+  g <- graph_list_A[[ln]]
+  # OPTIONAL: if you want weighted glouvain in multinet, ensure edge attr w_ exists:
+  # igraph::E(g)$w_ <- igraph::E(g)$correlation
+  multinet::add_igraph_layer_ml(net_A, g, name = ln)
 }
 
+# Multilayer glouvain (multinet)
+comm_ml <- detectCom(net_A, method = "glouvain",
+                     supra_graph = FALSE,
+                     glouvain_gamma = 1,
+                     glouvain_omega = 1,
+                     min.actors = 15,
+                     min.layers = 2,
+                     seed = 1)
+
+# Direct call (compare partitions; labels may differ if relabel_by_size=TRUE)
+comm_direct <- multinet::glouvain_ml(net_A, gamma = 1, omega = 1)
+
+# Supra-graph glouvain (legacy-style collapse)
+comm_supra <- detectCom(net_A, method = "glouvain",
+                        supra_graph = TRUE,
+                        edgeWeight  = "count",
+                        min.actors  = 15,
+                        min.layers  = 2,
+                        seed        = 1)
 }
-\seealso{
-\code{\link{build_multiNet}} to assemble multilayer graphs,
-\code{\link{consensusEdges}} for robust per‑layer edges,
-\code{\link{add_network_attributes}} to enrich networks prior to clustering.
+
 }

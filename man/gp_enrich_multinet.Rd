@@ -2,8 +2,7 @@
 % Please edit documentation in R/gp_enrich_multinet.R
 \name{gp_enrich_multinet}
 \alias{gp_enrich_multinet}
-\title{Layer-wise functional enrichment with g:Profiler for multilayer networks,
-and automatic export of CSV, dot plot, concept (term–gene) network, and term-only overlap network}
+\title{Functional enrichment with g:Profiler for multilayer networks}
 \usage{
 gp_enrich_multinet(
   net,
@@ -12,7 +11,7 @@ gp_enrich_multinet(
   layer_order = NULL,
   significant = TRUE,
   user_threshold = 0.05,
-  correction_method = c("g_SCS", "fdr", "bonferroni"),
+  correction_method = c("g_SCS", "fdr", "bonferroni", "none"),
   exclude_iea = FALSE,
   domain_scope = c("annotated", "custom"),
   custom_bg = NULL,
@@ -32,122 +31,104 @@ gp_enrich_multinet(
   ton_layout = "fr",
   ton_width = width,
   ton_height = height,
-  ton_margin_cm = c(0.5, 0.5, 0.5, 0.5)
+  ton_margin_cm = c(0.5, 0.5, 0.5, 0.5),
+  communities = NULL,
+  enrich_scope = c("layer", "community"),
+  restrict_genes = NULL,
+  min_query_size = 3
 )
 }
 \arguments{
-\item{net}{A \pkg{multinet} object. Layers are discovered via \code{multinet::layers_ml(net)} and
-coerced to \pkg{igraph} objects through \code{as.list(net)}; vertex names are assumed to be gene symbols.}
+\item{net}{A \pkg{multinet} object.}
 
-\item{organism}{Organism string accepted by g:Profiler (e.g., \code{"hsapiens"}, \code{"mmusculus"}).}
+\item{organism}{Organism string accepted by g:Profiler (e.g. "hsapiens").}
 
-\item{sources}{Character vector of g:Profiler sources to include (e.g., \code{c("GO:BP","GO:MF","GO:CC","REAC")}).}
+\item{sources}{Character vector of g:Profiler sources (e.g. c("GO:BP","REAC")).}
 
-\item{layer_order}{Optional character vector specifying which layers to process and in what order. By default,
-all layers from \code{net} are used in their native order.}
+\item{layer_order}{Optional character vector of layers to process (and order).}
 
-\item{significant}{Logical. If \code{TRUE}, g:Profiler filters to significant terms according to
-\code{user_threshold} and \code{correction_method}.}
+\item{significant}{Logical; if TRUE, apply a p-value threshold:
+for standard corrections this is handled by g:Profiler;
+for \code{correction_method = "none"} it is applied to \code{p_raw}.}
 
-\item{user_threshold}{Numeric. Significance threshold (e.g., \code{0.05}).}
+\item{user_threshold}{Numeric significance threshold.}
 
-\item{correction_method}{Multiple testing method for g:Profiler. One of \code{"g_SCS"}, \code{"fdr"},
-or \code{"bonferroni"}.}
+\item{correction_method}{One of "g_SCS", "fdr", "bonferroni", or "none".
+See Details for behaviour of "none".}
 
-\item{exclude_iea}{Logical. If \code{TRUE}, exclude electronic annotations (IEA) where applicable.}
+\item{exclude_iea}{Logical; exclude electronic annotations?}
 
-\item{domain_scope}{One of \code{"annotated"} (default) or \code{"custom"}.
-Use \code{"custom"} when supplying \code{custom_bg}.}
+\item{domain_scope}{"annotated" or "custom" (with \code{custom_bg}).}
 
-\item{custom_bg}{Optional character vector of background genes. Required when \code{domain_scope="custom"}.}
+\item{custom_bg}{Optional background genes (symbols), used when
+\code{domain_scope = "custom"}.}
 
-\item{show_terms}{Integer. Number of top terms (by p-value) to display in the dot plot and the concept network.}
+\item{show_terms}{Number of top terms (by p-value) for dot plot and concept net.}
 
-\item{results_dir}{Base output directory. Created if it does not exist.}
+\item{results_dir}{Base output directory.}
 
-\item{run_name}{Name of the run subfolder under \code{results_dir}. If \code{NULL}, a name of the form
-\code{"gprofiler_multinet_<YYYY-mm-dd_HHMMSS>"} is generated.}
+\item{run_name}{Optional subfolder name under \code{results_dir}; if NULL a
+timestamped name is generated.}
 
-\item{per_layer_subdirs}{Logical; if \code{TRUE} (default) create a subdirectory per layer.}
+\item{per_layer_subdirs}{Logical; if TRUE (default) create a subdirectory per
+layer under the run directory.}
 
-\item{format}{Image format for saved figures: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.}
+\item{format}{Plot format: "png", "pdf", or "jpg".}
 
-\item{width, height, dpi}{Plot geometry for saved figures (inches; DPI ignored for PDF).}
+\item{width, height, dpi}{Plot geometry (inches; DPI ignored for PDF).}
 
-\item{show_in_rstudio}{Logical; if \code{TRUE}, also \code{print()} plots to the current graphics device.}
+\item{show_in_rstudio}{Logical; print plots to current device.}
 
-\item{verbose}{Logical; if \code{TRUE}, print progress messages.}
+\item{verbose}{Logical; print progress messages.}
 
-\item{ton_show}{Logical; if \code{TRUE} (default), draw the term-only overlap network.}
+\item{ton_show}{Logical; draw term-only network?}
 
-\item{ton_top_terms}{Integer; number of top terms (by p-value) to include in the term-only network.}
+\item{ton_top_terms}{Number of top terms to include in term-only network.}
 
-\item{ton_min_overlap}{Integer; minimum \emph{shared intersection genes} between two terms to draw an edge.}
+\item{ton_min_overlap}{Minimum shared genes between terms to draw an edge.}
 
-\item{ton_layout}{Layout for the term-only network. One of \code{"fr"}, \code{"kk"}, \code{"lgl"}, \code{"mds"}.}
+\item{ton_layout}{Layout for term-only network ("fr","kk","lgl","mds").}
 
-\item{ton_width, ton_height}{Size (inches) for the term-only network figure.}
+\item{ton_width, ton_height}{Size (inches) for term-only network.}
 
-\item{ton_margin_cm}{Numeric vector \code{c(top, right, bottom, left)} in centimetres for term-only plot margins.}
+\item{ton_margin_cm}{Vector c(top,right,bottom,left) in cm for term-only plot.}
+
+\item{communities}{Optional data.frame describing communities.}
+
+\item{enrich_scope}{"layer" (default) or "community".}
+
+\item{restrict_genes}{Optional character vector; if non-NULL, each query
+gene set is restricted to its intersection with this vector.}
+
+\item{min_query_size}{Minimum number of genes in a query to run g:Profiler.}
 }
 \value{
-Invisibly returns a list with:
+Invisibly, a list with:
 \describe{
-\item{\code{run_dir}}{Absolute path to the run directory.}
-\item{\code{by_layer}}{Named list keyed by layer containing file paths for
-\code{csv_file}, \code{dotplot_file}, \code{cnet_file}, and \code{termnet_file}.}
-\item{\code{summary_file}}{Absolute path to the run-level \code{SUMMARY.csv} manifest.}
+\item{\code{run_dir}}{Absolute path to the run folder.}
+\item{\code{by_layer}}{Layer-keyed list. For layer-scope, each element
+contains file paths and \code{n_genes}/\code{n_terms}. For community-
+scope, each layer contains a list keyed by community ID (e.g. "cid_C1").}
+\item{\code{summary_file}}{Path to run-level \code{SUMMARY.csv}.}
 }
 }
 \description{
-For each selected layer of a multilayer network, this function:
+For each selected layer (and optionally each community in each layer), this
+function:
 \enumerate{
-\item extracts the layer's gene symbols (from vertex names);
-\item runs \strong{g:Profiler} enrichment (\code{\link[gprofiler2]{gost}}) against the requested sources;
+\item extracts gene symbols (from vertex names or community memberships);
+\item optionally restricts them to a user-supplied gene set
+(\code{restrict_genes});
+\item runs \strong{g:Profiler} (\code{\link[gprofiler2]{gost}}) using the
+requested sources;
+\item saves a \strong{CSV} with results, including a plain-text
+\code{intersection_genes} column and simple enrichment metrics;
 \item saves a \strong{gost} dot plot of significant terms;
-\item saves a \strong{concept (term–gene) network} showing terms connected to their hit genes
-(both term names and gene symbols are labelled; terms are colored by \eqn{-\log_{10}(p)} and
-sized by intersection size; genes are grey);
-\item saves a \strong{term-only overlap network} (nodes = terms; edges drawn when two terms share
-at least \code{ton_min_overlap} genes; \emph{numbers near nodes show each term’s
-\code{intersection_size}});
-\item writes a CSV of g:Profiler results, augmented with a plain-text
-\code{intersection_genes} (semicolon-separated gene symbols).
+\item saves a \strong{term–gene concept network};
+\item saves a \strong{term-only overlap network}.
 }
 
-A per-run manifest (\code{SUMMARY.csv}) lists what was saved for each layer.
-}
-\details{
-g:Profiler enrichment per layer (CSV + gost plot + concept network + term-only network)
-
-\strong{Inputs.} Layers are read from \code{multinet::layers_ml(net)}. Each layer is converted to an
-\pkg{igraph} using \code{as.list(net)}; the node names of that graph are interpreted as gene symbols.
-
-\strong{Enrichment.} The g:Profiler call uses \code{evcodes = TRUE} so that \code{$intersection} carries
-actual gene members per term. You can limit to significant results and set the multiple-testing method
-and threshold via \code{significant}, \code{correction_method}, and \code{user_threshold}.
-Background choice is controlled with \code{domain_scope} and (optionally) \code{custom_bg}:
-\itemize{
-\item \code{domain_scope = "annotated"} (default): test against the annotation domain.
-\item \code{domain_scope = "custom"}: test against a user-supplied background gene set
-passed in \code{custom_bg} (required in this mode).
-\item If you pass a non-\code{NULL} \code{custom_bg} while \code{domain_scope != "custom"}, the function
-automatically switches to \code{domain_scope = "custom"} (with a message).
-}
-
-\strong{Plots.}
-\itemize{
-\item The gost dot plot is produced by \code{\link[gprofiler2]{gostplot}} and is downsampled to the
-\code{show_terms} most significant results for legibility.
-\item The concept (term–gene) network connects each selected term (top \code{show_terms} by p-value)
-to its \code{intersection} genes; terms are colored by \eqn{-\log_{10}(p)} and sized by
-\code{intersection_size}. \emph{Both term names and gene symbols are printed.}
-\item The term-only overlap network places an edge between two terms when they share at least
-\code{ton_min_overlap} intersection genes. Node labels show term names; a second number near
-each node is the term’s \code{intersection_size}. Node color encodes \eqn{-\log_{10}(p)}.
-}
-
-\strong{Output structure.} Results are written to:
+In \strong{layer scope}, the output structure is conserved:
 \preformatted{
   <results_dir>/<run_name>/
     <layer>/
@@ -155,72 +136,71 @@ each node is the term’s \code{intersection_size}. Node color encodes \eqn{-\lo
       gprof_dot_<layer>.<format>
       gprof_cnet_<layer>.<format>
       gprof_termnet_<layer>.<format>
-    SUMMARY.csv          (run-level manifest at the root of <run_name>)
+    SUMMARY.csv
 }
-When \code{per_layer_subdirs = FALSE}, the files are written directly under
-\code{<results_dir>/<run_name>/} with layer-specific filenames.
-}
-\section{Scaling, units and aesthetics}{
 
+In \strong{community scope}, results are nested inside each layer:
+\preformatted{
+  <results_dir>/<run_name>/
+    <layer>/
+      cid_<CID>/
+        gprof_<layer>_cid<CID>.csv
+        gprof_dot_<layer>_cid<CID>.<format>
+        gprof_cnet_<layer>_cid<CID>.<format>
+        gprof_termnet_<layer>_cid<CID>.<format>
+    SUMMARY.csv
+}
+}
+\details{
+g:Profiler enrichment for multilayer networks (layer- or community-wise)
+
+\strong{Inputs.}
+Layers are read from \code{multinet::layers_ml(net)} and converted to
+\pkg{igraph}s via \code{as.list(net)} (vertex names = gene symbols).
+
+\strong{Scopes.}
 \itemize{
-\item Plot \code{width}/\code{height} are in \strong{inches}; \code{dpi} is ignored for PDF.
-\item Network node sizes are rescaled to a sensible visual range (terms larger than genes).
-\item \code{ton_margin_cm} is in \strong{centimetres} and set as a ggplot plot margin.
-}
+\item \code{enrich_scope = "layer"} (default): one query per layer
+(vertex set of the layer, optionally restricted by \code{restrict_genes}).
+\item \code{enrich_scope = "community"}: one query per community per layer,
+as defined by \code{communities} (\code{actor}, \code{layer}, \code{cid}).
 }
 
-\section{Notes and troubleshooting}{
-
+\strong{Communities.} \code{communities} should be a data.frame with at least:
 \itemize{
-\item \strong{Custom background:} When \code{domain_scope="custom"}, \code{custom_bg} must be provided;
-otherwise the function stops with a clear error.
-\item \strong{Very many terms:} Increase \code{show_terms}, figure sizes, or use PDF for higher fidelity.
-\item \strong{Networks require} \pkg{ggraph} and \pkg{igraph}. If either is missing, network plots are skipped.
-}
+\item an \emph{actor} column (gene symbol / actor ID);
+\item a \emph{layer} column (matching \code{multinet::layers_ml(net)});
+\item a community column. The function normalises this to \code{cid} using:
+\code{cid}, \code{com}, or \code{community} (in that order).
 }
 
-\examples{
-\dontrun{
-## Single comprehensive example (demonstrates all arguments)
-## Assume you have a 'multinet' object 'net' with layers E1, E2, M1 whose vertex names are gene symbols.
+\strong{Custom query restriction.}
+If \code{restrict_genes} is non-\code{NULL}, the query set for each layer
+(or community) is intersected with this vector before calling g:Profiler.
+Only communities/layers with at least \code{min_query_size} genes after
+restriction are tested.
 
-# Prepare a custom background as the union of all vertex names across layers:
-all_bg <- unique(unlist(lapply(as.list(net), function(g) igraph::V(g)$name)))
+\strong{Statistics.}
+G:Profiler returns adjusted p-values using \code{correction_method}:
+\code{"g_SCS"}, \code{"fdr"} (Benjamini–Hochberg FDR), or \code{"bonferroni"}.
+The threshold is given by \code{user_threshold}.
 
-res <- gp_enrich_multinet(
-  net                = net,
-  organism           = "hsapiens",
-  sources            = c("GO:BP","GO:MF","GO:CC","REAC"),
-  layer_order        = c("E1","E2","M1"),
-  significant        = TRUE,
-  user_threshold     = 0.05,
-  correction_method  = "g_SCS",                  # or "fdr", "bonferroni"
-  exclude_iea        = FALSE,
-  domain_scope       = "custom",                 # <-- use the custom background below
-  custom_bg          = all_bg,
-  show_terms         = 12,                       # limit for dot plot + concept network
-  results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
-  run_name           = paste0("gprofiler_run_", format(Sys.time(), "\%Y\%m\%d_\%H\%M\%S")),
-  per_layer_subdirs  = TRUE,
-  format             = "png",
-  width              = 9, height = 7, dpi = 300,
-  show_in_rstudio    = TRUE,
-  verbose            = TRUE,
-  # term-only overlap network:
-  ton_show           = TRUE,
-  ton_top_terms      = 10,
-  ton_min_overlap    = 1,
-  ton_layout         = "fr",
-  ton_width          = 9,
-  ton_height         = 7,
-  ton_margin_cm      = c(0.8,0.8,0.8,0.8)
-)
-
-# Inspect the run manifest:
-read.csv(res$summary_file, stringsAsFactors = FALSE)
+Additionally, this function supports \code{correction_method = "none"}:
+\itemize{
+\item g:Profiler is called without significance filtering;
+\item raw hypergeometric p-values (\code{p_raw}) are computed from
+\code{effective_domain_size}, \code{term_size},
+\code{query_size}, and \code{intersection_size};
+\item if \code{significant = TRUE}, terms are kept only when
+\code{p_raw <= user_threshold};
+\item CSVs include an extra \code{p_raw} column, and ranking/plots
+use \code{p_raw}.
 }
+
+The result CSV also contains:
+\itemize{
+\item \code{intersection_genes} — semicolon-separated gene symbols;
+\item \code{precision = intersection_size / query_size};
+\item \code{recall    = intersection_size / term_size}.
 }
-\seealso{
-\code{\link[gprofiler2]{gost}}, \code{\link[gprofiler2]{gostplot}},
-\code{\link[ggraph]{ggraph}}, \code{\link[igraph]{graph_from_data_frame}}
 }
