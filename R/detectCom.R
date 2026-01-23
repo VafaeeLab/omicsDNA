@@ -380,16 +380,13 @@ detectCom <- function(
     size_by <- tapply(tmp$actor, tmp$com, function(v) length(unique(v)))
     span_by <- tapply(tmp$layer, tmp$com, function(v) length(unique(v)))
 
-    size_by <- as.integer(size_by)
-    span_by <- as.integer(span_by[names(size_by)])
-
-    ord <- order(size_by, decreasing = TRUE)
-    ids <- names(size_by)[ord]
-
-    if (isTRUE(relabel_by_size)) {
-      com_out <- paste0("C", seq_along(ids))
-    } else {
-      com_out <- as.character(ids)
+    # --- NEW: handle no communities ---
+    if (length(size_by) == 0L) {
+      sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
+      sum_file <- file.path(results_dir, paste0(base, "_summary.csv"))
+      utils::write.csv(sm, sum_file, row.names = FALSE)
+      if (isTRUE(verbose)) message("Saved summary CSV (empty): ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
+      return(invisible(sum_file))
     }
 
     sm <- data.frame(
