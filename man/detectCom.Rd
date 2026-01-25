@@ -2,20 +2,27 @@
 % Please edit documentation in R/detectCom.R
 \name{detectCom}
 \alias{detectCom}
-\title{Strict community detection wrapper for multilayer networks (multinet)}
+\title{Community detection wrapper for multilayer networks (multinet)}
 \usage{
 detectCom(
   net,
   method = c("glouvain", "louvain", "infomap", "clique", "abacus"),
   supra_graph = FALSE,
   layers = NULL,
-  gamma = 1,
-  omega = 1,
-  overlapping = FALSE,
-  directed = FALSE,
-  self.links = TRUE,
-  k = 3,
-  m = 1,
+  glouvain_gamma = 1,
+  glouvain_omega = 1,
+  clique.k = 3,
+  clique.m = 1,
+  infomap_overlapping = FALSE,
+  infomap_directed = FALSE,
+  infomap_self_links = TRUE,
+  gamma = NULL,
+  omega = NULL,
+  k = NULL,
+  m = NULL,
+  overlapping = NULL,
+  directed = NULL,
+  self.links = NULL,
   edgeWeight = c("count", "sum"),
   min.actors = 15,
   min.layers = 2,
@@ -26,7 +33,7 @@ detectCom(
   rds_file = NULL,
   write_csv = FALSE,
   csv_prefix = "communities",
-  write_summary_csv = FALSE,
+  write_summary_csv = TRUE,
   verbose = TRUE,
   ...
 )
@@ -52,6 +59,13 @@ used when \code{method="glouvain"} and \code{supra_graph=FALSE}.}
 \item{omega}{Numeric (>=0). Inter-layer coupling for \code{\link[multinet:Communities]{multinet::glouvain_ml()}}
 used when \code{method="glouvain"} and \code{supra_graph=FALSE}.}
 
+\item{k}{Integer (>=3). Clique size threshold. Passed to
+\code{\link[multinet:Communities]{multinet::clique_percolation_ml()}} in strict mode; used as minimum clique
+size for \code{\link[igraph:cliques]{igraph::cliques()}} in supra-graph mode.}
+
+\item{m}{Integer (>=1). Multilayer clique parameter passed to
+\code{\link[multinet:Communities]{multinet::clique_percolation_ml()}} in strict mode. Ignored in supra-graph mode.}
+
 \item{overlapping}{Logical. Passed to \code{\link[multinet:Communities]{multinet::infomap_ml()}} when
 \code{method="infomap"} and \code{supra_graph=FALSE}.}
 
@@ -60,13 +74,6 @@ used when \code{method="glouvain"} and \code{supra_graph=FALSE}.}
 
 \item{self.links}{Logical. Passed to \code{\link[multinet:Communities]{multinet::infomap_ml()}} when
 \code{method="infomap"} and \code{supra_graph=FALSE}.}
-
-\item{k}{Integer (>=3). Clique size threshold. Passed to
-\code{\link[multinet:Communities]{multinet::clique_percolation_ml()}} in strict mode; used as minimum clique
-size for \code{\link[igraph:cliques]{igraph::cliques()}} in supra-graph mode.}
-
-\item{m}{Integer (>=1). Multilayer clique parameter passed to
-\code{\link[multinet:Communities]{multinet::clique_percolation_ml()}} in strict mode. Ignored in supra-graph mode.}
 
 \item{edgeWeight}{How to aggregate edges across layers in supra-graph mode:
 one of \code{"count"} or \code{"sum"}. Ignored when \code{supra_graph=FALSE}.}
@@ -117,7 +124,7 @@ and attributes \code{community_sizes}, \code{layer_span}, and \code{files}.
 \description{
 \code{detectCom()} supports \strong{two analysis modes} for a multilayer network of class
 \link[multinet:ml.network]{multinet::ml.network}.
-\subsection{1) Strict multilayer-native passthrough (\code{supra_graph = FALSE}, default)}{
+\subsection{1) Multilayer-native passthrough (\code{supra_graph = FALSE}, default)}{
 
 In this mode, \code{detectCom()} is a \strong{thin wrapper} around \verb{multinet::*_ml()} and
 returns the \strong{raw multinet output object unchanged}:

@@ -320,34 +320,84 @@ rep$samples$edges            # first rows of edges with attribute columns
 ```
 
 
-### 11) `detectCom()` — community detection on the supra‑graph
+### 11) `detectCom()` — community detection per layer and on the supra‑graph
 ```r
 
-# Generalised Louvain (canonical method), count-based supra-graph weights
-comm <- detectCom(
+# Equivalent to multinet::glouvain_ml(net, gamma = 1, omega = 1)
+set.seed(1)
+comm_gl_ml <- detectCom(
   net,
-  method      = "glouvain",   # <- preferred spelling
-  edgeWeight  = "count",
-  min.actors  = 15,
-  min.layers  = 2,
+  method      = "glouvain",
+  supra_graph = FALSE,
+  gamma       = 1,
+  omega       = 1,
   seed        = 1,
-  save_to_rds = TRUE,
-  write_csv   = TRUE,
+  write_summary_csv = TRUE,   # writes com/size/span summary
   verbose     = TRUE
 )
 
 
-# Clique-based detection with explicit k; keep only sizeable, multilayer communities
-comm_clq <- detectCom(
+# Equivalent to multinet::infomap_ml()
+comm_im_ml <- detectCom(
   net,
-  method      = "clique",
-  clique.k    = 4,        # cohesion threshold in the supra-graph
-  min.actors  = 20,       # post-detection retention threshold
-  min.layers  = 2,
-  edgeWeight  = "count",
+  method      = "infomap",
+  supra_graph = FALSE,
+  overlapping = FALSE,
+  directed    = FALSE,
+  self.links  = TRUE,
+  seed        = 1,
   write_summary_csv = TRUE,
   verbose     = TRUE
 )
+
+# Equivalent to multinet::clique_percolation_ml()
+comm_clq_ml <- detectCom(
+  net,
+  method      = "clique",
+  supra_graph = FALSE,
+  k           = 4,
+  m           = 2,
+  write_summary_csv = TRUE,   # empty summary is written if no cliques found
+  verbose     = TRUE
+)
+
+
+
+omm_im_supra <- detectCom(
+  net,
+  method      = "infomap",
+  supra_graph = TRUE,
+  edgeWeight  = "count",
+  min.actors  = 15,
+  min.layers  = 2,
+  relabel_by_size = TRUE,
+  write_summary_csv = TRUE,
+  verbose     = TRUE
+)
+
+head(comm_im_supra)
+attr(comm_im_supra, "community_sizes")
+attr(comm_im_supra, "layer_span")
+
+
+
+# Clique-union components on the supra-graph
+comm_clq_supra <- detectCom(
+  net,
+  method      = "clique",
+  supra_graph = TRUE,
+  k           = 4,            # clique size threshold on supra-graph
+  edgeWeight  = "count",
+  min.actors  = 20,
+  min.layers  = 2,
+  relabel_by_size = TRUE,
+  write_summary_csv = TRUE,
+  verbose     = TRUE
+)
+
+head(comm_clq_supra)
+attr(comm_clq_supra, "community_sizes")
+attr(comm_clq_supra, "layer_span")
 
 ```
 
