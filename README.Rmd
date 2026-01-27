@@ -336,6 +336,8 @@ comm_gl_ml <- detectCom(
   verbose     = TRUE
 )
 
+# setting comm_gl_ml as default communty sets for downstream tasks
+comm = comm_gl_ml
 
 # Equivalent to multinet::infomap_ml()
 comm_im_ml <- detectCom(
@@ -659,8 +661,8 @@ head(edges_diff_E1_E2)
 #5 BRCA2 MKI67   only_E2     NA         0.807
 #6 BRCA2 HELLS   only_E2     NA         0.690
 
-E1_E2 <- edges_diff_E1_E2$from[edges_diff_E1_E2$category == "common"] %>% unique()
-head(E1_E2)
+layerE1andE2_diff <- edges_diff_E1_E2$from[edges_diff_E1_E2$category == "common"] %>% unique()
+head(layerE1andE2_diff)
 #[1] "BRCA2"   "BIRC5"   "AURKB"   "RNF185"  "CFAP298" "RAB22A" 
 
 gp_layer_custom <- gp_enrich_multinet(
