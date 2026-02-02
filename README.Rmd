@@ -107,18 +107,26 @@ library(Seurat)
 data("pbmc_small")
 pbmc_small$celltype <- as.character(Idents(pbmc_small))   # or your own labels
 
-sc_adjacency <- sc_buildAdjacency(
-  seurat_obj     = pbmc_small,
-  assay          = DefaultAssay(pbmc_small),
-  slot           = "data",
-  cell_type_col  = "celltype",
-  cor_method     = "spearman",
-  corr_threshold = 0.6,
-  pval_adjust    = "fdr",
-  pval_cutoff    = 0.1,
-  resample       = FALSE,
-  save_rds       = FALSE,
-  verbose        = TRUE
+
+adj_sc <- sc_buildAdjacency(
+  seurat_obj        = so,
+  assay             = "SCT",
+  slot              = "data",
+  group_col         = "Clusters",
+  cor_method        = "pearson",
+  pval_adjust       = "fdr",
+  n_var_features    = 3000,
+  pval_cutoff       = 0.05,
+  corr_threshold    = 0.35,
+  resample          = TRUE,
+  samples_per_group = 100,
+  n_repeats         = 20,
+  min_cells_per_layer = 100,
+  save_rds          = TRUE,
+  out_dir           = "omicsDNA_results",
+  file_prefix       = "sc_adjacency",
+  compress          = "xz",
+  verbose           = TRUE
 )
 
 
@@ -332,12 +340,16 @@ comm_gl_ml <- detectCom(
   gamma       = 1,
   omega       = 1,
   seed        = 1,
-  write_summary_csv = TRUE,   # writes com/size/span summary
+  write_csv = TRUE,   # writes com/size/span summary
   verbose     = TRUE
 )
 
+
 # setting comm_gl_ml as default communty sets for downstream tasks
 comm = comm_gl_ml
+
+# make cids is integer 
+comm$cid <- as.integer(comm$cid)
 
 # Equivalent to multinet::infomap_ml()
 comm_im_ml <- detectCom(
@@ -348,7 +360,7 @@ comm_im_ml <- detectCom(
   directed    = FALSE,
   self.links  = TRUE,
   seed        = 1,
-  write_summary_csv = TRUE,
+  write_csv = TRUE,
   verbose     = TRUE
 )
 
@@ -359,7 +371,7 @@ comm_clq_ml <- detectCom(
   supra_graph = FALSE,
   k           = 4,
   m           = 2,
-  write_summary_csv = TRUE,   # empty summary is written if no cliques found
+  write_csv = TRUE,   # empty summary is written if no cliques found
   verbose     = TRUE
 )
 
@@ -373,7 +385,7 @@ omm_im_supra <- detectCom(
   min.actors  = 15,
   min.layers  = 2,
   relabel_by_size = TRUE,
-  write_summary_csv = TRUE,
+  write_csv = TRUE,
   verbose     = TRUE
 )
 
@@ -393,7 +405,7 @@ comm_clq_supra <- detectCom(
   min.actors  = 20,
   min.layers  = 2,
   relabel_by_size = TRUE,
-  write_summary_csv = TRUE,
+  write_csv = TRUE,
   verbose     = TRUE
 )
 
@@ -640,7 +652,7 @@ gp_comm <- gp_enrich_multinet(
 
 
 
-## 3) Per-layer enrichment restricted to a specific gene list; for example, common genes between layer E1 and layerE2
+## 3) Per-layer enrichment restricted to a specific gene list; for example, common genes between layerE1 and layerE2. Enrichment results will identify the molecular pathways in all the layers that are in the harmoney with E1 and E2 layers.
 
 plot_layer_diff(
   net,
@@ -661,8 +673,8 @@ head(edges_diff_E1_E2)
 #5 BRCA2 MKI67   only_E2     NA         0.807
 #6 BRCA2 HELLS   only_E2     NA         0.690
 
-layerE1andE2_diff <- edges_diff_E1_E2$from[edges_diff_E1_E2$category == "common"] %>% unique()
-head(layerE1andE2_diff)
+E1andE2_common_genes <- edges_diff_E1_E2$from[edges_diff_E1_E2$category == "common"] %>% unique()
+head(E1andE2_common_genes)
 #[1] "BRCA2"   "BIRC5"   "AURKB"   "RNF185"  "CFAP298" "RAB22A" 
 
 gp_layer_custom <- gp_enrich_multinet(
@@ -690,13 +702,57 @@ gp_layer_custom <- gp_enrich_multinet(
   ton_layout         = "fr",
   communities        = NULL,
   enrich_scope       = "layer",
-  restrict_genes     = layerE1andE2_diff,   # <-- only these per layer
+  restrict_genes     = E1andE2_common_genes,  
   min_query_size     = 3
 )
 
 
 
-## 4) Per-community enrichment restricted to a specific gene list like oxidative_stress_genes
+
+
+
+
+## 4) Per-layer enrichment restricted to a layer-specific gene list; for example, genes that are present in layer E1 but not E2, and see what other layers are in the molecular harmony with layer layer E1 but not E2.
+
+
+layerE1_genes <- edges_diff_E1_E2$from[edges_diff_E1_E2$category == "only_E1"] %>% unique()
+head(layerE1_genes)
+#[1] "BRCA2"   "BIRC5"   "AURKB"   "RNF185"  "CFAP298" "RAB22A" 
+
+gp_layer_custom <- gp_enrich_multinet(
+  net                = net,
+  organism           = "hsapiens",
+  sources            = c("GO:BP","REAC"),
+  layer_order        = multinet::layers_ml(net),
+  significant        = TRUE,
+  user_threshold     = 0.05,
+  correction_method  = "fdr",
+  exclude_iea        = FALSE,
+  domain_scope       = "annotated",
+  custom_bg          = NULL,
+  show_terms         = 10,
+  results_dir        = getOption("mlnet.results_dir","omicsDNA_results"),
+  run_name           = paste0("gprof_byLayer_oxidative_", format(Sys.time(), "%Y%m%d_%H%M%S")),
+  per_layer_subdirs  = TRUE,
+  format             = "png",
+  width              = 9, height = 7, dpi = 300,
+  show_in_rstudio    = TRUE,
+  verbose            = TRUE,
+  ton_show           = TRUE,
+  ton_top_terms      = 10,
+  ton_min_overlap    = 1,
+  ton_layout         = "fr",
+  communities        = NULL,
+  enrich_scope       = "layer",
+  restrict_genes     = layerE1_genes,   
+  min_query_size     = 3
+)
+
+
+
+
+
+## 5) Per-community enrichment restricted to a specific gene list like oxidative_stress_genes
 
 pc_genes <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
 
@@ -819,7 +875,7 @@ gsea_comm_ox <- gsea_msigdbr_layer_pairs(
   nperm                = NULL,
 
   results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
-  run_name             = "gsea_pairs_byCommunity_oxidativeStress",
+  run_name             = "gsea_pairs_byCommunity_E1_M1_CommonGenes",
   top_n                = 8,
   format               = "pdf",
   show_in_rstudio      = TRUE,
@@ -835,7 +891,7 @@ gsea_layer_ox <- gsea_msigdbr_layer_pairs(
   layer_order          = multinet::layers_ml(net),
   scores_by_layer      = NULL,
   enrich_scope         = "layer",
-  restrict_genes       = oxidative_stress_genes,   # only these genes in ranking
+  restrict_genes       = oxidative_stress_genes,   
   min_rank_genes       = 10,
 
   msigdb_species       = "Homo sapiens",

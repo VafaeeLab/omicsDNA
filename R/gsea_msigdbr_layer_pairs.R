@@ -2,257 +2,200 @@
 # 28 - Pairwise GSEA (MSigDB) between consecutive layers (fgsea + msigdbr)
 # -------------------------------------------------------------------------
 
-#' Pairwise GSEA (MSigDB) between consecutive network layers
+#' Pairwise preranked GSEA (MSigDB) across consecutive multilayer network layers
 #'
-#' @title Pairwise GSEA (MSigDB) across consecutive multilayer network layers
-#'   with dot, enrichment, cNET (terms+genes), and term‑only overlap plots
+#' @title Pairwise preranked GSEA across consecutive layers with MSigDB (fgsea + msigdbr)
 #'
 #' @description
-#' For each **consecutive pair** of layers in \code{layer_order} (e.g.,
-#' \code{E1 -> E2 -> M1 -> M2}), this function builds a **per‑gene ranking**
-#' from layer‑specific correlation and adjusted p‑value, runs preranked GSEA
-#' via \pkg{fgsea}, and writes five outputs per pair:
-#' \itemize{
-#'   \item a tidy CSV of enriched pathways (ES, NES, pval, padj, size,
-#'         leadingEdge, etc.);
-#'   \item a **dot** (bubble) summary of top up/down pathways by adjusted
-#'         p‑value;
-#'   \item classic **running‑sum enrichment** plots for the best L1‑up and
-#'         best L2‑up pathways;
-#'   \item a **cNET (term–gene) concept network** where \strong{both term names
-#'         and gene symbols are labelled} (terms are color‑coded by
-#'         \eqn{-\log_{10}(adj\;p)} and sized by member count; genes are grey);
-#'   \item a **term‑only overlap network** (nodes = terms, edges reflect shared
-#'         genes; numbers at nodes are the pathway gene counts used; color
-#'         encodes \eqn{-\log_{10}(adj\;p)}).
+#' This function performs **preranked gene set enrichment analysis (GSEA)** for each
+#' **consecutive (adjacent) pair of layers** in a multilayer network (e.g.,
+#' \code{E1 -> E2 -> M1 -> M2}). For every adjacent layer pair \code{(L1, L2)}, the function:
+#' \enumerate{
+#'   \item extracts per-gene statistics for each layer (typically an effect size such as a
+#'         correlation-like value, and an adjusted p-value);
+#'   \item builds a **single ranked gene vector** describing how genes differ between
+#'         \code{L1} and \code{L2} (controlled by \code{pair_rank_by});
+#'   \item tests enrichment of \strong{MSigDB} gene sets (retrieved via \pkg{msigdbr})
+#'         using \pkg{fgsea};
+#'   \item saves results tables and publication-ready plots for each layer pair
+#'         (and optionally for each community within that pair).
 #' }
 #'
-#' Two scopes are supported:
+#' Two enrichment scopes are supported:
 #' \itemize{
-#'   \item \code{enrich_scope = "layer"} (default): one GSEA per layer‑pair
-#'         (full ranked universe).
-#'   \item \code{enrich_scope = "community"}: one GSEA per community ID
-#'         (\code{cid}) per layer‑pair, using a \code{communities} table
-#'         (\code{actor}, \code{layer}, \code{cid}). In this mode, the ranking
-#'         for each GSEA is restricted to genes in that community (and
-#'         optionally also to \code{restrict_genes}).
+#'   \item \code{enrich_scope = "layer"}: one GSEA run per layer pair using the full ranked universe.
+#'   \item \code{enrich_scope = "community"}: one GSEA run per community identifier (\code{cid}) per
+#'         layer pair, where the ranked universe is restricted to genes belonging to that community
+#'         (and optionally further restricted by \code{restrict_genes}).
 #' }
-#'
-#' Additionally, a \strong{restriction gene set} (\code{restrict_genes}) can be
-#' supplied. In all modes, the GSEA ranking is restricted to:
-#' \preformatted{
-#'   intersect(all_ranked_genes, restrict_genes)
-#' }
-#' and, in community scope, further intersected with the community’s gene set.
 #'
 #' @details
-#' \strong{Workflow.}
+#' \section{Conceptual inputs}{
+#' The method requires, for each layer, gene-level statistics consisting of:
+#' \itemize{
+#'   \item a signed effect size (e.g., correlation, Spearman rho, or another association measure);
+#'   \item an adjusted p-value (e.g., FDR / q-value).
+#' }
+#' These statistics can be obtained in either of two ways:
 #' \enumerate{
-#'   \item Layers are taken from \code{multinet::layers_ml(net)} (or from
-#'         \code{layer_order} if supplied); consecutive pairs
-#'         \code{(L1, L2)} are formed in that order.
-#'   \item Per layer, per‑gene statistics come either from vertex attributes
-#'         (first match among \code{cor_attr}, \code{padj_attr}) or from
-#'         \code{scores_by_layer[[layer]]}.
-#'   \item A **pairwise ranking** \eqn{r_g} (for gene \eqn{g}) is computed
-#'         using \code{pair_rank_by}:
-#'         \describe{
-#'           \item{\code{"delta_signed_log10_padj"} (default)}{
-#'             \eqn{\mathrm{sign}(cor_{L1}) \cdot -\log_{10}(padj_{L1}) -
-#'                  \mathrm{sign}(cor_{L2}) \cdot -\log_{10}(padj_{L2})}
-#'           }
-#'           \item{\code{"delta_cor"}}{\eqn{cor_{L1} - cor_{L2}}}
-#'           \item{\code{"signed_log10_padj_L1"}}{
-#'             \eqn{\mathrm{sign}(cor_{L1}) \cdot -\log_{10}(padj_{L1})}}
-#'           \item{\code{"signed_log10_padj_L2"}}{
-#'             \eqn{\mathrm{sign}(cor_{L2}) \cdot -\log_{10}(padj_{L2})}}
-#'           \item{\code{"cor_L1"}}{\eqn{cor_{L1}}}
-#'           \item{\code{"cor_L2"}}{\eqn{cor_{L2}}}
-#'         }
-#'   \item MSigDB pathways (via \pkg{msigdbr}) are intersected with the ranked
-#'         universe, size‑filtered by \code{minSize}/\code{maxSize}, and
-#'         enriched using:
-#'         \itemize{
-#'           \item \strong{\code{fgseaMultilevel()}} when \code{nperm = NULL}
-#'                 (recommended);
-#'           \item classic \strong{\code{fgsea()}} when \code{nperm} is a
-#'                 positive integer.
-#'         }
-#'   \item In \strong{community scope}, for each pair \code{(L1,L2)} and
-#'         community ID \code{cid}, the ranking is restricted to genes in that
-#'         community (and optionally to \code{restrict_genes}).
-#'   \item Plots/CSVs are saved into a timestamped run folder; when
-#'         \code{show_in_rstudio = TRUE} they are also printed to the active
-#'         device.
+#'   \item \strong{From \code{net}:} each layer is converted to an \pkg{igraph} object, where vertex
+#'         \code{name} represents the gene identifier. Correlation and adjusted p-values are read
+#'         from vertex attributes using candidate names in \code{cor_attr} and \code{padj_attr}.
+#'   \item \strong{From \code{scores_by_layer}:} a user-supplied named list
+#'         \code{layer -> data.frame(gene, cor, padj)} that overrides vertex attributes for the
+#'         specified layers.
+#' }
+#' The function then constructs a ranked gene list for each consecutive layer pair and applies GSEA
+#' to MSigDB pathways.
 #' }
 #'
-#' \strong{MSigDB compatibility.} Around msigdbr v10 the API shifted from
-#' “category” to “collection[/subcategory]”. This function accepts
-#' \code{msigdb_collections} and optional \code{msigdb_subcategories}, and
-#' internally adapts to both styles. If a requested subcategory is not
-#' available for a collection, a short note is emitted and processing continues.
-#'
-#' \strong{Communities (community scope).}
+#' \section{Ranking and directionality}{
+#' GSEA is run on a named numeric vector (the ranked list), where larger values correspond to
+#' higher-ranked genes. Results are labelled as:
 #' \itemize{
-#'   \item \code{communities} must be a data.frame.
-#'   \item It must contain an \emph{actor} column (gene symbol / actor ID),
-#'         a \emph{layer} column, and a community ID column.
-#'   \item The community column is normalised to \code{cid} using the first
-#'         available name among \code{cid}, \code{com}, or \code{community}.
-#'   \item Actors are normalised via \code{case_insensitive}; in practice,
-#'         gene symbols are upper‑cased when \code{case_insensitive = TRUE}.
+#'   \item \code{direction = "L1_up"} when \code{NES >= 0};
+#'   \item \code{direction = "L2_up"} when \code{NES < 0}.
 #' }
-#'
-#' \strong{cNET (term–gene).} Term nodes are colored by
-#' \eqn{-\log_{10}(adj\;p)} and sized by the number of connected genes
-#' (leading edge or full members per \code{cnet_use}). \emph{Gene symbols are
-#' always labelled} (smaller, grey) alongside term labels (larger). Positions
-#' are computed via \pkg{ggraph} and labels use \pkg{ggrepel} when available.
-#'
-#' \strong{Term‑only overlap.} Nodes are the selected top terms (by
-#' \code{padj}); edges connect terms sharing at least
-#' \code{ton_min_overlap} genes. Numbers near nodes give the gene counts used.
-#'
-#' \strong{Output structure.}
-#' For a pair \code{L1_vs_L2}, layer scope:
-#' \preformatted{
-#'   <results_dir>/<run_name>_<YYYY-mm-dd_HHMMSS>/<L1_vs_L2>/
-#'     gsea_pair_<L1_vs_L2>.csv
-#'     gsea_pair_dot_<L1_vs_L2>.<format>
-#'     gsea_pair_enrich_topL1_<L1_vs_L2>.<format>
-#'     gsea_pair_enrich_topL2_<L1_vs_L2>.<format>
-#'     gsea_pair_cnet_<L1_vs_L2>.<format>
-#'     gsea_pair_termnet_<L1_vs_L2>.<format>
-#' }
-#'
-#' Community scope adds a subfolder per community ID:
-#' \preformatted{
-#'   <results_dir>/<run_name>_<YYYY-mm-dd_HHMMSS>/<L1_vs_L2>/cid_<CID>/
-#'     gsea_pair_<L1_vs_L2>_cid<CID>.csv
-#'     gsea_pair_dot_<L1_vs_L2>_cid<CID>.<format>
-#'     gsea_pair_enrich_topL1_<L1_vs_L2>_cid<CID>.<format>
-#'     gsea_pair_enrich_topL2_<L1_vs_L2>_cid<CID>.<format>
-#'     gsea_pair_cnet_<L1_vs_L2>_cid<CID>.<format>
-#'     gsea_pair_termnet_<L1_vs_L2>_cid<CID>.<format>
-#' }
-#'
-#' Plus a run‑level manifest:
-#' \preformatted{
-#'   <results_dir>/<run_name>_<YYYY-mm-dd_HHMMSS>/SUMMARY.csv
-#' }
-#'
-#' @section Units, scaling and labels:
+#' Interpretation depends on \code{pair_rank_by}, but generally:
 #' \itemize{
-#'   \item All \code{*_margin_cm} arguments are in **centimetres** and applied
-#'         as plot margins.
-#'   \item Network node sizes are rescaled to a sensible visual range
-#'         (terms > genes).
-#'   \item cNET always prints both term names and gene symbols (genes smaller,
-#'         grey).
+#'   \item \code{NES > 0} indicates pathway genes tend to occur near the top of the ranking (more
+#'         consistent with the \code{L1}-side of the chosen contrast);
+#'   \item \code{NES < 0} indicates pathway genes tend to occur near the bottom of the ranking (more
+#'         consistent with the \code{L2}-side of the chosen contrast).
+#' }
 #' }
 #'
-#' @param net A \pkg{multinet} object. Layers come from
-#'   \code{multinet::layers_ml(net)} and are coerced to \pkg{igraph}s via
-#'   \code{as.list(net)}. Vertex attributes provide \code{cor}/\code{padj}
-#'   unless overridden by \code{scores_by_layer}.
-#' @param layer_order Character vector giving the traversal order of layers.
-#'   Pairs are formed as \code{(L1,L2)}, \code{(L2,L3)}, ... in this order.
-#'   Default: \code{multinet::layers_ml(net)}.
-#' @param scores_by_layer Optional named list \code{layer ->
-#'   data.frame(gene, cor, padj)} that overrides vertex attributes for the
-#'   specified layers.
-#' @param cor_attr,padj_attr Character vectors of candidate vertex attribute
-#'   names for correlation and adjusted p‑value. The first present in a layer
-#'   is used (case‑insensitive).
-#' @param pair_rank_by Ranking recipe. One of:
-#'   \code{"delta_signed_log10_padj"} (default), \code{"delta_cor"},
-#'   \code{"signed_log10_padj_L1"}, \code{"signed_log10_padj_L2"},
-#'   \code{"cor_L1"}, \code{"cor_L2"}. See Details for formulas.
-#' @param missing_policy \code{"impute"} (default; uses \code{impute_cor=0},
-#'   \code{impute_padj=1}) or \code{"drop"} to remove genes with missing
-#'   values.
-#' @param impute_cor,impute_padj Numeric values used under
-#'   \code{missing_policy="impute"}.
-#' @param case_insensitive Logical; if \code{TRUE} (default) gene symbols are
-#'   upper‑cased for matching.
-#' @param communities Optional data.frame describing communities; required when
-#'   \code{enrich_scope = "community"}. Must contain \code{actor}, \code{layer}
-#'   and one of \code{cid}, \code{com}, \code{community}.
-#' @param enrich_scope Either \code{"layer"} (default; one GSEA per
-#'   layer‑pair) or \code{"community"} (one GSEA per community ID per
-#'   layer‑pair).
-#' @param restrict_genes Optional character vector of genes. When provided, the
-#'   ranked universe is restricted to \code{intersect(all_genes,
-#'   restrict_genes)}; in community scope, each community is further restricted
-#'   to its gene set.
-#' @param msigdb_species Species string for \pkg{msigdbr} (e.g.,
-#'   \code{"Homo sapiens"}).
-#' @param msigdb_collections Character vector of MSigDB collections (e.g.,
-#'   \code{c("H","C2","C5")}).
-#' @param msigdb_subcategories Optional vector of subcategories (e.g.,
-#'   \code{c("CP:KEGG","GO:BP")}).
-#' @param minSize,maxSize Integer bounds for pathway sizes after intersecting
-#'   with the ranked universe.
-#' @param nperm If \code{NULL} (default), uses \code{fgseaMultilevel()}
-#'   (recommended). If a positive integer, uses \code{fgsea()} with
-#'   \code{nperm} permutations.
-#' @param results_dir Base output directory (created if needed).
-#' @param run_name Prefix for the run folder (a timestamp
-#'   \code{"_YYYY-mm-dd_HHMMSS"} is appended).
-#' @param top_n Number of top up/down pathways by adjusted p‑value to show in
-#'   the dot plot.
-#' @param format Image format for plots: \code{"png"}, \code{"pdf"} or
-#'   \code{"jpg"} (DPI ignored for PDF).
-#' @param width,height,dpi Default plot geometry (inches) and DPI (when
-#'   per‑plot sizes not given).
-#' @param show_in_rstudio If \code{TRUE}, also prints plots to the current
-#'   device.
-#' @param dotplot_width,dotplot_height,enrich_width,enrich_height Per‑plot
-#'   sizes (inches) for dot and enrichment plots. Defaults fall back to
-#'   \code{width}/\code{height}.
-#' @param dotplot_margin_cm,enrich_margin_cm Numeric vectors
-#'   \code{c(top,right,bottom,left)} in **cm** specifying plot margins.
-#' @param cnet_show If \code{TRUE} (default), build the cNET plot.
-#' @param cnet_top_terms Number of top terms (by \code{padj}) to include in
-#'   cNET.
-#' @param cnet_use \code{"leadingEdge"} (default; connect terms to FGSEA
-#'   leading‑edge genes) or \code{"members"} (connect all member genes present
-#'   in the ranked universe).
-#' @param cnet_layout Layout name passed to \pkg{ggraph} (e.g., \code{"fr"},
-#'   \code{"kk"}, \code{"lgl"}).
-#' @param cnet_width,cnet_height Size (inches) for the cNET plot.
-#' @param cnet_margin_cm Numeric vector \code{c(top,right,bottom,left)} in
-#'   **cm** for cNET margins.
-#' @param cnet_term_label_size,cnet_gene_label_size Numeric text sizes for term
-#'   and gene labels in cNET.
-#' @param cnet_gene_label_color Color for gene labels in cNET (default
-#'   \code{"grey25"}).
-#' @param ton_show If \code{TRUE} (default), build the term‑only overlap
-#'   network.
-#' @param ton_top_terms Number of top terms (by \code{padj}) to include in the
-#'   term‑only network.
-#' @param ton_min_overlap Minimum number of shared genes to draw a term–term
-#'   edge.
-#' @param ton_layout Layout for the term‑only network: \code{"fr"},
-#'   \code{"kk"}, \code{"lgl"}, or \code{"mds"}.
-#' @param ton_width,ton_height Size (inches) for the term‑only plot.
-#' @param ton_margin_cm Numeric vector \code{c(top,right,bottom,left)} in
-#'   **cm** for term‑only margins.
-#' @param seed Optional integer seed for RNG/reproducible layouts.
-#' @param verbose If \code{TRUE} (default), print progress messages.
+#' \section{Gene matching and missing values}{
+#' Gene identifiers are matched to MSigDB gene symbols. If \code{case_insensitive = TRUE} (default),
+#' gene symbols are upper-cased prior to matching to improve robustness across inputs.
+#'
+#' When statistics are missing for a gene in one of the two layers, behaviour is controlled by
+#' \code{missing_policy}:
+#' \itemize{
+#'   \item \code{"impute"} (default): missing correlations and p-values are replaced by
+#'         \code{impute_cor} and \code{impute_padj};
+#'   \item \code{"drop"}: genes with any missing statistic across the pair are removed.
+#' }
+#' }
+#'
+#' \section{Restriction of the ranked universe (\code{restrict_genes})}{
+#' \code{restrict_genes} optionally restricts the ranked gene list used for GSEA. When provided, the
+#' ranked vector for each analysis unit is filtered to genes present in \code{restrict_genes}:
+#' \itemize{
+#'   \item in layer scope: \code{(ranked genes for the pair) ∩ restrict_genes};
+#'   \item in community scope: \code{(community genes for the pair) ∩ restrict_genes}.
+#' }
+#' Pathways are then intersected with the remaining ranked genes, and only pathways whose effective
+#' size lies within \code{minSize}–\code{maxSize} are tested. If fewer than \code{minSize} ranked
+#' genes remain after restriction, that analysis unit is skipped.
+#' }
+#'
+#' \section{Outputs written to disk}{
+#' A timestamped run directory is created at:
+#' \code{file.path(results_dir, paste0(run_name, "_", <timestamp>))}.
+#'
+#' Each layer pair has its own subdirectory: \code{"<L1>_vs_<L2>"}.
+#' In community scope, results are further nested in \code{"cid_<cid>"} subfolders (created only when
+#' outputs are produced).
+#'
+#' For each analysis unit (pair, or pair + community), the function writes:
+#' \itemize{
+#'   \item \strong{Results table (CSV):} \code{gsea_pair_<L1>_vs_<L2>[ _cid<cid> ].csv}
+#'   \item \strong{Dot plot:} \code{gsea_pair_dot_<L1>_vs_<L2>[ _cid<cid> ].<format>}
+#'   \item \strong{Enrichment plots:}
+#'         \code{gsea_pair_enrich_topL1_<L1>_vs_<L2>[ _cid<cid> ].<format>} and
+#'         \code{gsea_pair_enrich_topL2_<L1>_vs_<L2>[ _cid<cid> ].<format>}
+#'   \item \strong{Concept network (optional):} \code{gsea_pair_cnet_<L1>_vs_<L2>[ _cid<cid> ].<format>}
+#'   \item \strong{Term overlap network (optional):} \code{gsea_pair_termnet_<L1>_vs_<L2>[ _cid<cid> ].<format>}
+#' }
+#' A run-level manifest \code{SUMMARY.csv} is written to the run directory and records file paths and
+#' basic counts for each analysis unit.
+#' }
+#'
+#' \section{Robust graph construction when overlaps are absent}{
+#' For term-only overlap networks (and occasionally for concept networks), it is plausible that no
+#' term–term or term–gene edges remain after filtering. The function therefore constructs valid empty
+#' edge tables when necessary so that plots render as isolated nodes rather than failing during graph
+#' construction.
+#' }
+#'
+#' @param net A \pkg{multinet} object containing multiple layers. Each layer is expected to be
+#'   convertible to an \pkg{igraph} graph where vertex \code{name} encodes gene identifiers.
+#'   Layer names are obtained via \code{multinet::layers_ml(net)}.
+#'
+#' @param layer_order Optional character vector specifying the order in which layers are traversed.
+#'   Consecutive pairs are formed from this order. If \code{NULL}, the ordering provided by
+#'   \code{multinet::layers_ml(net)} is used.
+#'
+#' @param scores_by_layer Optional named list \code{layer -> data.frame(gene, cor, padj)} providing
+#'   per-layer statistics explicitly. When supplied for a layer, these values override vertex
+#'   attributes for that layer.
+#'
+#' @param cor_attr,padj_attr Character vectors of candidate vertex-attribute names used to locate the
+#'   correlation/effect-size and adjusted p-value attributes for each layer. The first match
+#'   (case-insensitive) is used.
+#'
+#' @param pair_rank_by Ranking recipe used to construct the per-gene score for comparing \code{L1}
+#'   and \code{L2}. See function body for supported options and their definitions.
+#'
+#' @param missing_policy Strategy for handling missing values across layer pairs: \code{"impute"} or
+#'   \code{"drop"}.
+#'
+#' @param impute_cor,impute_padj Values used when \code{missing_policy = "impute"}.
+#'
+#' @param case_insensitive If \code{TRUE} (default), gene symbols are upper-cased for matching.
+#'
+#' @param communities Optional data frame describing community membership; required when
+#'   \code{enrich_scope = "community"}. Must contain \code{actor} (gene), \code{layer}, and a
+#'   community identifier column (\code{cid}, \code{com}, or \code{community}).
+#'
+#' @param enrich_scope Either \code{"layer"} or \code{"community"}.
+#'
+#' @param restrict_genes Optional character vector defining a restricted gene list. If provided,
+#'   the ranked gene list used for each enrichment run (per layer pair, and per \code{cid} in
+#'   community scope) is intersected with this vector. Only remaining genes contribute to ranking and
+#'   to pathway sizes; pathways outside \code{minSize}–\code{maxSize} after restriction are excluded,
+#'   and runs with fewer than \code{minSize} ranked genes are skipped.
+#'
+#' @param msigdb_species Species name passed to \pkg{msigdbr} (e.g., \code{"Homo sapiens"}).
+#' @param msigdb_collections MSigDB collections/categories to include (e.g., \code{c("H","C2","C5")}).
+#' @param msigdb_subcategories Optional MSigDB subcategories/subcollections filter.
+#' @param minSize,maxSize Pathway size bounds after intersecting with ranked genes.
+#' @param nperm If \code{NULL}, uses \code{fgseaMultilevel()} (recommended). If an integer, uses
+#'   \code{fgsea()} with \code{nperm}.
+#' @param results_dir Base output directory.
+#' @param run_name Prefix for the run folder name (timestamp appended).
+#' @param top_n Number of top positively/negatively enriched pathways shown in the dot plot.
+#' @param format Plot format: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
+#' @param width,height,dpi Default plot geometry (inches; DPI ignored for PDF).
+#' @param show_in_rstudio If \code{TRUE}, plots are also printed to the current device.
+#' @param dotplot_width,dotplot_height,enrich_width,enrich_height Plot-specific sizes (inches).
+#' @param dotplot_margin_cm,enrich_margin_cm Margins \code{c(top,right,bottom,left)} in cm.
+#' @param cnet_show If \code{TRUE}, attempts to draw a term–gene concept network (requires \pkg{ggraph}).
+#' @param cnet_top_terms Number of top terms (by adjusted p-value) included in the concept network.
+#' @param cnet_use Use \code{"leadingEdge"} (default) or \code{"members"} for term–gene edges.
+#' @param cnet_layout Layout name passed to \pkg{ggraph}.
+#' @param cnet_width,cnet_height Concept network plot size (inches).
+#' @param cnet_margin_cm Concept network margins in cm.
+#' @param cnet_term_label_size,cnet_gene_label_size Text sizes for labels.
+#' @param cnet_gene_label_color Colour for gene labels.
+#' @param ton_show If \code{TRUE}, attempts to draw a term-only overlap network (requires \pkg{ggraph}).
+#' @param ton_top_terms Number of top terms included in term-only network.
+#' @param ton_min_overlap Minimum shared genes to draw a term–term edge.
+#' @param ton_layout Layout for term-only network.
+#' @param ton_width,ton_height Term-only plot size (inches).
+#' @param ton_margin_cm Term-only margins in cm.
+#' @param seed Optional integer seed for reproducibility.
+#' @param verbose If \code{TRUE}, print progress messages.
 #'
 #' @return
-#' A list (returned invisibly) with:
+#' Invisibly returns a list with:
 #' \describe{
-#'   \item{\code{run_dir}}{Path to the timestamped run folder.}
-#'   \item{\code{by_pair}}{Named list. For \code{enrich_scope = "layer"},
-#'     each \code{by_pair[[pair]]} is a list of file paths:
-#'     \code{csv_file}, \code{dotplot_file}, \code{enrich_L1_file},
-#'     \code{enrich_L2_file}, \code{cnet_file}, \code{termnet_file}.
-#'     For \code{enrich_scope = "community"}, each
-#'     \code{by_pair[[pair]][["cid_<CID>"]]} is such a list for that
-#'     community.}
-#'   \item{\code{summary_file}}{Path to the manifest \code{SUMMARY.csv}.}
+#'   \item{\code{run_dir}}{Path to the timestamped run folder containing all outputs.}
+#'   \item{\code{by_pair}}{Named list keyed by \code{"<L1>_vs_<L2>"} with file paths for each pair.
+#'     In community scope, each pair entry is a list keyed by \code{"cid_<cid>"} for communities that
+#'     produced results.}
+#'   \item{\code{summary_file}}{Path to \code{SUMMARY.csv} (run manifest).}
 #' }
 #'
 #' @importFrom fgsea fgsea fgseaMultilevel plotEnrichment
@@ -265,78 +208,6 @@
 #' @importFrom utils write.csv combn
 #' @importFrom stats setNames
 #'
-#' @examples
-#' \dontrun{
-#' ## Example objects:
-#' ##   - net  : your multilayer network (multinet::ml.network)
-#' ##   - comm : communities with columns actor / layer / cid (or com/community)
-#' ##   - oxidative_stress_genes : custom gene set, e.g. pc_genes[1:100]
-#'
-#' ## 1) Layer-pair GSEA on all genes ----------------------------------------
-#' gsea_layer_pairs <- gsea_msigdbr_layer_pairs(
-#'   net                  = net,
-#'   layer_order          = multinet::layers_ml(net),
-#'   enrich_scope         = "layer",
-#'   msigdb_species       = "Homo sapiens",
-#'   msigdb_collections   = c("H","C2","C5"),
-#'   msigdb_subcategories = c("CP:KEGG","GO:BP"),
-#'   results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
-#'   run_name             = "gsea_pairs_byLayer",
-#'   top_n                = 10,
-#'   format               = "png",
-#'   show_in_rstudio      = TRUE
-#' )
-#'
-#' ## 2) Layer-pair GSEA restricted to a custom gene set ---------------------
-#' gsea_layer_pairs_custom <- gsea_msigdbr_layer_pairs(
-#'   net                  = net,
-#'   layer_order          = multinet::layers_ml(net),
-#'   enrich_scope         = "layer",
-#'   restrict_genes       = oxidative_stress_genes,   # only these genes
-#'   msigdb_species       = "Homo sapiens",
-#'   msigdb_collections   = c("H","C2"),
-#'   msigdb_subcategories = c("CP:KEGG"),
-#'   results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
-#'   run_name             = "gsea_pairs_byLayer_customGenes",
-#'   top_n                = 10,
-#'   format               = "png",
-#'   show_in_rstudio      = TRUE
-#' )
-#'
-#' ## 3) Community-wise pair GSEA (all genes per community) ------------------
-#' gsea_comm_pairs <- gsea_msigdbr_layer_pairs(
-#'   net                  = net,
-#'   communities          = comm,                    # actor / layer / cid
-#'   enrich_scope         = "community",
-#'   msigdb_species       = "Homo sapiens",
-#'   msigdb_collections   = c("H","C2","C5"),
-#'   msigdb_subcategories = c("CP:KEGG","GO:BP"),
-#'   results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
-#'   run_name             = "gsea_pairs_byCommunity",
-#'   top_n                = 8,
-#'   format               = "png",
-#'   show_in_rstudio      = TRUE
-#' )
-#'
-#' ## 4) Community-wise pair GSEA restricted to a custom gene set ------------
-#' gsea_comm_pairs_ox <- gsea_msigdbr_layer_pairs(
-#'   net                  = net,
-#'   communities          = comm,
-#'   enrich_scope         = "community",
-#'   restrict_genes       = oxidative_stress_genes,
-#'   msigdb_species       = "Homo sapiens",
-#'   msigdb_collections   = c("H","C2","C5"),
-#'   msigdb_subcategories = c("CP:KEGG","GO:BP"),
-#'   results_dir          = getOption("mlnet.results_dir","omicsDNA_results"),
-#'   run_name             = "gsea_pairs_byCommunity_customGenes",
-#'   top_n                = 8,
-#'   format               = "png",
-#'   show_in_rstudio      = TRUE
-#' )
-#'
-#' ## Look at the manifest:
-#' # read.csv(gsea_layer_pairs$summary_file, stringsAsFactors = FALSE)
-#' }
 #' @export
 gsea_msigdbr_layer_pairs <- function(
     net,
@@ -359,7 +230,6 @@ gsea_msigdbr_layer_pairs <- function(
     msigdb_subcategories    = NULL,
     minSize                 = 15,
     maxSize                 = 500,
-    # If NULL -> fgseaMultilevel (recommended). If integer -> classic permutations.
     nperm                   = NULL,
     results_dir             = getOption("mlnet.results_dir","omicsDNA_results"),
     run_name                = "gsea_layerpairs",
@@ -367,12 +237,10 @@ gsea_msigdbr_layer_pairs <- function(
     format                  = c("png","pdf","jpg"),
     width                   = 9,  height = 7,  dpi = 300,
     show_in_rstudio         = TRUE,
-    # sizes & margins
     dotplot_width           = width,   dotplot_height  = height,
     enrich_width            = width,   enrich_height   = height,
     dotplot_margin_cm       = c(0.5,0.5,0.5,0.5),
     enrich_margin_cm        = c(0.5,0.5,0.5,0.5),
-    # cNET
     cnet_show               = TRUE,
     cnet_top_terms          = 10,
     cnet_use                = c("leadingEdge","members"),
@@ -382,7 +250,6 @@ gsea_msigdbr_layer_pairs <- function(
     cnet_term_label_size    = 3.2,
     cnet_gene_label_size    = 2.4,
     cnet_gene_label_color   = "grey25",
-    # term-only network
     ton_show                = TRUE,
     ton_top_terms           = 10,
     ton_min_overlap         = 1,
@@ -444,16 +311,28 @@ gsea_msigdbr_layer_pairs <- function(
     (x - r[1])/(r[2] - r[1])*(to[2] - to[1]) + to[1]
   }
   .unit_cm <- function(v) grid::unit(v, "cm")
+
   .layout_terms <- function(g, method = "fr") {
-    switch(
-      tolower(method),
-      fr  = igraph::layout_with_fr(g),
-      kk  = igraph::layout_with_kk(g),
-      lgl = igraph::layout_with_lgl(g),
-      mds = igraph::layout_with_mds(g),
-      igraph::layout_with_fr(g)
+    # defensively fallback if a layout fails (rare, but improves package robustness)
+    out <- try(
+      switch(
+        tolower(method),
+        fr  = igraph::layout_with_fr(g),
+        kk  = igraph::layout_with_kk(g),
+        lgl = igraph::layout_with_lgl(g),
+        mds = igraph::layout_with_mds(g),
+        igraph::layout_with_fr(g)
+      ),
+      silent = TRUE
     )
+    if (inherits(out, "try-error")) {
+      warning("Term-network layout failed for method='", method,
+              "'. Falling back to layout_with_fr().", call. = FALSE)
+      out <- igraph::layout_with_fr(g)
+    }
+    out
   }
+
   .extract_layer_scores <- function(g, cor_attr, padj_attr) {
     if (!inherits(g, "igraph")) return(NULL)
     vnames <- igraph::V(g)$name
@@ -565,7 +444,7 @@ gsea_msigdbr_layer_pairs <- function(
 
     comm$actor <- .normsym(comm$actor)
     comm$layer <- as.character(comm$layer)
-    comm$cid   <- as.character(comm$cid)
+    comm$cid   <- as.character(comm$cid)  # keep label semantics (folders, manifest, messages)
   }
 
   # ---- layers & pairs ----
@@ -896,15 +775,26 @@ gsea_msigdbr_layer_pairs <- function(
           )
         } else nodes_term
 
+        # ---- FIX: never pass d = NULL to graph_from_data_frame() ----
+        edge_df <- if (!is.null(edges) && nrow(edges)) {
+          data.frame(from = edges$term, to = edges$gene, stringsAsFactors = FALSE)
+        } else {
+          data.frame(from = character(0), to = character(0), stringsAsFactors = FALSE)
+        }
+
         g_bi <- igraph::graph_from_data_frame(
-          d = if (!is.null(edges) && nrow(edges))
-            data.frame(from = edges$term, to = edges$gene,
-                       stringsAsFactors = FALSE)
-          else NULL,
+          d        = edge_df,
           directed = FALSE,
           vertices = nodes
         )
-        lay <- ggraph::create_layout(g_bi, layout = cnet_layout)
+
+        lay <- try(ggraph::create_layout(g_bi, layout = cnet_layout), silent = TRUE)
+        if (inherits(lay, "try-error")) {
+          warning("  [", pair_name, label_suffix,
+                  "] cNET layout failed for layout='", cnet_layout,
+                  "'. Falling back to layout='fr'.", call. = FALSE)
+          lay <- ggraph::create_layout(g_bi, layout = "fr")
+        }
 
         cnet_file <- file.path(
           pair_dir,
@@ -1002,7 +892,7 @@ gsea_msigdbr_layer_pairs <- function(
       }
     } else if (isTRUE(cnet_show) && !has_ggraph) {
       warning("  [", pair_name, label_suffix,
-              "] Skipping cNET (need 'ggraph').")
+              "] Skipping cNET (need 'ggraph').", call. = FALSE)
     }
 
     # ---- term-only overlap network ----
@@ -1048,27 +938,22 @@ gsea_msigdbr_layer_pairs <- function(
           stringsAsFactors = FALSE
         )
 
-        g_terms <- if (length(e_from)) {
-          igraph::graph_from_data_frame(
-            d = data.frame(
-              from   = e_from,
-              to     = e_to,
-              weight = e_w,
-              stringsAsFactors = FALSE
-            ),
-            directed = FALSE,
-            vertices = node_df
-          )
+        # ---- FIX: never pass d = NULL to graph_from_data_frame() ----
+        edge_df <- if (length(e_from)) {
+          data.frame(from = e_from, to = e_to, weight = e_w, stringsAsFactors = FALSE)
         } else {
-          igraph::graph_from_data_frame(
-            d = NULL,
-            directed = FALSE,
-            vertices = node_df
-          )
+          data.frame(from = character(0), to = character(0), weight = integer(0), stringsAsFactors = FALSE)
         }
+
+        g_terms <- igraph::graph_from_data_frame(
+          d        = edge_df,
+          directed = FALSE,
+          vertices = node_df
+        )
 
         lay <- .layout_terms(g_terms, ton_layout)
         nodes_df <- cbind(node_df, data.frame(x = lay[,1], y = lay[,2]))
+
         edf <- if (length(e_from)) {
           data.frame(
             from = e_from, to = e_to, weight = e_w,
@@ -1138,14 +1023,13 @@ gsea_msigdbr_layer_pairs <- function(
       }
     } else if (isTRUE(ton_show) && !has_ggraph) {
       warning("  [", pair_name, label_suffix,
-              "] Skipping term-only network (need 'ggraph').")
+              "] Skipping term-only network (need 'ggraph').", call. = FALSE)
     }
 
     summary_row <- data.frame(
       scope         = summary_scope,
       pair          = pair_name,
-      cid           = if (summary_scope == "community") as.character(cid)
-      else NA_character_,
+      cid           = if (summary_scope == "community") as.character(cid) else NA_character_,
       n_ranked_genes = length(score),
       n_pathways     = nrow(fg),
       csv_file       = csv_file,
@@ -1190,7 +1074,7 @@ gsea_msigdbr_layer_pairs <- function(
     s1 <- get_scores(L1)
     s2 <- get_scores(L2)
     if (is.null(s1) || is.null(s2)) {
-      warning("  Missing scores for pair ", pair_name, "; skipping.")
+      warning("  Missing scores for pair ", pair_name, "; skipping.", call. = FALSE)
       next
     }
 
@@ -1238,13 +1122,11 @@ gsea_msigdbr_layer_pairs <- function(
       next
     }
 
-    # ----- scope = "layer": one GSEA per pair (existing behaviour) ----------
+    # ----- scope = "layer" ----------
     if (identical(enrich_scope, "layer")) {
       score_pair <- score_full
       if (!is.null(restrict_genes)) {
-        score_pair <- score_pair[
-          names(score_pair) %in% restrict_genes
-        ]
+        score_pair <- score_pair[names(score_pair) %in% restrict_genes]
         if (isTRUE(verbose))
           message("  Pair ", pair_name, ": restricting to ",
                   length(score_pair),
@@ -1260,14 +1142,14 @@ gsea_msigdbr_layer_pairs <- function(
       }
 
       res_pair <- .run_fgsea_for_stats(
-        score_input  = score_pair,
-        pathways_all = pathways_all,
-        pair_name    = pair_name,
-        pair_dir     = pair_dir,
-        L1           = L1,
-        L2           = L2,
-        label_suffix = "",
-        label_prefix = "",
+        score_input   = score_pair,
+        pathways_all  = pathways_all,
+        pair_name     = pair_name,
+        pair_dir      = pair_dir,
+        L1            = L1,
+        L2            = L2,
+        label_suffix  = "",
+        label_prefix  = "",
         summary_scope = "layer",
         cid           = NA_character_
       )
@@ -1282,11 +1164,10 @@ gsea_msigdbr_layer_pairs <- function(
         termnet_file   = res_pair$termnet_file
       )
       summary_rows[[length(summary_rows)+1L]] <- res_pair$summary_row
-
       next
     }
 
-    # ----- scope = "community": one GSEA per cid per pair -------------------
+    # ----- scope = "community" ----------
     comm_pair <- comm[comm$layer %in% c(L1, L2), , drop = FALSE]
     if (!nrow(comm_pair)) {
       if (isTRUE(verbose))
@@ -1302,7 +1183,6 @@ gsea_msigdbr_layer_pairs <- function(
     for (cid in cids) {
       cid_lab <- paste0("cid_", cid)
       mod_dir <- file.path(pair_dir, cid_lab)
-      .ensure_dir(mod_dir)
 
       base_genes <- unique(comm_pair$actor[comm_pair$cid == cid])
       base_genes <- base_genes[nzchar(base_genes)]
@@ -1322,15 +1202,18 @@ gsea_msigdbr_layer_pairs <- function(
         next
       }
 
+      # ---- FIX: create cid folder only if we will write outputs ----
+      .ensure_dir(mod_dir)
+
       res_mod <- .run_fgsea_for_stats(
-        score_input  = score_mod,
-        pathways_all = pathways_all,
-        pair_name    = pair_name,
-        pair_dir     = mod_dir,
-        L1           = L1,
-        L2           = L2,
-        label_suffix = paste0("_cid", cid),
-        label_prefix = paste0("cid ", cid),
+        score_input   = score_mod,
+        pathways_all  = pathways_all,
+        pair_name     = pair_name,
+        pair_dir      = mod_dir,
+        L1            = L1,
+        L2            = L2,
+        label_suffix  = paste0("_cid", cid),
+        label_prefix  = paste0("cid ", cid),
         summary_scope = "community",
         cid           = cid
       )
@@ -1380,5 +1263,3 @@ gsea_msigdbr_layer_pairs <- function(
     summary_file = summary_file
   ))
 }
-
-

@@ -2,7 +2,7 @@
 % Please edit documentation in R/detectCom.R
 \name{detectCom}
 \alias{detectCom}
-\title{Community detection wrapper for multilayer networks (multinet)}
+\title{Community detection for multilayer networks}
 \usage{
 detectCom(
   net,
@@ -31,265 +31,135 @@ detectCom(
   results_dir = getOption("mlnet.results_dir", "omicsDNA_results"),
   save_to_rds = FALSE,
   rds_file = NULL,
-  write_csv = FALSE,
+  write_csv = TRUE,
   csv_prefix = "communities",
-  write_summary_csv = TRUE,
   verbose = TRUE,
   ...
 )
 }
 \arguments{
-\item{net}{A multilayer network of class \link[multinet:ml.network]{multinet::ml.network}.}
+\item{net}{A multilayer network of class \code{multinet::ml.network}.}
 
-\item{method}{Community detection method. One of \code{"glouvain"}, \code{"louvain"} (alias),
+\item{method}{Community detection method. One of \code{"glouvain"} (or \code{"louvain"} as an alias),
 \code{"infomap"}, \code{"clique"}, \code{"abacus"}.}
 
-\item{supra_graph}{Logical. Default \code{FALSE}.
-\itemize{
-\item \code{FALSE}: strict passthrough to \verb{multinet::*_ml()} (returned object unchanged)
-\item \code{TRUE}: supra-graph mode (igraph) with optional post-processing
-}}
+\item{supra_graph}{Logical. If \code{FALSE} (default), communities are detected using \pkg{multinet}.
+If \code{TRUE}, communities are detected on a layer-aggregated supra-graph using \pkg{igraph}.}
 
-\item{layers}{Optional character vector of layer names to include \strong{only in supra-graph mode}.
-Ignored in strict passthrough mode.}
+\item{layers}{Optional character vector of layer names to include when \code{supra_graph = TRUE}.
+Ignored when \code{supra_graph = FALSE}.}
 
-\item{gamma}{Numeric (>0). Resolution parameter for \code{\link[multinet:Communities]{multinet::glouvain_ml()}}
-used when \code{method="glouvain"} and \code{supra_graph=FALSE}.}
+\item{gamma}{Numeric (>0). Resolution parameter for \code{multinet::glouvain_ml()} (multilayer mode).}
 
-\item{omega}{Numeric (>=0). Inter-layer coupling for \code{\link[multinet:Communities]{multinet::glouvain_ml()}}
-used when \code{method="glouvain"} and \code{supra_graph=FALSE}.}
+\item{omega}{Numeric (>=0). Inter-layer coupling for \code{multinet::glouvain_ml()} (multilayer mode).}
 
-\item{k}{Integer (>=3). Clique size threshold. Passed to
-\code{\link[multinet:Communities]{multinet::clique_percolation_ml()}} in strict mode; used as minimum clique
-size for \code{\link[igraph:cliques]{igraph::cliques()}} in supra-graph mode.}
+\item{k}{Integer (>=3). Clique size threshold for clique percolation (multilayer mode) and
+minimum clique size in supra-graph mode.}
 
-\item{m}{Integer (>=1). Multilayer clique parameter passed to
-\code{\link[multinet:Communities]{multinet::clique_percolation_ml()}} in strict mode. Ignored in supra-graph mode.}
+\item{m}{Integer (>=1). Clique percolation parameter (multilayer mode only).}
 
-\item{overlapping}{Logical. Passed to \code{\link[multinet:Communities]{multinet::infomap_ml()}} when
-\code{method="infomap"} and \code{supra_graph=FALSE}.}
+\item{overlapping, directed, self.links}{Passed to \code{multinet::infomap_ml()} (multilayer mode).}
 
-\item{directed}{Logical. Passed to \code{\link[multinet:Communities]{multinet::infomap_ml()}} when
-\code{method="infomap"} and \code{supra_graph=FALSE}.}
+\item{edgeWeight}{Aggregation rule for supra-graph edges: \code{"count"} or \code{"sum"}.}
 
-\item{self.links}{Logical. Passed to \code{\link[multinet:Communities]{multinet::infomap_ml()}} when
-\code{method="infomap"} and \code{supra_graph=FALSE}.}
+\item{min.actors}{Integer (>=1). In supra-graph mode, communities with fewer than this many
+unique actors are removed. In multilayer mode, this is passed to \code{multinet::abacus_ml()}.}
 
-\item{edgeWeight}{How to aggregate edges across layers in supra-graph mode:
-one of \code{"count"} or \code{"sum"}. Ignored when \code{supra_graph=FALSE}.}
+\item{min.layers}{Integer (>=1). In supra-graph mode, communities represented in fewer than
+this many layers are removed. In multilayer mode, this is passed to \code{multinet::abacus_ml()}.}
 
-\item{min.actors}{Integer (>=1). Post-filtering threshold for supra-graph mode.
-For \code{method="abacus"} in strict mode, passed through to \code{\link[multinet:Communities]{multinet::abacus_ml()}}.}
+\item{relabel_by_size}{Logical. In supra-graph mode, optionally relabel retained communities
+to \code{C1, C2, ...} by decreasing size. In multilayer mode, this affects only the \emph{saved}
+membership CSV (the returned \pkg{multinet} object is not modified).}
 
-\item{min.layers}{Integer (>=1). Post-filtering threshold for supra-graph mode.
-For \code{method="abacus"} in strict mode, passed through to \code{\link[multinet:Communities]{multinet::abacus_ml()}}.}
-
-\item{relabel_by_size}{Logical. In supra-graph mode, optionally relabels kept
-communities to \verb{"C1","C2",...} in decreasing size order.
-In strict passthrough mode, does \strong{not} change the returned object, but controls
-relabeling inside the \strong{summary CSV} (if written).}
-
-\item{seed}{Optional integer. If provided, \code{set.seed(seed)} is called before
-running methods that may be stochastic.}
+\item{seed}{Optional integer seed for reproducibility.}
 
 \item{results_dir}{Output directory for optional files. Created if missing.}
 
-\item{save_to_rds}{Logical. If \code{TRUE}, saves the returned object (\code{supra_graph=FALSE})
-or membership table (\code{supra_graph=TRUE}) as an \code{.rds}.}
+\item{save_to_rds}{Logical. If \code{TRUE}, saves the returned object (multilayer mode) or the
+membership table (supra-graph mode) as an \code{.rds}.}
 
-\item{rds_file}{Optional filename for the RDS output. If \code{NULL}, a timestamped
-name is generated. Relative paths are placed under \code{results_dir}.}
+\item{rds_file}{Optional filename for the RDS output. If \code{NULL}, a timestamped name is used.}
 
-\item{write_csv}{Logical. If \code{TRUE}, writes a CSV (coercing to data frame when needed).}
+\item{write_csv}{Logical. If \code{TRUE} (default), writes \strong{two} CSV files under \code{results_dir}:
+(i) a CSV representation of the returned object (\code{<base>.csv}) and (ii) the main community
+membership table (\code{<base>_membership.csv}).}
 
 \item{csv_prefix}{Character prefix used to build output filenames.}
 
-\item{write_summary_csv}{Logical. If \code{TRUE}, writes the summary CSV with columns
-\verb{com,size,span} (ordered by decreasing size).}
+\item{verbose}{Logical. If \code{TRUE}, prints progress messages and output paths.}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress messages and written file paths.}
-
-\item{...}{Additional arguments passed to the underlying \verb{multinet::*_ml()}
-function when in strict mode (\code{supra_graph=FALSE}). Also used to accept the
-backward-compatible aliases listed above.}
+\item{...}{Additional arguments passed to the underlying \code{multinet::*_ml()} function in
+multilayer mode. Also accepts legacy alias names for compatibility.}
 }
 \value{
 \itemize{
-\item If \code{supra_graph = FALSE}: returns the \strong{raw object} returned by \verb{multinet::*_ml()}
-unchanged.
-\item If \code{supra_graph = TRUE}: returns a data frame with columns \code{actor}, \code{com}, \code{layer}, \code{method}
-and attributes \code{community_sizes}, \code{layer_span}, and \code{files}.
+\item If \code{supra_graph = FALSE}: returns the object returned by the selected \code{multinet::*_ml()} method.
+\item If \code{supra_graph = TRUE}: returns a data frame with columns \code{actor}, \code{com}, \code{layer}, \code{method},
+with attributes \code{community_sizes}, \code{layer_span}, and \code{files}.
 }
 }
 \description{
-\code{detectCom()} supports \strong{two analysis modes} for a multilayer network of class
-\link[multinet:ml.network]{multinet::ml.network}.
-\subsection{1) Multilayer-native passthrough (\code{supra_graph = FALSE}, default)}{
-
-In this mode, \code{detectCom()} is a \strong{thin wrapper} around \verb{multinet::*_ml()} and
-returns the \strong{raw multinet output object unchanged}:
+\code{detectCom()} identifies communities (modules) in a multilayer network of class
+\code{multinet::ml.network}. The function supports two analysis modes:
 \itemize{
-\item \strong{no post-filtering}
-\item \strong{no relabeling}
-\item \strong{no column renaming}
-\item \strong{no added \code{method} column}
-\item \strong{no attributes attached}
+\item \strong{Multilayer community detection (default; \code{supra_graph = FALSE})}:
+community detection is performed directly on the multilayer structure using
+the corresponding \pkg{multinet} routine (e.g., generalized Louvain, Infomap,
+clique percolation, ABACUS). In this mode the function returns the native
+\pkg{multinet} community object.
+\item \strong{Supra-graph community detection (\code{supra_graph = TRUE})}:
+selected layers are first aggregated into a single undirected actor–actor graph
+(a “supra-graph”). A standard \pkg{igraph} community algorithm is then applied,
+and community memberships are mapped back to each layer where the actor appears.
 }
 
-Mappings:
-\itemize{
-\item \code{method = "glouvain"} -> \code{\link[multinet:Communities]{multinet::glouvain_ml()}}
-\item \code{method = "infomap"}  -> \code{\link[multinet:Communities]{multinet::infomap_ml()}}
-\item \code{method = "clique"}   -> \code{\link[multinet:Communities]{multinet::clique_percolation_ml()}}
-\item \code{method = "abacus"}   -> \code{\link[multinet:Communities]{multinet::abacus_ml()}}
-}
-
-Notes for strict mode:
-\itemize{
-\item \code{layers} is \strong{ignored} (to guarantee identity with calling \verb{multinet::*_ml(net, ...)}).
-\item \code{min.actors}, \code{min.layers}, and \code{relabel_by_size} are \strong{not applied} as wrapper
-post-processing to the returned object.
-\item For \code{method="abacus"}, \code{min.actors} and \code{min.layers} are passed through to
-\code{\link[multinet:Communities]{multinet::abacus_ml()}} because they are part of that algorithm’s inputs.
-}
-}
-
-\subsection{2) Supra-graph mode (\code{supra_graph = TRUE})}{
-
-In this mode, selected layers are collapsed into an undirected actor–actor
-supra-graph, an \strong{igraph} community method is applied, and memberships are
-mapped back to layers where each actor appears.
-
-Mappings:
-\itemize{
-\item \code{method = "glouvain"} -> \code{\link[igraph:cluster_louvain]{igraph::cluster_louvain()}}
-\item \code{method = "infomap"}  -> \code{\link[igraph:cluster_infomap]{igraph::cluster_infomap()}}
-\item \code{method = "clique"}   -> clique-union components derived from
-\code{\link[igraph:cliques]{igraph::cliques()}} + \code{\link[igraph:components]{igraph::components()}}
-}
-
-Post-filtering (\code{min.actors}, \code{min.layers}) and optional relabeling
-(\code{relabel_by_size}) are applied \strong{only in supra-graph mode}.
-}
+In supra-graph mode, communities can be filtered by minimum size (\code{min.actors})
+and minimum layer coverage (\code{min.layers}), and optionally relabelled by decreasing
+community size (\code{relabel_by_size}).
 }
 \details{
-\subsection{Summary CSV output (matches your attached format)}{
+\subsection{Input to the function}{
 
-If \code{write_summary_csv = TRUE}, a summary CSV is written with columns:
+The primary input is a multilayer network object (\code{net}) where actors correspond
+to node identifiers (e.g., gene symbols) and edges represent within-layer interactions.
+In supra-graph mode, edges are read from \code{multinet::edges_ml(net)} and (when available)
+restricted to intra-layer edges before aggregation.
+}
+
+\subsection{Edge aggregation in supra-graph mode}{
+
+When \code{supra_graph = TRUE}, edge aggregation across layers is controlled by \code{edgeWeight}:
 \itemize{
-\item \code{com}: community id
-\item \code{size}: number of \strong{unique actors} in the community
-\item \code{span}: number of \strong{unique layers} represented by that community
+\item \code{"count"}: supra-edge weight equals the number of layers containing that edge;
+\item \code{"sum"}: supra-edge weight equals the sum of edge weights across layers (when available).
+}
 }
 
-The summary is ordered by decreasing \code{size}.
+\subsection{Output files written to disk}{
+
+Output files are optional and are written under \code{results_dir} (created if missing).
 \itemize{
-\item In \strong{strict passthrough mode} (\code{supra_graph=FALSE}), the summary is computed
-from a \strong{coerced copy} of the raw multinet output (when possible), but the
-returned object remains unchanged.
-\item If \code{relabel_by_size = TRUE}, the \strong{summary file only} uses \verb{C1, C2, ...}
-ordered by decreasing \code{size} (this does not modify the returned object).
+\item \strong{CSV outputs (two files; controlled by \code{write_csv})}
+When \code{write_csv = TRUE} (default), the function writes two CSV files:
+\enumerate{
+\item \strong{A CSV representation of the returned object:}
+\preformatted{<results_dir>/<base>.csv}
+where \code{<base>} is:
+\preformatted{<csv_prefix>_<method>_<mode>[_<edgeWeight>]_<timestamp>}
+In multilayer mode, this file is produced via \code{as.data.frame()} on the
+\pkg{multinet} community object. If coercion fails, a small placeholder CSV is written.
+
+\item \strong{The main membership table (CSV):}
+\preformatted{<results_dir>/<base>_membership.csv}
+containing (at minimum) \code{actor}, \code{layer}, \code{com}, and \code{method}.
+In multilayer mode, memberships are extracted from the \pkg{multinet} result when possible;
+otherwise an empty membership table is written.
+}
+\item \strong{RDS (optional)}
+When \code{save_to_rds = TRUE}, the returned object is saved as an \code{.rds}. In multilayer
+mode this is the raw \pkg{multinet} community object; in supra-graph mode this is the
+membership data frame.
 }
 }
-
-\subsection{Edge weights in supra-graph mode}{
-
-When \code{supra_graph = TRUE}, inter-layer aggregation uses \code{edgeWeight}:
-\itemize{
-\item \code{"count"}: supra-edge weight = number of layers where the edge appears
-\item \code{"sum"}: supra-edge weight = sum of per-layer weights (when available)
-}
-}
-
-\subsection{Backward-compatible aliases (optional convenience)}{
-
-This implementation also accepts legacy names passed via \code{...}:
-\itemize{
-\item \code{glouvain_gamma} -> \code{gamma}, \code{glouvain_omega} -> \code{omega}
-\item \code{clique.k} -> \code{k}, \code{clique.m} -> \code{m}
-\item \code{infomap_overlapping} -> \code{overlapping}, \code{infomap_directed} -> \code{directed},
-\code{infomap_self_links} -> \code{self.links}
-}
-}
-}
-\examples{
-# ---- Build a tiny 2-layer multiplex ----
-g1 <- igraph::graph_from_data_frame(
-  data.frame(from = c("a","a","b","c"),
-             to   = c("b","c","c","d"),
-             w_   = 1),
-  directed = FALSE
-)
-g2 <- igraph::graph_from_data_frame(
-  data.frame(from = c("a","a","b","c"),
-             to   = c("b","c","c","e"),
-             w_   = 1),
-  directed = FALSE
-)
-
-net_A <- multinet::ml_empty()
-multinet::add_igraph_layer_ml(net_A, g1, name = "L1")
-multinet::add_igraph_layer_ml(net_A, g2, name = "L2")
-
-# ============================================================
-# Example 1: STRICT passthrough (glouvain, supra_graph = FALSE)
-# ============================================================
-set.seed(1)
-cm_mn <- multinet::glouvain_ml(net_A, gamma = 1, omega = 1)
-
-cm_dc <- detectCom(
-  net_A,
-  method      = "glouvain",
-  supra_graph = FALSE,
-  gamma       = 1,
-  omega       = 1,
-  seed        = 1,
-  verbose     = FALSE
-)
-
-all.equal(cm_mn, cm_dc)
-
-# ============================================================
-# Example 2: STRICT passthrough (clique, supra_graph = FALSE)
-#           + write summary CSV (com,size,span)
-# ============================================================
-cm_mn2 <- multinet::clique_percolation_ml(net_A, k = 3, m = 2)
-
-tmpdir <- file.path(tempdir(), "detectCom_example")
-dir.create(tmpdir, showWarnings = FALSE, recursive = TRUE)
-
-cm_dc2 <- detectCom(
-  net_A,
-  method            = "clique",
-  supra_graph       = FALSE,
-  k                 = 3,
-  m                 = 2,
-  results_dir       = tmpdir,
-  write_summary_csv = TRUE,
-  relabel_by_size   = TRUE,  # summary file uses C1,C2,...; return object unchanged
-  verbose           = FALSE
-)
-
-all.equal(cm_mn2, cm_dc2)
-list.files(tmpdir, pattern = "_summary\\\\.csv$", full.names = TRUE)
-
-# ============================================================
-# Example 3: STRICT passthrough (infomap, supra_graph = FALSE)
-# ============================================================
-set.seed(7)
-cm_mn3 <- multinet::infomap_ml(net_A, overlapping = FALSE, directed = FALSE, self.links = TRUE)
-
-cm_dc3 <- detectCom(
-  net_A,
-  method      = "infomap",
-  supra_graph = FALSE,
-  overlapping = FALSE,
-  directed    = FALSE,
-  self.links  = TRUE,
-  seed        = 7,
-  verbose     = FALSE
-)
-
-all.equal(cm_mn3, cm_dc3)
-
 }

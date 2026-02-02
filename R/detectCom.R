@@ -1,235 +1,125 @@
+
 # ---------------------------------------------------------------------------
 # detectCom.R
 # Community detection wrapper for multilayer networks (multinet)
 # ---------------------------------------------------------------------------
 
-#' Community detection wrapper for multilayer networks (multinet)
+#' Community detection for multilayer networks
 #'
 #' @md
 #' @description
-#' `detectCom()` supports **two analysis modes** for a multilayer network of class
-#' [multinet::ml.network].
+#' `detectCom()` identifies communities (modules) in a multilayer network of class
+#' \code{multinet::ml.network}. The function supports two analysis modes:
 #'
-#' ## 1) Multilayer-native passthrough (`supra_graph = FALSE`, default)
-#' In this mode, `detectCom()` is a **thin wrapper** around `multinet::*_ml()` and
-#' returns the **raw multinet output object unchanged**:
-#' - **no post-filtering**
-#' - **no relabeling**
-#' - **no column renaming**
-#' - **no added `method` column**
-#' - **no attributes attached**
+#' * **Multilayer community detection (default; \code{supra_graph = FALSE})**:
+#'   community detection is performed directly on the multilayer structure using
+#'   the corresponding \pkg{multinet} routine (e.g., generalized Louvain, Infomap,
+#'   clique percolation, ABACUS). In this mode the function returns the native
+#'   \pkg{multinet} community object.
 #'
-#' Mappings:
-#' - `method = "glouvain"` -> [multinet::glouvain_ml()]
-#' - `method = "infomap"`  -> [multinet::infomap_ml()]
-#' - `method = "clique"`   -> [multinet::clique_percolation_ml()]
-#' - `method = "abacus"`   -> [multinet::abacus_ml()]
+#' * **Supra-graph community detection (\code{supra_graph = TRUE})**:
+#'   selected layers are first aggregated into a single undirected actor–actor graph
+#'   (a “supra-graph”). A standard \pkg{igraph} community algorithm is then applied,
+#'   and community memberships are mapped back to each layer where the actor appears.
 #'
-#' Notes for strict mode:
-#' - `layers` is **ignored** (to guarantee identity with calling `multinet::*_ml(net, ...)`).
-#' - `min.actors`, `min.layers`, and `relabel_by_size` are **not applied** as wrapper
-#'   post-processing to the returned object.
-#' - For `method="abacus"`, `min.actors` and `min.layers` are passed through to
-#'   [multinet::abacus_ml()] because they are part of that algorithm’s inputs.
-#'
-#' ## 2) Supra-graph mode (`supra_graph = TRUE`)
-#' In this mode, selected layers are collapsed into an undirected actor–actor
-#' supra-graph, an **igraph** community method is applied, and memberships are
-#' mapped back to layers where each actor appears.
-#'
-#' Mappings:
-#' - `method = "glouvain"` -> [igraph::cluster_louvain()]
-#' - `method = "infomap"`  -> [igraph::cluster_infomap()]
-#' - `method = "clique"`   -> clique-union components derived from
-#'   [igraph::cliques()] + [igraph::components()]
-#'
-#' Post-filtering (`min.actors`, `min.layers`) and optional relabeling
-#' (`relabel_by_size`) are applied **only in supra-graph mode**.
+#' In supra-graph mode, communities can be filtered by minimum size (\code{min.actors})
+#' and minimum layer coverage (\code{min.layers}), and optionally relabelled by decreasing
+#' community size (\code{relabel_by_size}).
 #'
 #' @details
-#' ## Summary CSV output (matches your attached format)
-#' If `write_summary_csv = TRUE`, a summary CSV is written with columns:
-#' - `com`: community id
-#' - `size`: number of **unique actors** in the community
-#' - `span`: number of **unique layers** represented by that community
+#' ## Input to the function
+#' The primary input is a multilayer network object (\code{net}) where actors correspond
+#' to node identifiers (e.g., gene symbols) and edges represent within-layer interactions.
+#' In supra-graph mode, edges are read from \code{multinet::edges_ml(net)} and (when available)
+#' restricted to intra-layer edges before aggregation.
 #'
-#' The summary is ordered by decreasing `size`.
+#' ## Edge aggregation in supra-graph mode
+#' When \code{supra_graph = TRUE}, edge aggregation across layers is controlled by \code{edgeWeight}:
+#' * \code{"count"}: supra-edge weight equals the number of layers containing that edge;
+#' * \code{"sum"}: supra-edge weight equals the sum of edge weights across layers (when available).
 #'
-#' - In **strict passthrough mode** (`supra_graph=FALSE`), the summary is computed
-#'   from a **coerced copy** of the raw multinet output (when possible), but the
-#'   returned object remains unchanged.
-#' - If `relabel_by_size = TRUE`, the **summary file only** uses `C1, C2, ...`
-#'   ordered by decreasing `size` (this does not modify the returned object).
+#' ## Output files written to disk
+#' Output files are optional and are written under \code{results_dir} (created if missing).
 #'
-#' ## Edge weights in supra-graph mode
-#' When `supra_graph = TRUE`, inter-layer aggregation uses `edgeWeight`:
-#' - `"count"`: supra-edge weight = number of layers where the edge appears
-#' - `"sum"`: supra-edge weight = sum of per-layer weights (when available)
+#' * **CSV outputs (two files; controlled by \code{write_csv})**
+#'   When \code{write_csv = TRUE} (default), the function writes two CSV files:
+#'   \enumerate{
+#'     \item \strong{A CSV representation of the returned object:}
+#'           \preformatted{<results_dir>/<base>.csv}
+#'           where \code{<base>} is:
+#'           \preformatted{<csv_prefix>_<method>_<mode>[_<edgeWeight>]_<timestamp>}
+#'           In multilayer mode, this file is produced via \code{as.data.frame()} on the
+#'           \pkg{multinet} community object. If coercion fails, a small placeholder CSV is written.
 #'
-#' ## Backward-compatible aliases (optional convenience)
-#' This implementation also accepts legacy names passed via `...`:
-#' - `glouvain_gamma` -> `gamma`, `glouvain_omega` -> `omega`
-#' - `clique.k` -> `k`, `clique.m` -> `m`
-#' - `infomap_overlapping` -> `overlapping`, `infomap_directed` -> `directed`,
-#'   `infomap_self_links` -> `self.links`
+#'     \item \strong{The main membership table (CSV):}
+#'           \preformatted{<results_dir>/<base>_membership.csv}
+#'           containing (at minimum) \code{actor}, \code{layer}, \code{com}, and \code{method}.
+#'           In multilayer mode, memberships are extracted from the \pkg{multinet} result when possible;
+#'           otherwise an empty membership table is written.
+#'   }
 #'
-#' @param net A multilayer network of class [multinet::ml.network].
+#' * **RDS (optional)**
+#'   When \code{save_to_rds = TRUE}, the returned object is saved as an \code{.rds}. In multilayer
+#'   mode this is the raw \pkg{multinet} community object; in supra-graph mode this is the
+#'   membership data frame.
 #'
-#' @param method Community detection method. One of `"glouvain"`, `"louvain"` (alias),
-#' `"infomap"`, `"clique"`, `"abacus"`.
+#' @param net A multilayer network of class \code{multinet::ml.network}.
 #'
-#' @param supra_graph Logical. Default `FALSE`.
-#' - `FALSE`: strict passthrough to `multinet::*_ml()` (returned object unchanged)
-#' - `TRUE`: supra-graph mode (igraph) with optional post-processing
+#' @param method Community detection method. One of \code{"glouvain"} (or \code{"louvain"} as an alias),
+#' \code{"infomap"}, \code{"clique"}, \code{"abacus"}.
 #'
-#' @param layers Optional character vector of layer names to include **only in supra-graph mode**.
-#' Ignored in strict passthrough mode.
+#' @param supra_graph Logical. If \code{FALSE} (default), communities are detected using \pkg{multinet}.
+#' If \code{TRUE}, communities are detected on a layer-aggregated supra-graph using \pkg{igraph}.
 #'
-#' @param gamma Numeric (>0). Resolution parameter for [multinet::glouvain_ml()]
-#' used when `method="glouvain"` and `supra_graph=FALSE`.
+#' @param layers Optional character vector of layer names to include when \code{supra_graph = TRUE}.
+#' Ignored when \code{supra_graph = FALSE}.
 #'
-#' @param omega Numeric (>=0). Inter-layer coupling for [multinet::glouvain_ml()]
-#' used when `method="glouvain"` and `supra_graph=FALSE`.
+#' @param gamma Numeric (>0). Resolution parameter for \code{multinet::glouvain_ml()} (multilayer mode).
+#' @param omega Numeric (>=0). Inter-layer coupling for \code{multinet::glouvain_ml()} (multilayer mode).
 #'
-#' @param overlapping Logical. Passed to [multinet::infomap_ml()] when
-#' `method="infomap"` and `supra_graph=FALSE`.
+#' @param overlapping,directed,self.links Passed to \code{multinet::infomap_ml()} (multilayer mode).
 #'
-#' @param directed Logical. Passed to [multinet::infomap_ml()] when
-#' `method="infomap"` and `supra_graph=FALSE`.
+#' @param k Integer (>=3). Clique size threshold for clique percolation (multilayer mode) and
+#' minimum clique size in supra-graph mode.
 #'
-#' @param self.links Logical. Passed to [multinet::infomap_ml()] when
-#' `method="infomap"` and `supra_graph=FALSE`.
+#' @param m Integer (>=1). Clique percolation parameter (multilayer mode only).
 #'
-#' @param k Integer (>=3). Clique size threshold. Passed to
-#' [multinet::clique_percolation_ml()] in strict mode; used as minimum clique
-#' size for [igraph::cliques()] in supra-graph mode.
+#' @param edgeWeight Aggregation rule for supra-graph edges: \code{"count"} or \code{"sum"}.
 #'
-#' @param m Integer (>=1). Multilayer clique parameter passed to
-#' [multinet::clique_percolation_ml()] in strict mode. Ignored in supra-graph mode.
+#' @param min.actors Integer (>=1). In supra-graph mode, communities with fewer than this many
+#' unique actors are removed. In multilayer mode, this is passed to \code{multinet::abacus_ml()}.
 #'
-#' @param edgeWeight How to aggregate edges across layers in supra-graph mode:
-#' one of `"count"` or `"sum"`. Ignored when `supra_graph=FALSE`.
+#' @param min.layers Integer (>=1). In supra-graph mode, communities represented in fewer than
+#' this many layers are removed. In multilayer mode, this is passed to \code{multinet::abacus_ml()}.
 #'
-#' @param min.actors Integer (>=1). Post-filtering threshold for supra-graph mode.
-#' For `method="abacus"` in strict mode, passed through to [multinet::abacus_ml()].
+#' @param relabel_by_size Logical. In supra-graph mode, optionally relabel retained communities
+#' to \code{C1, C2, ...} by decreasing size. In multilayer mode, this affects only the *saved*
+#' membership CSV (the returned \pkg{multinet} object is not modified).
 #'
-#' @param min.layers Integer (>=1). Post-filtering threshold for supra-graph mode.
-#' For `method="abacus"` in strict mode, passed through to [multinet::abacus_ml()].
-#'
-#' @param relabel_by_size Logical. In supra-graph mode, optionally relabels kept
-#' communities to `"C1","C2",...` in decreasing size order.
-#' In strict passthrough mode, does **not** change the returned object, but controls
-#' relabeling inside the **summary CSV** (if written).
-#'
-#' @param seed Optional integer. If provided, `set.seed(seed)` is called before
-#' running methods that may be stochastic.
+#' @param seed Optional integer seed for reproducibility.
 #'
 #' @param results_dir Output directory for optional files. Created if missing.
 #'
-#' @param save_to_rds Logical. If `TRUE`, saves the returned object (`supra_graph=FALSE`)
-#' or membership table (`supra_graph=TRUE`) as an `.rds`.
+#' @param save_to_rds Logical. If \code{TRUE}, saves the returned object (multilayer mode) or the
+#' membership table (supra-graph mode) as an \code{.rds}.
 #'
-#' @param rds_file Optional filename for the RDS output. If `NULL`, a timestamped
-#' name is generated. Relative paths are placed under `results_dir`.
+#' @param rds_file Optional filename for the RDS output. If \code{NULL}, a timestamped name is used.
 #'
-#' @param write_csv Logical. If `TRUE`, writes a CSV (coercing to data frame when needed).
+#' @param write_csv Logical. If \code{TRUE} (default), writes \strong{two} CSV files under \code{results_dir}:
+#' (i) a CSV representation of the returned object (\code{<base>.csv}) and (ii) the main community
+#' membership table (\code{<base>_membership.csv}).
 #'
 #' @param csv_prefix Character prefix used to build output filenames.
 #'
-#' @param write_summary_csv Logical. If `TRUE`, writes the summary CSV with columns
-#' `com,size,span` (ordered by decreasing size).
+#' @param verbose Logical. If \code{TRUE}, prints progress messages and output paths.
 #'
-#' @param verbose Logical. If `TRUE`, prints progress messages and written file paths.
-#'
-#' @param ... Additional arguments passed to the underlying `multinet::*_ml()`
-#' function when in strict mode (`supra_graph=FALSE`). Also used to accept the
-#' backward-compatible aliases listed above.
+#' @param ... Additional arguments passed to the underlying \code{multinet::*_ml()} function in
+#' multilayer mode. Also accepts legacy alias names for compatibility.
 #'
 #' @return
-#' - If `supra_graph = FALSE`: returns the **raw object** returned by `multinet::*_ml()`
-#'   unchanged.
-#' - If `supra_graph = TRUE`: returns a data frame with columns `actor`, `com`, `layer`, `method`
-#'   and attributes `community_sizes`, `layer_span`, and `files`.
-#'
-#' @examples
-#' # ---- Build a tiny 2-layer multiplex ----
-#' g1 <- igraph::graph_from_data_frame(
-#'   data.frame(from = c("a","a","b","c"),
-#'              to   = c("b","c","c","d"),
-#'              w_   = 1),
-#'   directed = FALSE
-#' )
-#' g2 <- igraph::graph_from_data_frame(
-#'   data.frame(from = c("a","a","b","c"),
-#'              to   = c("b","c","c","e"),
-#'              w_   = 1),
-#'   directed = FALSE
-#' )
-#'
-#' net_A <- multinet::ml_empty()
-#' multinet::add_igraph_layer_ml(net_A, g1, name = "L1")
-#' multinet::add_igraph_layer_ml(net_A, g2, name = "L2")
-#'
-#' # ============================================================
-#' # Example 1: STRICT passthrough (glouvain, supra_graph = FALSE)
-#' # ============================================================
-#' set.seed(1)
-#' cm_mn <- multinet::glouvain_ml(net_A, gamma = 1, omega = 1)
-#'
-#' cm_dc <- detectCom(
-#'   net_A,
-#'   method      = "glouvain",
-#'   supra_graph = FALSE,
-#'   gamma       = 1,
-#'   omega       = 1,
-#'   seed        = 1,
-#'   verbose     = FALSE
-#' )
-#'
-#' all.equal(cm_mn, cm_dc)
-#'
-#' # ============================================================
-#' # Example 2: STRICT passthrough (clique, supra_graph = FALSE)
-#' #           + write summary CSV (com,size,span)
-#' # ============================================================
-#' cm_mn2 <- multinet::clique_percolation_ml(net_A, k = 3, m = 2)
-#'
-#' tmpdir <- file.path(tempdir(), "detectCom_example")
-#' dir.create(tmpdir, showWarnings = FALSE, recursive = TRUE)
-#'
-#' cm_dc2 <- detectCom(
-#'   net_A,
-#'   method            = "clique",
-#'   supra_graph       = FALSE,
-#'   k                 = 3,
-#'   m                 = 2,
-#'   results_dir       = tmpdir,
-#'   write_summary_csv = TRUE,
-#'   relabel_by_size   = TRUE,  # summary file uses C1,C2,...; return object unchanged
-#'   verbose           = FALSE
-#' )
-#'
-#' all.equal(cm_mn2, cm_dc2)
-#' list.files(tmpdir, pattern = "_summary\\.csv$", full.names = TRUE)
-#'
-#' # ============================================================
-#' # Example 3: STRICT passthrough (infomap, supra_graph = FALSE)
-#' # ============================================================
-#' set.seed(7)
-#' cm_mn3 <- multinet::infomap_ml(net_A, overlapping = FALSE, directed = FALSE, self.links = TRUE)
-#'
-#' cm_dc3 <- detectCom(
-#'   net_A,
-#'   method      = "infomap",
-#'   supra_graph = FALSE,
-#'   overlapping = FALSE,
-#'   directed    = FALSE,
-#'   self.links  = TRUE,
-#'   seed        = 7,
-#'   verbose     = FALSE
-#' )
-#'
-#' all.equal(cm_mn3, cm_dc3)
+#' * If \code{supra_graph = FALSE}: returns the object returned by the selected \code{multinet::*_ml()} method.
+#' * If \code{supra_graph = TRUE}: returns a data frame with columns \code{actor}, \code{com}, \code{layer}, \code{method},
+#'   with attributes \code{community_sizes}, \code{layer_span}, and \code{files}.
 #'
 #' @importFrom multinet ml_empty add_igraph_layer_ml edges_ml
 #' @importFrom multinet glouvain_ml infomap_ml clique_percolation_ml abacus_ml
@@ -252,7 +142,7 @@ detectCom <- function(
     infomap_directed    = FALSE,
     infomap_self_links  = TRUE,
 
-    # --- strict-mode friendly aliases (your examples use these) ---
+    # --- user-facing aliases ---
     gamma       = NULL,
     omega       = NULL,
     k           = NULL,
@@ -264,7 +154,7 @@ detectCom <- function(
     # --- supra-graph options ---
     edgeWeight = c("count", "sum"),
 
-    # --- post-processing (ONLY applied when supra_graph = TRUE) ---
+    # --- post-processing (applied only when supra_graph = TRUE) ---
     min.actors      = 15,
     min.layers      = 2,
     relabel_by_size = TRUE,
@@ -276,15 +166,14 @@ detectCom <- function(
     results_dir       = getOption("mlnet.results_dir", "omicsDNA_results"),
     save_to_rds       = FALSE,
     rds_file          = NULL,
-    write_csv         = FALSE,
+    write_csv         = TRUE,
     csv_prefix        = "communities",
-    write_summary_csv = TRUE,   # <- default TRUE so omicsDNA_results is created + summary written
     verbose           = TRUE,
 
     ...
 ) {
   # ---------------------------
-  # normalize / validate
+  # normalise / validate
   # ---------------------------
   method <- match.arg(method)
   if (identical(method, "louvain")) {
@@ -294,12 +183,12 @@ detectCom <- function(
   edgeWeight <- match.arg(edgeWeight)
 
   stopifnot(is.logical(supra_graph), length(supra_graph) == 1L)
-  stopifnot(is.logical(verbose), length(verbose) == 1L)
-  stopifnot(is.numeric(min.actors), length(min.actors) == 1L, min.actors >= 1)
-  stopifnot(is.numeric(min.layers), length(min.layers) == 1L, min.layers >= 1)
+  stopifnot(is.logical(verbose),     length(verbose)     == 1L)
+  stopifnot(is.numeric(min.actors),  length(min.actors)  == 1L, min.actors >= 1)
+  stopifnot(is.numeric(min.layers),  length(min.layers)  == 1L, min.layers >= 1)
   stopifnot(is.logical(relabel_by_size), length(relabel_by_size) == 1L)
 
-  # resolve aliases (if user provided gamma/k/etc, those override legacy names)
+  # resolve aliases (user-facing names override legacy)
   gamma_use <- if (!is.null(gamma)) gamma else glouvain_gamma
   omega_use <- if (!is.null(omega)) omega else glouvain_omega
 
@@ -312,125 +201,216 @@ detectCom <- function(
 
   stopifnot(is.numeric(gamma_use), length(gamma_use) == 1L, gamma_use > 0)
   stopifnot(is.numeric(omega_use), length(omega_use) == 1L, omega_use >= 0)
-  stopifnot(is.numeric(k_use), length(k_use) == 1L, k_use >= 3)
-  stopifnot(is.numeric(m_use), length(m_use) == 1L, m_use >= 1)
+  stopifnot(is.numeric(k_use),     length(k_use)     == 1L, k_use >= 3)
+  stopifnot(is.numeric(m_use),     length(m_use)     == 1L, m_use >= 1)
 
   stopifnot(is.logical(overlapping_use), length(overlapping_use) == 1L)
-  stopifnot(is.logical(directed_use), length(directed_use) == 1L)
-  stopifnot(is.logical(self_links_use), length(self_links_use) == 1L)
+  stopifnot(is.logical(directed_use),    length(directed_use)    == 1L)
+  stopifnot(is.logical(self_links_use),  length(self_links_use)  == 1L)
 
-  # abacus has no supra-graph implementation here
-  use_ml_native <- (!isTRUE(supra_graph)) || method == "abacus"
+  # ABACUS is only implemented here via multinet
+  use_multilayer_method <- (!isTRUE(supra_graph)) || method == "abacus"
 
   # ---------------------------
   # helpers
   # ---------------------------
   .ensure_dir <- function(d) {
     if (!dir.exists(d)) dir.create(d, recursive = TRUE, showWarnings = FALSE)
+    invisible(d)
   }
   .is_abs <- function(p) {
     is.character(p) && length(p) == 1L && grepl("^(/|[A-Za-z]:[\\/])", p)
   }
   .stamp <- function() format(Sys.time(), "%Y-%m-%d_%H%M%S")
-  .pick <- function(cands, nms) {
-    z <- cands[cands %in% nms]
-    if (length(z)) z[1] else NA_character_
+
+  .pick_ci <- function(cands, nms) {
+    nms0 <- as.character(nms)
+    nms1 <- tolower(trimws(nms0))
+    for (c in cands) {
+      w <- which(nms1 == tolower(trimws(c)))
+      if (length(w)) return(nms0[w[1]])
+    }
+    NA_character_
   }
 
-  .write_empty_summary <- function(base) {
-    .ensure_dir(results_dir)
-    sum_file <- file.path(results_dir, paste0(base, "_summary.csv"))
-    sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
-    utils::write.csv(sm, sum_file, row.names = FALSE)
-    if (isTRUE(verbose)) message("Saved summary CSV (empty): ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
-    sum_file
+  # ---- robust coercion to membership table: actor / layer / com ------------
+  .coerce_membership_table <- function(obj, net = NULL) {
+    df <- NULL
+    if (is.data.frame(obj)) {
+      df <- obj
+    } else {
+      tmp <- try(as.data.frame(obj, stringsAsFactors = FALSE), silent = TRUE)
+      if (!inherits(tmp, "try-error")) df <- tmp
+    }
+
+    # If we have a table, standardise column selection
+    if (is.data.frame(df) && nrow(df)) {
+      nm <- names(df)
+
+      actor_col <- .pick_ci(c("actor","node","vertex","name"), nm)
+      layer_col <- .pick_ci(c("layer"), nm)
+      com_col   <- .pick_ci(c("com","cid","community","cluster","community_id","module","group"), nm)
+
+      # Fallback: if column names are not informative but the object is clearly 3-column,
+      # interpret as actor / layer / community-id (multinet’s conventional layout).
+      if (any(is.na(c(actor_col, layer_col, com_col))) && ncol(df) >= 3L) {
+        actor_col <- nm[1]
+        layer_col <- nm[2]
+        com_col   <- nm[3]
+      }
+
+      if (!any(is.na(c(actor_col, layer_col, com_col)))) {
+        out <- unique(data.frame(
+          actor = as.character(df[[actor_col]]),
+          layer = as.character(df[[layer_col]]),
+          com   = as.character(df[[com_col]]),
+          stringsAsFactors = FALSE
+        ))
+        out$actor <- trimws(out$actor)
+        out$layer <- trimws(out$layer)
+        out$com   <- trimws(out$com)
+        out <- out[nzchar(out$actor) & nzchar(out$layer) & nzchar(out$com), , drop = FALSE]
+        return(out)
+      }
+    }
+
+    # Fallback: if obj is not directly tabular, attempt multinet-native conversion
+    # using get_community_list_ml() + vertices_ml().
+    if (!is.null(net)) {
+      cl <- try(multinet::get_community_list_ml(obj, net), silent = TRUE)
+      vt <- try(multinet::vertices_ml(net), silent = TRUE)
+
+      if (!inherits(cl, "try-error") && is.list(cl) && length(cl) &&
+          !inherits(vt, "try-error") && is.data.frame(vt) && nrow(vt) >= 1L) {
+
+        # vertices_ml() is documented as a 2-column table: actor + layer
+        vnm <- names(vt)
+        v_actor <- .pick_ci(c("actor"), vnm)
+        v_layer <- .pick_ci(c("layer"), vnm)
+        if (is.na(v_actor) || is.na(v_layer)) {
+          # last-resort: take first two columns
+          if (ncol(vt) >= 2L) {
+            v_actor <- vnm[1]
+            v_layer <- vnm[2]
+          }
+        }
+
+        rows <- list()
+        for (i in seq_along(cl)) {
+          el <- cl[[i]]
+
+          cid_i <- NA_character_
+          verts_i <- NULL
+
+          if (is.list(el)) {
+            # community id
+            if ("cid" %in% names(el))       cid_i <- as.character(el$cid)
+            if ("com" %in% names(el))       cid_i <- as.character(el$com)
+            if ("community" %in% names(el)) cid_i <- as.character(el$community)
+
+            # vertices
+            for (kk in c("vertices","vertex","v","nodes","ids")) {
+              if (kk %in% names(el)) { verts_i <- el[[kk]]; break }
+            }
+            if (is.null(verts_i)) {
+              # try first numeric-like component
+              for (jj in seq_along(el)) {
+                if (is.numeric(el[[jj]]) || is.integer(el[[jj]])) { verts_i <- el[[jj]]; break }
+              }
+            }
+          } else if (is.numeric(el) || is.integer(el)) {
+            verts_i <- el
+            # sometimes cid may be encoded in the list element name
+            nm_i <- names(cl)[i]
+            if (!is.null(nm_i) && nzchar(nm_i)) {
+              # extract digits after "cid" when possible
+              m <- regexpr("cid\\s*=?\\s*([0-9]+)", nm_i, perl = TRUE)
+              if (m[1] != -1) {
+                cid_i <- sub(".*cid\\s*=?\\s*([0-9]+).*", "\\1", nm_i, perl = TRUE)
+              }
+            }
+          }
+
+          if (is.null(verts_i) || !length(verts_i)) next
+          verts_i <- as.integer(verts_i)
+          verts_i <- verts_i[is.finite(verts_i) & verts_i >= 1L & verts_i <= nrow(vt)]
+          if (!length(verts_i)) next
+
+          subvt <- vt[verts_i, , drop = FALSE]
+          if (is.na(cid_i) || !nzchar(cid_i)) next
+
+          dd <- data.frame(
+            actor = as.character(subvt[[v_actor]]),
+            layer = as.character(subvt[[v_layer]]),
+            com   = as.character(cid_i),
+            stringsAsFactors = FALSE
+          )
+          dd$actor <- trimws(dd$actor)
+          dd$layer <- trimws(dd$layer)
+          dd$com   <- trimws(dd$com)
+          dd <- dd[nzchar(dd$actor) & nzchar(dd$layer) & nzchar(dd$com), , drop = FALSE]
+
+          if (nrow(dd)) rows[[length(rows) + 1L]] <- dd
+        }
+
+        if (length(rows)) {
+          out <- unique(do.call(rbind, rows))
+          if (nrow(out)) return(out)
+        }
+      }
+    }
+
+    NULL
   }
 
-  .write_summary_like_attachment <- function(df, base) {
-    # Always create dir and summary file path
+  # ---- WRITE MAIN MEMBERSHIP CSV (legacy function name retained) ------------
+  # NOTE: This no longer writes a com/size/span summary. It writes the *membership table*.
+  .write_summary_csv <- function(membership_df, base) {
     .ensure_dir(results_dir)
-    sum_file <- file.path(results_dir, paste0(base, "_summary.csv"))
+    mem_file <- file.path(results_dir, paste0(base, "_membership.csv"))
 
-    # Empty input -> write empty summary
-    if (is.null(df) || !nrow(df)) {
-      sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
-      utils::write.csv(sm, sum_file, row.names = FALSE)
-      if (isTRUE(verbose)) message("Saved summary CSV (empty): ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
-      return(sum_file)
+    # standardise empty output
+    if (is.null(membership_df) || !is.data.frame(membership_df) || !nrow(membership_df)) {
+      out <- data.frame(
+        actor  = character(),
+        com    = character(),
+        layer  = character(),
+        method = character(),
+        stringsAsFactors = FALSE
+      )
+      utils::write.csv(out, mem_file, row.names = FALSE)
+      if (isTRUE(verbose)) message("Saved membership CSV (empty): ",
+                                   normalizePath(mem_file, winslash = "/", mustWork = FALSE))
+      return(mem_file)
     }
 
-    nm <- names(df)
-    actor_col <- .pick(c("actor","Actor","node","Node","vertex","Vertex"), nm)
-    layer_col <- .pick(c("layer","Layer"), nm)
-    com_col   <- .pick(c("com","community","cluster","cid","community_id","Community"), nm)
-
-    # If we cannot infer columns, still write empty summary (do NOT error)
-    if (any(is.na(c(actor_col, layer_col, com_col)))) {
-      if (isTRUE(verbose)) message("Summary CSV: could not infer actor/layer/com columns; writing empty summary.")
-      sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
-      utils::write.csv(sm, sum_file, row.names = FALSE)
-      return(sum_file)
+    out <- membership_df
+    # ensure required columns exist
+    need <- c("actor","layer","com")
+    miss <- setdiff(need, names(out))
+    if (length(miss)) {
+      stop("Membership table is missing required columns: ", paste(miss, collapse = ", "))
     }
 
-    tmp <- unique(data.frame(
-      actor = as.character(df[[actor_col]]),
-      layer = as.character(df[[layer_col]]),
-      com   = as.character(df[[com_col]]),
-      stringsAsFactors = FALSE
-    ))
+    out$actor <- trimws(as.character(out$actor))
+    out$layer <- trimws(as.character(out$layer))
+    out$com   <- trimws(as.character(out$com))
+    out <- out[nzchar(out$actor) & nzchar(out$layer) & nzchar(out$com), , drop = FALSE]
+    out <- unique(out[, intersect(c("actor","com","layer","method"), names(out)), drop = FALSE])
 
-    if (!nrow(tmp)) {
-      sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
-      utils::write.csv(sm, sum_file, row.names = FALSE)
-      if (isTRUE(verbose)) message("Saved summary CSV (empty): ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
-      return(sum_file)
-    }
+    if (!"method" %in% names(out)) out$method <- NA_character_
 
-    size_by <- tapply(tmp$actor, tmp$com, function(v) length(unique(v)))
-    span_by <- tapply(tmp$layer, tmp$com, function(v) length(unique(v)))
+    # stable column order
+    out <- out[, c("actor","com","layer","method"), drop = FALSE]
 
-    # No communities -> empty summary
-    if (length(size_by) == 0L) {
-      sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
-      utils::write.csv(sm, sum_file, row.names = FALSE)
-      if (isTRUE(verbose)) message("Saved summary CSV (empty): ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
-      return(sum_file)
-    }
-
-    size_by <- as.integer(size_by)
-    span_by <- as.integer(span_by[names(size_by)])
-
-    ord <- order(size_by, decreasing = TRUE, na.last = TRUE)
-    ids <- names(size_by)[ord]
-    ids <- ids[!is.na(ids)]
-
-    # if after removing NA we have nothing, still empty summary
-    if (!length(ids)) {
-      sm <- data.frame(com = character(), size = integer(), span = integer(), stringsAsFactors = FALSE)
-      utils::write.csv(sm, sum_file, row.names = FALSE)
-      if (isTRUE(verbose)) message("Saved summary CSV (empty): ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
-      return(sum_file)
-    }
-
-    size_vec <- as.integer(size_by[ids])
-    span_vec <- as.integer(span_by[ids])
-
-    com_out <- if (isTRUE(relabel_by_size)) paste0("C", seq_along(ids)) else as.character(ids)
-
-    sm <- data.frame(
-      com  = com_out,
-      size = as.integer(size_vec),
-      span = as.integer(span_vec),
-      stringsAsFactors = FALSE
-    )
-
-    utils::write.csv(sm, sum_file, row.names = FALSE)
-    if (isTRUE(verbose)) message("Saved summary CSV: ", normalizePath(sum_file, winslash = "/", mustWork = FALSE))
-    sum_file
+    utils::write.csv(out, mem_file, row.names = FALSE)
+    if (isTRUE(verbose)) message("Saved membership CSV: ",
+                                 normalizePath(mem_file, winslash = "/", mustWork = FALSE))
+    mem_file
   }
 
   .save_outputs_raw <- function(obj, method_used, mode_tag, weight_tag = NULL) {
-    if (!isTRUE(save_to_rds) && !isTRUE(write_csv) && !isTRUE(write_summary_csv)) return(invisible(NULL))
+    if (!isTRUE(save_to_rds) && !isTRUE(write_csv)) return(invisible(NULL))
 
     .ensure_dir(results_dir)
     base <- if (is.null(weight_tag)) {
@@ -444,43 +424,53 @@ detectCom <- function(
       rds_use <- if (is.null(rds_file)) paste0(base, ".rds") else rds_file
       if (!.is_abs(rds_use)) rds_use <- file.path(results_dir, rds_use)
       saveRDS(obj, rds_use)
-      if (isTRUE(verbose)) message("Saved RDS: ", normalizePath(rds_use, winslash = "/", mustWork = FALSE))
+      if (isTRUE(verbose)) message("Saved RDS: ",
+                                   normalizePath(rds_use, winslash = "/", mustWork = FALSE))
     }
 
-    # CSV (coerce copy only)
+    # CSV outputs (two files)
     if (isTRUE(write_csv)) {
+
+      # (1) CSV representation of returned object (coerce copy only; placeholder if coercion fails)
       csv_file <- file.path(results_dir, paste0(base, ".csv"))
       obj_df <- if (is.data.frame(obj)) obj else try(as.data.frame(obj, stringsAsFactors = FALSE), silent = TRUE)
       if (inherits(obj_df, "try-error") || is.null(obj_df)) {
-        warning("write_csv=TRUE but raw output could not be coerced to data.frame; skipping CSV.", call. = FALSE)
-      } else {
-        utils::write.csv(obj_df, csv_file, row.names = FALSE)
-        if (isTRUE(verbose)) message("Saved CSV: ", normalizePath(csv_file, winslash = "/", mustWork = FALSE))
+        obj_df <- data.frame(
+          note  = "Output object could not be coerced to a data.frame; writing placeholder CSV.",
+          class = paste(class(obj), collapse = ";"),
+          stringsAsFactors = FALSE
+        )
+        warning("write_csv=TRUE but output could not be coerced to a data.frame; wrote placeholder CSV.", call. = FALSE)
       }
-    }
+      utils::write.csv(obj_df, csv_file, row.names = FALSE)
+      if (isTRUE(verbose)) message("Saved CSV: ",
+                                   normalizePath(csv_file, winslash = "/", mustWork = FALSE))
 
-    # Summary CSV (coerce copy only; robust to empties)
-    if (isTRUE(write_summary_csv)) {
-      obj_df <- if (is.data.frame(obj)) obj else try(as.data.frame(obj, stringsAsFactors = FALSE), silent = TRUE)
-      if (inherits(obj_df, "try-error") || is.null(obj_df)) {
-        if (isTRUE(verbose)) message("Summary CSV: raw output not coercible; writing empty summary.")
-        .write_empty_summary(base)
-      } else {
-        .write_summary_like_attachment(obj_df, base)
+      # (2) MAIN MEMBERSHIP CSV
+      mem <- .coerce_membership_table(obj, net = net)
+      if (!is.null(mem) && is.data.frame(mem) && nrow(mem)) {
+        # optional relabel-by-size for file output only (multilayer mode)
+        if (isTRUE(relabel_by_size)) {
+          size_by <- tapply(mem$actor, mem$com, function(v) length(unique(v)))
+          ord <- order(as.integer(size_by), decreasing = TRUE, na.last = TRUE)
+          old_ids <- names(size_by)[ord]
+          old_ids <- old_ids[!is.na(old_ids) & nzchar(old_ids)]
+          if (length(old_ids)) {
+            map <- stats::setNames(paste0("C", seq_along(old_ids)), old_ids)
+            mem$com <- unname(map[mem$com])
+          }
+        }
+        mem$method <- as.character(method_used)
       }
+      .write_summary_csv(mem, base)
     }
 
     invisible(NULL)
   }
 
   .finalize_supra <- function(res_df, method_used, weight_tag = NULL) {
-    if (!isTRUE(save_to_rds) && !isTRUE(write_csv) && !isTRUE(write_summary_csv)) {
-      # still attach attrs even if no writing
-      files <- list()
-    } else {
-      .ensure_dir(results_dir)
-      files <- list()
-    }
+    .ensure_dir(results_dir)
+    files <- list()
 
     base <- if (is.null(weight_tag)) {
       sprintf("%s_%s_supra_%s", csv_prefix, tolower(method_used), .stamp())
@@ -493,19 +483,20 @@ detectCom <- function(
       if (!.is_abs(rds_use)) rds_use <- file.path(results_dir, rds_use)
       saveRDS(res_df, rds_use)
       files$rds <- rds_use
-      if (isTRUE(verbose)) message("Saved RDS: ", normalizePath(rds_use, winslash = "/", mustWork = FALSE))
+      if (isTRUE(verbose)) message("Saved RDS: ",
+                                   normalizePath(rds_use, winslash = "/", mustWork = FALSE))
     }
 
+    # CSV outputs (two files)
     if (isTRUE(write_csv)) {
       csv_file <- file.path(results_dir, paste0(base, ".csv"))
       utils::write.csv(res_df, csv_file, row.names = FALSE)
       files$csv <- csv_file
-      if (isTRUE(verbose)) message("Saved CSV: ", normalizePath(csv_file, winslash = "/", mustWork = FALSE))
-    }
+      if (isTRUE(verbose)) message("Saved CSV: ",
+                                   normalizePath(csv_file, winslash = "/", mustWork = FALSE))
 
-    if (isTRUE(write_summary_csv)) {
-      sum_file <- .write_summary_like_attachment(res_df, base)
-      files$summary_csv <- sum_file
+      mem_file <- .write_summary_csv(res_df, base)
+      files$membership_csv <- mem_file
     }
 
     # attributes (always)
@@ -533,13 +524,13 @@ detectCom <- function(
   if (!is.null(seed)) set.seed(as.integer(seed))
 
   # =======================================================================
-  # 1) STRICT multilayer-native passthrough (supra_graph = FALSE OR abacus)
+  # 1) Multilayer community detection via multinet (supra_graph = FALSE OR abacus)
   # =======================================================================
-  if (use_ml_native) {
+  if (use_multilayer_method) {
     if (isTRUE(verbose)) {
-      msg <- paste0("Running STRICT passthrough multinet::*_ml(), method = \"", method, "\".")
-      if (!is.null(layers) && length(layers)) {
-        msg <- paste0(msg, " Note: `layers` is ignored in strict mode (subset upstream if needed).")
+      msg <- paste0("Running multilayer community detection via multinet, method = \"", method, "\".")
+      if (!is.null(layers) && length(layers) && isFALSE(supra_graph)) {
+        msg <- paste0(msg, " (`layers` is only used when supra_graph = TRUE.)")
       }
       message(msg)
     }
@@ -566,11 +557,11 @@ detectCom <- function(
   # 2) Supra-graph mode (supra_graph = TRUE; glouvain/infomap/clique)
   # =======================================================================
   if (!method %in% c("glouvain", "infomap", "clique")) {
-    stop("supra_graph=TRUE is only supported for method = 'glouvain', 'infomap', or 'clique'.", call. = FALSE)
+    stop("supra_graph=TRUE is supported only for method = 'glouvain', 'infomap', or 'clique'.", call. = FALSE)
   }
 
   if (isTRUE(verbose)) {
-    message("Running supra-graph mode (layer-collapsed), method = \"", method, "\".")
+    message("Running supra-graph community detection (layer-aggregated), method = \"", method, "\".")
   }
 
   # ---- pull multilayer edges ----
@@ -624,18 +615,18 @@ detectCom <- function(
   } else {
     layers_use <- intersect(as.character(layers), unique(Eall$layer))
   }
-  if (!length(layers_use)) stop("No layers available after intersecting with `layers`.", call. = FALSE)
+  if (!length(layers_use)) stop("No layers available after applying `layers` selection.", call. = FALSE)
   Eall <- Eall[Eall$layer %in% layers_use, , drop = FALSE]
   if (!nrow(Eall)) stop("No edges left after applying `layers` selection.", call. = FALSE)
 
   # weight col (optional)
-  w_col <- .pick(c("weight","Weight","w","w_","value","score","correlation"), nm)
+  w_col <- .pick_ci(c("weight","w","w_","value","score"), nm)
 
   edges_all <- data.frame(
     layer  = as.character(Eall$layer),
     from   = as.character(Eall[[a_col]]),
     to     = as.character(Eall[[b_col]]),
-    weight = if (!is.na(w_col) && w_col %in% names(Eall)) as.numeric(Eall[[w_col]]) else 1,
+    weight = if (!is.na(w_col) && w_col %in% names(Eall)) suppressWarnings(as.numeric(Eall[[w_col]])) else 1,
     stringsAsFactors = FALSE
   )
 
@@ -645,7 +636,7 @@ detectCom <- function(
   edges_all$from <- aa
   edges_all$to   <- bb
 
-  # aggregate
+  # aggregate supra-edges
   if (edgeWeight == "count") {
     per_layer_unique <- unique(edges_all[, c("layer","from","to")])
     agg <- stats::aggregate(rep(1L, nrow(per_layer_unique)),
@@ -696,7 +687,7 @@ detectCom <- function(
   names(memb_vec) <- names(memb)
   memb_df <- data.frame(actor = names(memb_vec), com = as.character(memb_vec), stringsAsFactors = FALSE)
 
-  # map back to layers
+  # map back to layers (actors that appear in each layer)
   actors_by_layer <- lapply(layers_use, function(ly) {
     ed <- edges_all[edges_all$layer == ly, , drop = FALSE]
     unique(c(ed$from, ed$to))

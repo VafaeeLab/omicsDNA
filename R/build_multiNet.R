@@ -1,172 +1,99 @@
-
 # ------------------------------------------------------------------------------
 # 4 - Build a multi-layer network from per-layer edge tables or adjacency matrices
 # ------------------------------------------------------------------------------
 
-#' Build a multilayer network from per‑layer edge tables or adjacency matrices
+#' Build a multilayer network from edge lists or adjacency matrices
 #'
 #' @description
-#' This routine constructs a multilayer network—one layer per group/condition—
-#' and returns a `multinet::ml.network`. It is designed to accept the most common
-#' representations used in practice and to normalise them into the structure that
-#' `multinet` expects.
-#'
-#' **Accepted input formats**
-#' - **Per‑layer edge tables:** a **named list** where each element is a data
-#'   frame containing `from`, `to`, and (optionally) `weight`.
-#' - **Flattened edge table:** a single data frame with columns `from`, `to`,
-#'   optional `weight`, a layer column (auto‑detected), and optional repetition
-#'   column (also auto‑detected).
-#' - **Adjacency matrices:** a single square matrix, a list of matrices (one per
-#'   layer), or a nested list (repeat × layer or layer × repeat). These are
-#'   first converted to edge tables via `edgesFromAdjacency()` (which must be
-#'   available when using adjacency inputs).
+#' Constructs a \pkg{multinet} multilayer network in which each layer represents a
+#' group/condition (e.g., time point, omics layer, experimental group). The function
+#' accepts common network input formats (edge tables or adjacency matrices), converts
+#' them into per-layer \pkg{igraph} objects, and then assembles them into a single
+#' \code{multinet::ml.network}.
 #'
 #' @details
-#' **Workflow and internal logic**
-#' 1. **Normalisation to a layer‑indexed list.** Regardless of the input form,
-#'    the function produces a **named list keyed by layer**, with each element a
-#'    tidy data frame of `from`, `to`, `weight`.
-#'    - For **flattened tables**, the function detects the layer column from
-#'      `c("layer","Layer","group","Group")`. The repetition column (if present)
-#'      is detected from `c("rep","repeat","repetition","bootstrap","iter",
-#'      "iteration","Rep","Repeat")`. If not found, repetitions default to a
-#'      single level `"1"`.
-#'    - For **nested lists**, the option `list_order` controls whether the top
-#'      level indexes **layers** or **repetitions**. With `list_order = "auto"`,
-#'      the function inspects names to infer a sensible layout. Lists deeper than
-#'      two levels are not supported for adjacency inputs.
-#' 2. **Handling repetitions (optional).** If a repetition column is present in
-#'    a flattened table, you may either:
-#'    - **Filter repetitions** with `rep_filter` (named labels or numeric indices
-#'      over the unique repetition labels), or
-#'    - **Collapse repetitions within each layer** using `rep_collapse`
-#'      (`"mean"`, `"median"`, `"sum"`, or `"none"`). When `"none"`, rows from
-#'      different repetitions are kept as‑is; duplicates may therefore persist to
-#'      the next step.
-#' 3. **Directedness and duplicate aggregation.** For **undirected** layers
-#'    (`directed = FALSE`), endpoints are canonicalised prior to deduplication
-#'    (`from = pmin(from,to)`, `to = pmax(from,to)`), ensuring `A–B` and `B–A`
-#'    are treated as the same edge. Duplicate `from`–`to` rows **within a layer**
-#'    are combined according to `aggregate_duplicates` (`"none"`, `"mean"`,
-#'    `"median"`, `"sum"`). If `"none"`, multiple parallel edges may be created
-#'    in the resulting `igraph` layer.
-#' 4. **Per‑layer graph construction.** Each layer is converted to an `igraph`
-#'    object via `igraph::graph_from_data_frame()`. Edge weights default to `1`
-#'    when missing and are coerced to numeric.
-#' 5. **Node attributes (optional).** If `nodesMetadata` is supplied, vertex
-#'    attributes are attached by matching `nodesMetadata[[featureID_col]]` to the
-#'    vertex names. When `nodeAttrCols = NULL`, all columns except `featureID_col`
-#'    are attached. Unmatched vertices receive `NA` for those attributes.
-#' 6. **Assembly of the multilayer object.** The per‑layer `igraph`s are inserted
-#'    into a new `multinet::ml.network` using `multinet::add_igraph_layer_ml()`.
-#'
-#' **Layer ordering and naming**
-#' - If `layerOrder` is **not** provided, layers are ordered alphabetically by
-#'   their names. If `layerOrder` **is** provided, only the listed layers are
-#'   kept and they appear in the specified order.
-#'
-#' **Notes and limitations**
-#' - Vertices appear only if referenced by at least one edge in that layer. If
-#'   you require isolates, add them upstream (e.g., by inserting zero‑weight
-#'   self‑loops or extending this function to accept an explicit vertex set).
-#' - When using **adjacency** inputs, this function relies on
-#'   `edgesFromAdjacency()`. For sparse matrices, zeros are not stored; hence a
-#'   zero entry will not generate an edge.
-#'
-#' **Persistence and exports**
-#' - When `save_to_rds = TRUE`, the multilayer network is saved as an RDS file
-#'   under `results_dir` (default:
-#'   `getOption("mlnet.results_dir", "omicsDNA_results")`). The filename is
-#'   auto‑generated unless `rds_file` is provided (relative paths are resolved
-#'   under `results_dir`; absolute paths are respected).
-#' - Setting `save_layers_graphml = TRUE` additionally writes each layer as a
-#'   GraphML file using `igraph::write_graph()`, with filenames prefixed by
-#'   `graphml_prefix`, suffixed by the layer name and a timestamp.
-#'
-#' @param edgeListPerLayer A named list of per‑layer edge data frames; or a
-#'   flattened edge data frame; or a single adjacency matrix; or a (nested) list
-#'   of adjacency matrices. Edge data frames must contain `from`, `to`, and
-#'   optional `weight` (defaulted to `1` if missing). Adjacency inputs require
-#'   `edgesFromAdjacency()`.
-#' @param nodesMetadata Optional data frame of node attributes. Its identifier
-#'   column must be named in `featureID_col` and must match the vertex names used
-#'   in the edges.
-#' @param featureID_col Name of the identifier column in `nodesMetadata` used to
-#'   match attributes to vertices. Default `"feature_id"`.
-#' @param nodeAttrCols Character vector naming columns of `nodesMetadata` to
-#'   attach as vertex attributes. If `NULL` and `nodesMetadata` is provided, all
-#'   columns except `featureID_col` are attached.
-#' @param layerOrder Optional character vector of layer names. If supplied, only
-#'   these layers are retained and they are ordered accordingly; otherwise layers
-#'   are ordered alphabetically.
-#' @param directed Logical; whether per‑layer graphs are directed. Default `FALSE`.
-#' @param verbose Logical; print per‑layer summaries (vertex counts and attribute
-#'   match coverage) and file‑saving messages. Default `TRUE`.
-#' @param layer_col,rep_col For flattened data‑frame input only: explicit column
-#'   names for layer and repetition identifiers. If `NULL`, they are auto‑detected
-#'   as described above.
-#' @param rep_filter Optional vector (labels or numeric indices over the unique
-#'   repetition labels) selecting which repetitions to keep for flattened input.
-#' @param list_order For nested lists: `"auto"`, `"layer_rep"` (top level indexes
-#'   layers), or `"rep_layer"` (top level indexes repetitions). Default `"auto"`.
-#' @param rep_collapse How to combine multiple repetitions within each layer when
-#'   present and not filtered. One of `"mean"`, `"median"`, `"sum"`, `"none"`.
-#'   Default `"mean"`.
-#' @param aggregate_duplicates How to combine duplicate `from`–`to` rows within a
-#'   layer **after** repetition handling. One of `"none"`, `"mean"`, `"median"`,
-#'   `"sum"`. Default `"none"`.
-#' @param results_dir Directory to write outputs. Default
-#'   `getOption("mlnet.results_dir", "omicsDNA_results")`.
-#' @param save_to_rds Logical; save the `ml.network` object as an RDS file under
-#'   `results_dir`. Default `TRUE`.
-#' @param rds_file Optional filename for the RDS. If relative, it is created
-#'   under `results_dir`; absolute paths are respected. Default `NULL` (auto‑named
-#'   with a timestamp).
-#' @param save_layers_graphml Logical; also export each layer as a GraphML file.
-#'   Default `FALSE`.
-#' @param graphml_prefix Basename prefix for per‑layer GraphML files (layer name
-#'   and a timestamp are appended).
-#'
-#' @return A `multinet::ml.network` object containing one layer per group/condition.
-#'
-#' @section Practical notes:
-#' - Edge weights are coerced to numeric; non‑numeric values will produce `NA`
-#'   weights, which are passed through to `igraph` unchanged.
-#' - If your input list lacks names, synthetic layer names (`"layer1"`, `"layer2"`, …)
-#'   are generated.
-#'
-#' @examples
-#' \dontrun{
-#' ## From consensusEdges(..., as_list = TRUE):
-#' net <- build_multiNet(
-#'   cons_list,
-#'   nodesMetadata   = genes_info,
-#'   featureID_col   = "GeneName",
-#'   nodeAttrCols    = "GeneType",
-#'   directed        = FALSE,
-#'   aggregate_duplicates = "mean"
-#' )
-#'
-#' ## From flattened edges (e.g., edgesFromAdjacency(..., flatten = TRUE)):
-#' net <- build_multiNet(
-#'   edges_df,
-#'   rep_collapse    = "median"
-#' )
-#'
-#' ## From adjacency matrices (list[layer] or nested repeat × layer):
-#' net <- build_multiNet(
-#'   adjacency,
-#'   list_order      = "rep_layer"
-#' )
+#' \section{What is the input to this function?}{
+#' The core input is \code{edgeListPerLayer}, which can be provided in several practical formats:
+#' \itemize{
+#'   \item \strong{Named list of per-layer edge tables:} each element is a data frame
+#'         with columns \code{from}, \code{to}, and optionally \code{weight}.
+#'   \item \strong{Single “flattened” edge table:} one data frame containing \code{from}, \code{to},
+#'         optional \code{weight}, and a layer identifier column (automatically detected or specified
+#'         by \code{layer_col}). A repetition column may also be present (detected or specified by
+#'         \code{rep_col}).
+#'   \item \strong{Adjacency matrices:} either a single square matrix, a list of matrices (one per layer),
+#'         or a nested list representing repetitions and layers. Adjacency inputs are converted to edge
+#'         tables using \code{edgesFromAdjacency()}.
 #' }
 #'
-#' @seealso
-#'   \code{\link{edgesFromAdjacency}} for converting adjacencies to edge tables;
-#'   \code{\link{consensusEdges}} for obtaining stable, per‑layer edge sets.
+#' Optionally, \code{nodesMetadata} can be supplied to attach node (actor) attributes to each layer.
+#' Vertices are matched using \code{nodesMetadata[[featureID_col]]} against vertex names.
+#' }
 #'
-#' @importFrom igraph graph_from_data_frame set_vertex_attr V write_graph
-#' @importFrom multinet ml_empty add_igraph_layer_ml
+#' \section{How the network is built (high-level logic)}{
+#' \enumerate{
+#'   \item \strong{Standardise inputs:} all supported formats are converted into a named list
+#'         \code{layer -> data.frame(from,to,weight)}.
+#'   \item \strong{Handle repetitions (if present):} repetitions can be filtered (\code{rep_filter})
+#'         and/or collapsed within each layer (\code{rep_collapse}).
+#'   \item \strong{Resolve duplicates:} duplicate edges within a layer can be combined using
+#'         \code{aggregate_duplicates}. For undirected networks, endpoints are canonicalised so that
+#'         \code{A–B} and \code{B–A} are treated as the same edge.
+#'   \item \strong{Build layer graphs:} each layer is converted to an \pkg{igraph} object.
+#'   \item \strong{Attach node attributes (optional):} selected columns from \code{nodesMetadata} are
+#'         assigned as vertex attributes.
+#'   \item \strong{Assemble multilayer network:} layer graphs are inserted into a new
+#'         \code{multinet::ml.network}.
+#' }
+#' }
+#'
+#' \section{What files does this function write?}{
+#' Writing files is optional and controlled by flags:
+#' \itemize{
+#'   \item If \code{save_to_rds = TRUE}, the multilayer network object is saved as an \code{.rds}
+#'         file. If \code{rds_file} is \code{NULL}, the function auto-generates a timestamped filename
+#'         (e.g., \code{multiNet_<timestamp>.rds}) under \code{results_dir}.
+#'   \item If \code{save_layers_graphml = TRUE}, each layer graph is exported as a \code{.graphml} file
+#'         under \code{results_dir} with names of the form
+#'         \code{<graphml_prefix>_<layer>_<timestamp>.graphml}.
+#' }
+#' If both flags are \code{FALSE}, no files are written and the network exists only in memory.
+#' }
+#'
+#' @param edgeListPerLayer Network definition provided as either (i) a named list of per-layer edge
+#'   tables, (ii) a single flattened edge table containing a layer column, (iii) an adjacency matrix,
+#'   or (iv) a list/nested list of adjacency matrices. Edge tables must contain \code{from}, \code{to},
+#'   and optionally \code{weight} (default weight is 1 when missing). Adjacency inputs require
+#'   \code{edgesFromAdjacency()} to be available.
+#' @param nodesMetadata Optional data frame of node (actor) metadata to attach as vertex attributes.
+#'   Row identifiers are matched to vertex names via \code{featureID_col}.
+#' @param featureID_col Column name in \code{nodesMetadata} that contains the vertex identifiers used
+#'   for matching. Default is \code{"feature_id"}.
+#' @param nodeAttrCols Character vector naming which columns of \code{nodesMetadata} to attach as
+#'   vertex attributes. If \code{NULL}, all columns except \code{featureID_col} are attached.
+#' @param layerOrder Optional vector defining the layer order. If provided, only listed layers are used
+#'   and they appear in this order; otherwise layers are ordered alphabetically.
+#' @param directed Logical; if \code{TRUE}, treat edges as directed within each layer. Default \code{FALSE}.
+#' @param verbose Logical; if \code{TRUE}, print per-layer summaries and file-saving messages.
+#' @param layer_col,rep_col For flattened edge-table input only: explicit column names identifying the
+#'   layer and repetition variables. If \code{NULL}, common names are auto-detected.
+#' @param rep_filter Optional repetition filter for flattened input: can be repetition labels or numeric
+#'   indices over the unique repetition labels.
+#' @param list_order For nested list inputs: specifies whether the top level indexes layers or repetitions.
+#'   One of \code{"auto"}, \code{"layer_rep"}, or \code{"rep_layer"}.
+#' @param rep_collapse How to combine repetitions within each layer when multiple repetitions exist.
+#'   One of \code{"mean"}, \code{"median"}, \code{"sum"}, or \code{"none"}.
+#' @param aggregate_duplicates How to combine duplicated edges within a layer after repetition handling.
+#'   One of \code{"none"}, \code{"mean"}, \code{"median"}, or \code{"sum"}.
+#' @param results_dir Directory used for output files (RDS/GraphML) when saving is enabled.
+#' @param save_to_rds Logical; if \code{TRUE}, save the resulting \code{ml.network} as an \code{.rds}.
+#' @param rds_file Optional filename for the RDS output. Relative paths are created under \code{results_dir};
+#'   absolute paths are respected. If \code{NULL}, a timestamped name is used.
+#' @param save_layers_graphml Logical; if \code{TRUE}, also export each layer to GraphML format.
+#' @param graphml_prefix Prefix used in GraphML filenames.
+#'
+#' @return A \code{multinet::ml.network} object containing one layer per condition/group.
+#'
 #' @export
 build_multiNet <- function(
     edgeListPerLayer,

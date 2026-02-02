@@ -172,6 +172,8 @@ sumComFeat <- function(
     stop("`communities` must contain either 'cid' or 'com' (or both).")
   }
 
+  communities$cid <- as.integer(as.character(communities$cid))
+
   dat <- communities
 
   # Optional layer restriction

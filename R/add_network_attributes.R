@@ -1,176 +1,119 @@
-
 #------------------------------------------------------
 # 9 - Add network-level attributes
 #------------------------------------------------------
 
-#' Attach actor- and edge-level attributes to a multilayer network, with coverage reporting
+#' Attach node (actor) and edge attributes to a multilayer network, with match reporting
 #'
 #' @description
-#' This procedure enriches an existing `multinet::ml.network` with **actor** (node)
-#' and **edge** attributes drawn from external metadata tables. It is designed to
-#' be robust to common ID-format differences by offering simple, composable
-#' normalisers (e.g., `tolower`, `strip_version`, `trim`) and an optional
-#' auto-detection step that chooses the recipe yielding the highest coverage.
-#' A compact report (RDS + TXT) is generated to document match rates and the
-#' attributes attached.
+#' Adds external metadata to an existing multilayer network (\code{multinet::ml.network}).
+#' The function can attach:
+#' \itemize{
+#'   \item \strong{actor (node) attributes} from \code{nodesMetadata}, and/or
+#'   \item \strong{edge attributes} from \code{edgesMetadata}.
+#' }
+#' It is designed to be robust to common identifier formatting issues (e.g., case differences,
+#' version suffixes, punctuation) by supporting simple ID normalisation steps and an optional
+#' auto-detection procedure that selects the normalisation strategy with the highest match coverage.
+#' A compact report of match rates and attached attributes can be saved to disk.
 #'
 #' @details
-#' **What the function does**
-#' 1. Extracts the edges and actors from `net`. If the network stores two layer
-#'    columns (`layer1`, `layer2`), edges are restricted to **intra-layer**
-#'    interactions (i.e., `layer1 == layer2`).
-#' 2. If `nodesMetadata` is provided, actor IDs in `net` are reconciled against
-#'    `nodesMetadata[[featureID_col]]` via either a user-supplied `actor_key_fun`
-#'    or a pipeline of built-in normalisers listed in `actor_key_normalize`.
-#'    When `auto_detect_keys = TRUE`, several normaliser pipelines are tried and
-#'    the one with the highest actor-coverage is used. Selected columns
-#'    (`nodeAttrCols`, or all except `featureID_col` when `NULL`) are then
-#'    attached as actor attributes. Missing values can be filled with
-#'    `nodeFillValue` when `fillMissingNodes = TRUE`.
-#' 3. If `edgesMetadata` is supplied, the external endpoints are mapped to actors
-#'    in `net` using the same key function (when `map_edges_by_actor_key = TRUE`).
-#'    Rows that cannot be mapped to a pair of actors are **dropped** (with a
-#'    message). When multiple metadata rows correspond to the same `(layer, u, v)`
-#'    edge, they are aggregated according to `edgeAggregate`. Numeric columns are
-#'    collapsed using the chosen summary (e.g., `mean`), while non-numeric
-#'    columns take the **first** value.
-#' 4. Attributes are declared (if needed) and then values are written to the
-#'    network. If attributes already exist and `overwrite_existing = FALSE`,
-#'    the function avoids re-declaration but **still sets values** for the
-#'    affected actors/edges.
-#' 5. A small report is attached to the returned object (as attributes) and,
-#'    optionally, saved to disk under `results_dir`.
+#' \section{What is the input to this function?}{
+#' The main input is an existing \code{multinet::ml.network} object (\code{net}).
 #'
-#' **Normalisers for ID reconciliation**
-#' Built-in normaliser steps include: `"identity"`, `"trim"`, `"strip_version"`,
-#' `"tolower"`, `"toupper"`, `"rm_dash"` (remove `-` and `_`), `"rm_punct"`
-#' (remove punctuation), and `"alnum"` (keep alphanumerics only). You may chain
-#' them by supplying a character vector to `actor_key_normalize`; for complete
-#' control, pass a custom `actor_key_fun`.
+#' Actor attributes are supplied via \code{nodesMetadata}, a data frame in which
+#' \code{nodesMetadata[[featureID_col]]} contains the IDs that should match actors in the network.
 #'
-#' **Directedness and canonicalisation**
-#' For the purpose of **joining** edge metadata to network edges, endpoints are
-#' canonicalised to `(u, v) = (min, max)` when `directed_network = FALSE`; they
-#' are left as `(from, to)` when `directed_network = TRUE`.
-#'
-#' **Outputs and reporting**
-#' The modified `ml.network` is returned (invisibly). Two lists are also attached
-#' to it as attributes:
-#' - `attr(net, "actor_match_report")`: coverage, chosen normaliser, and examples
-#'   of unmatched actors (up to `report_n_examples`).
-#' - `attr(net, "edge_attach_report")`: edge counts, number of metadata rows
-#'   dropped due to unmapped endpoints, and the names of attached edge attributes.
-#' If `save_report = TRUE`, both a machine-readable RDS and a human-readable TXT
-#' summary are written to `results_dir`.
-#'
-#' @param net A `multinet::ml.network` object to be enriched.
-#' @param nodesMetadata Optional data frame holding actor attributes.
-#' @param featureID_col Name of the identifier column in `nodesMetadata` that
-#'   matches actors in `net`. Default `"feature_id"`.
-#' @param nodeAttrCols Character vector of columns from `nodesMetadata` to attach
-#'   as actor attributes. If `NULL` (default) and `nodesMetadata` is provided,
-#'   **all** columns except `featureID_col` are attached.
-#' @param fillMissingNodes Logical; if `TRUE`, missing actor attributes are
-#'   populated with `nodeFillValue`. Default `TRUE`.
-#' @param nodeFillValue Scalar (character or numeric) used when
-#'   `fillMissingNodes = TRUE`. Numeric columns are filled only if
-#'   `nodeFillValue` is numeric.
-#' @param actor_key_fun Optional function used to normalise IDs before matching;
-#'   if provided, this overrides `actor_key_normalize`.
-#' @param actor_key_normalize Character vector specifying a sequence of built-in
-#'   normalisers to apply (see Details). Ignored if `actor_key_fun` is supplied.
-#' @param auto_detect_keys Logical; if `TRUE`, several candidate normaliser
-#'   sequences are tried and the one with highest actor-coverage is used.
-#'   Default `TRUE`.
-#' @param min_match_warn Numeric in `[0,1]`; if observed coverage is below this
-#'   threshold, the function prints examples of unmatched actors. Default `0.7`.
-#' @param report_n_examples Integer; maximum number of unmatched actor examples to
-#'   include in messages and the saved report. Default `10`.
-#' @param map_edges_by_actor_key Logical; if `TRUE`, the same ID key function is
-#'   applied to `edgesMetadata` endpoints before matching them to actors in `net`.
-#'   Default `TRUE`.
-#' @param edgesMetadata Edge metadata as either (i) a data frame containing
-#'   endpoints and a layer column, or (ii) a **named list** of per-layer data
-#'   frames. In either case, endpoint columns must be present (see `edge_from`,
-#'   `edge_to`). Rows that cannot be mapped to actors are dropped (reported).
-#' @param edge_from,edge_to Character scalars giving the endpoint column names in
-#'   `edgesMetadata`. Defaults `"from"` and `"to"`.
-#' @param edge_layer_col For data-frame `edgesMetadata` only: name of the layer
-#'   column. If `NULL`, the function tries to auto-detect from
-#'   `c("layer","Layer","group","Group")`.
-#' @param edgeAttrCols Character vector naming which columns in `edgesMetadata`
-#'   to attach as edge attributes. If `NULL`, all columns except endpoints and
-#'   (when present) the layer column are used.
-#' @param edgeAggregate How to aggregate duplicate metadata rows per `(layer, u, v)`
-#'   before attachment. One of `"first"`, `"mean"`, `"median"`, `"sum"`.
-#'   Numeric columns are combined using the selected summary; non-numeric columns
-#'   always take the first value. Default `"first"`.
-#' @param directed_network Logical; whether the underlying network is treated as
-#'   directed when reconciling edge metadata (`u = from`, `v = to`) versus
-#'   undirected (`u = pmin(from, to)`, `v = pmax(from, to)`). Default `FALSE`.
-#' @param fillMissingEdges Logical; if `TRUE`, missing edge attributes are filled
-#'   with `edgeFillValue` prior to attachment. Default `FALSE`.
-#' @param edgeFillValue Scalar used when `fillMissingEdges = TRUE`. Numeric
-#'   columns are filled only if `edgeFillValue` is numeric.
-#' @param overwrite_existing Logical; if `FALSE`, existing attributes are not
-#'   **re-declared** on the network; however, the function will still **set
-#'   values** for the specified actors/edges. Default `TRUE`.
-#' @param verbose Logical; print progress messages, coverage summaries, and file
-#'   locations. Default `TRUE`.
-#' @param results_dir Directory where reports (and optional CSV) are saved.
-#'   Default `getOption("mlnet.results_dir", "omicsDNA_results")`.
-#' @param save_report Logical; if `TRUE`, save a compact report (RDS + TXT) to
-#'   `results_dir`. Default `TRUE`.
-#' @param export_edge_join_csv Logical; if `TRUE`, save the final edge-join table
-#'   (used to attach attributes) as a CSV under `results_dir` with basename
-#'   `edge_join_prefix`. Useful for debugging. Default `FALSE`.
-#' @param edge_join_prefix Basename prefix used when `export_edge_join_csv = TRUE`.
-#'
-#' @return The modified `multinet::ml.network` (returned invisibly). The object
-#'   also gains two attributes, `attr(net, "actor_match_report")` and
-#'   `attr(net, "edge_attach_report")`, containing concise summaries of the
-#'   attachment process.
-#'
-#' @section Practical notes:
-#' - Only **intra-layer** edges are considered when the network stores two layer
-#'   columns; cross-layer edges are ignored during attribute attachment.
-#' - When mapping edge metadata, rows with endpoints that cannot be matched to
-#'   actors in `net` are dropped (the count is reported).
-#' - Attribute types are declared as `"numeric"` for numeric vectors and
-#'   `"string"` otherwise; this affects how `multinet` stores values internally.
-#'
-#' @examples
-#' \dontrun{
-#' # Attach actor attributes (using a simple normaliser pipeline)
-#' net <- add_network_attributes(
-#'   net,
-#'   nodesMetadata       = genes_info,
-#'   featureID_col       = "GeneName",
-#'   nodeAttrCols        = "GeneType",
-#'   actor_key_normalize = c("strip_version", "trim", "tolower"),
-#'   auto_detect_keys    = FALSE
-#' )
-#'
-#' # Attach edge attributes from a named list (one data frame per layer)
-#' net <- add_network_attributes(
-#'   net,
-#'   edgesMetadata       = cons_list,
-#'   edge_from           = "from",
-#'   edge_to             = "to",
-#'   edgeAttrCols        = c("n_present", "n_repeats", "prop_present"),
-#'   directed_network    = FALSE,
-#'   export_edge_join_csv = FALSE
-#' )
+#' Edge attributes are supplied via \code{edgesMetadata}, which can be either:
+#' \itemize{
+#'   \item a \strong{data frame} containing \code{from}, \code{to}, a layer column, and attribute columns; or
+#'   \item a \strong{named list} of per-layer data frames (one data frame per layer).
+#' }
+#' If \code{map_edges_by_actor_key = TRUE}, edge endpoints in \code{edgesMetadata} are first mapped to
+#' network actors using the same ID key logic used for node matching.
 #' }
 #'
-#' @seealso
-#'   \code{\link{build_multiNet}} for assembling multilayer networks;
-#'   \code{\link{edgesFromAdjacency}} and \code{\link{consensusEdges}} for
-#'   upstream edge construction and consensus.
+#' \section{How matching and attachment are performed (simple overview)}{
+#' \enumerate{
+#'   \item \strong{Extract network structure:} edges and actors are read from \code{net}. If the network
+#'         provides two layer columns (\code{layer1}, \code{layer2}), only intra-layer edges are used
+#'         for attachment (\code{layer1 == layer2}).
+#'   \item \strong{Match actors:} when \code{nodesMetadata} is provided, actor IDs are normalised
+#'         (via \code{actor_key_fun} or \code{actor_key_normalize}) and matched to metadata IDs. When
+#'         \code{auto_detect_keys = TRUE}, multiple normalisation recipes are tried and the best
+#'         (highest coverage) is selected.
+#'   \item \strong{Attach actor attributes:} selected columns (\code{nodeAttrCols}) are stored as actor
+#'         attributes in the multilayer network; missing values can be filled when
+#'         \code{fillMissingNodes = TRUE}.
+#'   \item \strong{Attach edge attributes:} when \code{edgesMetadata} is provided, endpoints are mapped
+#'         to network actors, unmappable rows are dropped, and duplicate rows per edge are aggregated
+#'         (controlled by \code{edgeAggregate}). For undirected networks, endpoints are canonicalised so
+#'         \code{A–B} and \code{B–A} map to the same edge.
+#'   \item \strong{Report:} a concise summary is attached to the returned object and can be saved to disk.
+#' }
+#' }
 #'
-#' @importFrom multinet edges_ml actors_ml attributes_ml add_attributes_ml set_values_ml
-#' @importFrom utils write.csv head
-#' @importFrom stats median
+#' \section{What files does this function write?}{
+#' File outputs are optional and controlled by \code{save_report} and \code{export_edge_join_csv}.
+#' When enabled, files are written under \code{results_dir}:
+#' \itemize{
+#'   \item \strong{Report (machine-readable):} \code{addattrs_report_<timestamp>.rds}
+#'   \item \strong{Report (human-readable):} \code{addattrs_report_<timestamp>.txt}
+#'   \item \strong{Optional edge-join table (debugging):} if \code{export_edge_join_csv = TRUE},
+#'         the final edge join table is saved as \code{<edge_join_prefix>_<timestamp>.csv}.
+#' }
+#' If \code{save_report = FALSE} and \code{export_edge_join_csv = FALSE}, the function writes no files.
+#' }
+#'
+#' @param net A \code{multinet::ml.network} object to which attributes will be attached.
+#' @param nodesMetadata Optional data frame of actor (node) metadata.
+#' @param featureID_col Column name in \code{nodesMetadata} containing the actor identifier used for
+#'   matching (default \code{"feature_id"}).
+#' @param nodeAttrCols Columns from \code{nodesMetadata} to attach as actor attributes. If \code{NULL},
+#'   all columns except \code{featureID_col} are attached.
+#' @param fillMissingNodes Logical; if \code{TRUE}, missing node attributes are filled using
+#'   \code{nodeFillValue}.
+#' @param nodeFillValue Fill value used when \code{fillMissingNodes = TRUE}.
+#' @param actor_key_fun Optional function that transforms IDs before matching (overrides
+#'   \code{actor_key_normalize}).
+#' @param actor_key_normalize Optional character vector of built-in normalisation steps applied to IDs
+#'   before matching (e.g., \code{c("strip_version","trim","tolower")}).
+#' @param auto_detect_keys Logical; if \code{TRUE}, the function tests multiple normalisation recipes and
+#'   uses the one that yields the highest match coverage.
+#' @param min_match_warn If match coverage is below this fraction, the function prints examples of
+#'   unmatched actors.
+#' @param report_n_examples Maximum number of unmatched actor examples to show in messages/reports.
+#' @param map_edges_by_actor_key Logical; if \code{TRUE}, edge endpoints in \code{edgesMetadata} are
+#'   normalised/mapped using the actor key logic before joining to network edges.
+#' @param edgesMetadata Optional edge metadata, either a data frame (with endpoints + layer column) or a
+#'   named list of per-layer data frames.
+#' @param edge_from,edge_to Column names for endpoints in \code{edgesMetadata}.
+#' @param edge_layer_col Layer column name for data-frame \code{edgesMetadata}. If \code{NULL}, common
+#'   names are auto-detected.
+#' @param edgeAttrCols Edge metadata columns to attach. If \code{NULL}, all columns except endpoints and
+#'   (when present) the layer column are attached.
+#' @param edgeAggregate How to combine duplicate metadata rows for the same edge. One of
+#'   \code{"first"}, \code{"mean"}, \code{"median"}, \code{"sum"}.
+#' @param directed_network Logical; controls whether edges are treated as directed or undirected when
+#'   matching edge metadata.
+#' @param fillMissingEdges Logical; if \code{TRUE}, missing edge attribute values are filled before
+#'   attachment.
+#' @param edgeFillValue Fill value used when \code{fillMissingEdges = TRUE}.
+#' @param overwrite_existing Logical; if \code{FALSE}, existing attributes are not re-declared, though
+#'   values for specified actors/edges may still be set.
+#' @param verbose Logical; print progress messages and file locations.
+#' @param results_dir Output directory for reports and optional debug CSV.
+#' @param save_report Logical; if \code{TRUE}, write the RDS and TXT report files to \code{results_dir}.
+#' @param export_edge_join_csv Logical; if \code{TRUE}, export the final edge join table as CSV for debugging.
+#' @param edge_join_prefix Prefix used for the edge join CSV filename.
+#'
+#' @return
+#' The modified \code{multinet::ml.network} (returned invisibly). The object also receives two
+#' attached R attributes:
+#' \describe{
+#'   \item{\code{attr(net, "actor_match_report")}}{Summary of actor matching coverage and unmatched examples.}
+#'   \item{\code{attr(net, "edge_attach_report")}}{Summary of edge-attribute attachment and dropped rows.}
+#' }
+#'
 #' @export
 add_network_attributes <- function(
     net,
