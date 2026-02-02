@@ -41,27 +41,19 @@
 #' ## Output files written to disk
 #' Output files are optional and are written under \code{results_dir} (created if missing).
 #'
-#' * **CSV outputs (two files; controlled by \code{write_csv})**
+#' * *CSV outputs (two files; controlled by \code{write_csv})*
 #'   When \code{write_csv = TRUE} (default), the function writes two CSV files:
 #'   \enumerate{
-#'     \item \strong{A CSV representation of the returned object:}
-#'           \preformatted{<results_dir>/<base>.csv}
-#'           where \code{<base>} is:
-#'           \preformatted{<csv_prefix>_<method>_<mode>[_<edgeWeight>]_<timestamp>}
+#'     \item {A CSV representation of the returned object:}
 #'           In multilayer mode, this file is produced via \code{as.data.frame()} on the
 #'           \pkg{multinet} community object. If coercion fails, a small placeholder CSV is written.
 #'
-#'     \item \strong{The main membership table (CSV):}
-#'           \preformatted{<results_dir>/<base>_membership.csv}
+#'     \item {The main membership table (CSV):}
 #'           containing (at minimum) \code{actor}, \code{layer}, \code{com}, and \code{method}.
 #'           In multilayer mode, memberships are extracted from the \pkg{multinet} result when possible;
 #'           otherwise an empty membership table is written.
 #'   }
 #'
-#' * **RDS (optional)**
-#'   When \code{save_to_rds = TRUE}, the returned object is saved as an \code{.rds}. In multilayer
-#'   mode this is the raw \pkg{multinet} community object; in supra-graph mode this is the
-#'   membership data frame.
 #'
 #' @param net A multilayer network of class \code{multinet::ml.network}.
 #'
