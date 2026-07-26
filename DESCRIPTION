@@ -1,10 +1,14 @@
 Package: omicsDNA
-Title: What the Package Does (One Line, Title Case)
+Title: A Multilayer Network Toolkit for Grouped Omics and Other High-Dimensional Data
 Version: 0.0.0.9000
-Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"),
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+Authors@R:
+    person("Mehran", "Piran", , "piranmehran@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7891-728X"))
+Description: Builds layered networks from grouped data (e.g., age groups or
+    disease stages), stabilises edges via resampling and consensus, assembles a
+    multilayer network object, detects and visualises communities, quantifies
+    layer-wise structure, compares overlaps across layers, and produces static
+    and dynamic visualisations with reproducible, timestamped outputs.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
