@@ -8,7 +8,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# omicsDNA <img src="man/figures/logo.png" align="right" height="110"/>
+# omicsDNA
 
 *A multilayer network toolkit for grouped omics (and other high-dimensional) data.*
 

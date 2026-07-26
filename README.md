@@ -1,8 +1,7 @@
 omicsDNA
 ================
 
-- [omicsDNA
-  <img src="man/figures/logo.png" align="right" height="110"/>](#omicsdna-)
+- [omicsDNA](#omicsdna)
   - [Installation](#installation)
   - [Function-by-function examples](#function-by-function-examples)
     - [1) `buildAdjacency()` — group-wise correlation → adjacency (with
@@ -75,7 +74,7 @@ omicsDNA
   - [🙋 Feedback & contributions](#raising_hand-feedback--contributions)
   - [📄 License](#page_facing_up-license)
 
-# omicsDNA <img src="man/figures/logo.png" align="right" height="110"/>
+# omicsDNA
 
 *A multilayer network toolkit for grouped omics (and other
 high-dimensional) data.*
