@@ -66,7 +66,9 @@ plot_layer_diff(
 
 \item{show_legend, legend_pos, legend_cex}{Legend style.}
 
-\item{title}{Optional plot title; if NULL a summary is used. @param bg background.}
+\item{title}{Optional plot title; if NULL a summary is used.}
+
+\item{bg}{Background colour.}
 
 \item{seed}{Optional integer seed for layout.}
 
@@ -97,7 +99,7 @@ they match exactly what you built with \code{build_multiNet()}.
 those values are used. You can specify alternatives via \code{weight_attr}.
 \item Duplicate edges in a layer (if any) are aggregated with \code{weight_aggregate}.
 \item For undirected comparisons (\code{directed=FALSE}), edge keys use
-\code{min(from,to)}–\code{max(from,to)} canonicalization; for directed,
+\code{min(from,to)}-\code{max(from,to)} canonicalisation; for directed,
 keys are \code{"from->to"}.
 \item The CSV \code{category} values are \code{only_<L1>}, \code{common},
 \code{only_<L2>} to match your requested naming.

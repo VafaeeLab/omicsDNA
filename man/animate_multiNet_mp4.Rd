@@ -36,7 +36,7 @@ Default: order returned by layers_ml(net).}
 
 \item{layout}{One of c("kamadakawai","mds","circle"). Default "kamadakawai".}
 
-\item{actor_normalize}{Character vector of normalization steps used to match
+\item{actor_normalize}{Character vector of normalisation steps used to match
 community actor IDs to network actors. Default c("strip_version","trim","tolower").}
 
 \item{format}{Output format: "gif" (default) or "mp4".}

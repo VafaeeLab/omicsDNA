@@ -25,9 +25,9 @@ get_FeatureDeg(
 ignored; input order is preserved in the output).}
 
 \item{layers}{Optional character vector of layer names to include. Default:
-all layers found in \code{edges_ml(net)} after intra‑layer filtering.}
+all layers found in \code{edges_ml(net)} after intra-layer filtering.}
 
-\item{directed}{Logical; build directed per‑layer graphs? Default \code{FALSE}.}
+\item{directed}{Logical; build directed per-layer graphs? Default \code{FALSE}.}
 
 \item{mode}{Degree mode used when \code{directed = TRUE}: one of \code{"all"} (default),
 \code{"in"}, or \code{"out"}. Ignored when \code{directed = FALSE}.}
@@ -46,7 +46,7 @@ the default placeholder (\code{"features-degree_byLayer.csv"}), an informative,
 timestamped name is generated automatically in that folder.}
 
 \item{results_dir}{Directory used when \code{output_file} is relative or
-auto‑generated. Default \code{getOption("mlnet.results_dir","omicsDNA_results")}.}
+auto-generated. Default \code{getOption("mlnet.results_dir","omicsDNA_results")}.}
 
 \item{return_long}{Logical; return long format (\code{Layer}, \code{Feature}, \code{Degree})?
 Default \code{FALSE} (wide).}
@@ -62,10 +62,10 @@ If \code{write_csv = TRUE}, the absolute file path is attached as \code{attr(x, 
 }
 }
 \description{
-Compute per‑layer \strong{degrees} for an arbitrary set of actors (e.g., genes of
-interest). The function extracts all \strong{intra‑layer} edges from a
+Compute per-layer \strong{degrees} for an arbitrary set of actors (e.g., genes of
+interest). The function extracts all \strong{intra-layer} edges from a
 \pkg{multinet} object, builds one \pkg{igraph} graph per layer, and reports
-each requested actor’s degree in that layer. Actors not present in a given
+each requested actor's degree in that layer. Actors not present in a given
 layer are added as \strong{isolates} so their degree is reported as \code{0} rather than
 \code{NA}. Results can be returned in \strong{wide} (default) or \strong{long} shape and
 optionally written to a timestamped CSV in your project results folder.
@@ -74,13 +74,13 @@ optionally written to a timestamped CSV in your project results folder.
 \strong{Input normalisation and scope}
 \itemize{
 \item Edges are retrieved once via \code{multinet::edges_ml(net)} and coerced to a data
-frame. If \code{from_layer} and \code{to_layer} exist, only \strong{intra‑layer} edges are
+frame. If \code{from_layer} and \code{to_layer} exist, only \strong{intra-layer} edges are
 kept (\code{from_layer == to_layer}) and a single \code{layer} column is created from
 \code{from_layer}. Otherwise an existing \code{layer}/\code{Layer} column is used; if none
 exists, a single layer \code{"L1"} is assumed.
 \item Endpoint columns are identified robustly by name (tries common pairs such as
 \code{from}/\code{to}, \code{source}/\code{target}, \code{actor1}/\code{actor2}). If these are absent, the
-\strong{first two character columns} (excluding layer‑like columns) are used.
+\strong{first two character columns} (excluding layer-like columns) are used.
 }
 
 \strong{Actor matching and normalisation}
@@ -103,7 +103,7 @@ differences.
 \itemize{
 \item By default (\code{return_long = FALSE}), a \strong{wide} table is returned with one
 row per \code{Layer} and one column per \code{Feature}. If \pkg{tidyr} is available,
-reshaping is done with \code{pivot_wider}; otherwise a base‑R fallback is used.
+reshaping is done with \code{pivot_wider}; otherwise a base-R fallback is used.
 \item With \code{return_long = TRUE}, a \strong{long} table is returned with columns
 \code{Layer}, \code{Feature}, \code{Degree}.
 \item If \code{write_csv = TRUE}, results are written under
@@ -132,14 +132,14 @@ deg_lnc <- get_FeatureDeg(
   output_file = "lncRNA_degree_byLayer.csv"
 )
 
-# 2) Protein‑coding, long shape (no file)
+# 2) Protein-coding, long shape (no file)
 pc_list <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
 deg_pc  <- get_FeatureDeg(
   net, featureList = pc_list, layers = all_layers,
   return_long = TRUE
 )
 
-# 3) Directed in‑degree for a custom list on selected layers
+# 3) Directed in-degree for a custom list on selected layers
 sel_layers <- c("Young","Old")
 deg_in <- get_FeatureDeg(
   net, featureList = c("TP53","MYC","EGFR"),
@@ -149,7 +149,7 @@ deg_in <- get_FeatureDeg(
 
 }
 \seealso{
-\code{\link{layer_metrics}} for broader per‑layer summaries;
-\code{\link{sumComFeat}} and \code{\link{annotateCom}} for feature‑aware
+\code{\link{layer_metrics}} for broader per-layer summaries;
+\code{\link{sumComFeat}} and \code{\link{annotateCom}} for feature-aware
 community summaries and annotations.
 }

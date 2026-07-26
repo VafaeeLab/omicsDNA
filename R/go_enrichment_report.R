@@ -73,7 +73,7 @@ convert_to_entrez <- function(genes,
 
 
 
-#' GO enrichment with compact plots — single set, per‑layer or per‑community
+#' GO enrichment with compact plots — single set, per-layer or per-community
 #'
 #' @description
 #' Runs GO enrichment (\pkg{clusterProfiler}) and produces barplots (optional),
@@ -81,10 +81,10 @@ convert_to_entrez <- function(genes,
 #'
 #' Modes:
 #' \itemize{
-#'   \item \strong{Single‑set} — supply \code{genes} (character vector).
-#'   \item \strong{Per‑layer} — supply a \code{multinet::ml.network} in
-#'         \code{net}; each layer’s vertex set is treated as a gene list.
-#'   \item \strong{Per‑community} — supply \code{net} and a community table
+#'   \item \strong{Single-set} — supply \code{genes} (character vector).
+#'   \item \strong{Per-layer} — supply a \code{multinet::ml.network} in
+#'         \code{net}; each layer's vertex set is treated as a gene list.
+#'   \item \strong{Per-community} — supply \code{net} and a community table
 #'         \code{communities} with columns \code{actor}, \code{layer}, and
 #'         \code{cid} (from \code{detectCom()}); enrichment is performed for
 #'         each community (\code{cid}) in each layer.
@@ -134,7 +134,7 @@ convert_to_entrez <- function(genes,
 #' saved to PDF. In multinet mode you can request a single combined PDF
 #' (\code{one_pdf = TRUE}) or one PDF per layer / per community.
 #'
-#' @param genes Character vector of genes (single‑set mode; ignored when
+#' @param genes Character vector of genes (single-set mode; ignored when
 #'   \code{net} is not \code{NULL}). IDs must be of type \code{id_from}.
 #' @param net Optional \code{multinet::ml.network} (multinet mode).
 #' @param OrgDb Annotation package (e.g., \code{org.Hs.eg.db}).
@@ -153,7 +153,7 @@ convert_to_entrez <- function(genes,
 #' @param layer_order Optional character vector giving the order of layers
 #'   (multinet mode).
 #' @param genes_by_layer Optional named list \code{layer -> character vector}
-#'   of genes. If provided, overrides the default “vertex names per layer”.
+#'   of genes. If provided, overrides the default "vertex names per layer".
 #'   Only used in multinet mode.
 #' @param min_genes Minimum number of mapped genes to run enrichment.
 #'   Default \code{3}.
@@ -174,7 +174,7 @@ convert_to_entrez <- function(genes,
 #' @param cnet_showCategory Integer; often fewer than dotplot for legibility.
 #' @param cnet_left_margin_pt Left margin (pt) for cnet plot to avoid
 #'   clipping of labels.
-#' @param include_barplot Logical; include a bar plot in single‑set mode.
+#' @param include_barplot Logical; include a bar plot in single-set mode.
 #' @param include_barplot_multinet Logical; include a bar plot per layer or
 #'   per community in multinet mode.
 #' @param out_dir,file_prefix Output directory and file basename.
@@ -188,7 +188,7 @@ convert_to_entrez <- function(genes,
 #'
 #' @return
 #' \itemize{
-#'   \item \strong{Single‑set:}
+#'   \item \strong{Single-set:}
 #'     \code{list(ego, table, pdf_file, csv_file, mapping)}.
 #'   \item \strong{Multinet, \code{enrich_scope = "layer"}:}
 #'     \code{list(run_dir, by_layer, combined_pdf, layer_files)}, where
@@ -215,7 +215,7 @@ convert_to_entrez <- function(genes,
 #'   show_in_rstudio = TRUE
 #' )
 #'
-#' ## 2) Per-layer enrichment (each layer’s vertex set) ------------------------
+#' ## 2) Per-layer enrichment (each layer's vertex set) ------------------------
 #' go_layer <- go_enrichment_report(
 #'   net                      = net,
 #'   OrgDb                    = org.Hs.eg.db,

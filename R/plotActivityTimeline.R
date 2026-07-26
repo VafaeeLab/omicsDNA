@@ -7,11 +7,11 @@
 #'
 #' @description
 #' Build a temporal network from a multilayer \pkg{multinet} object and plot
-#' activity “spells” as a timeline using \pkg{ndtv}. Each horizontal bar
+#' activity "spells" as a timeline using \pkg{ndtv}. Each horizontal bar
 #' represents either a single **edge** (co-expression relationship) or a single
 #' **vertex** (gene), with bar length covering the age-group layers in which the
 #' element is present. Contiguous presence across adjacent layers is merged into
-#' a single spell so that “stable” elements appear as long bars.
+#' a single spell so that "stable" elements appear as long bars.
 #'
 #' @details
 #' The function:
@@ -23,13 +23,13 @@
 #' 4) Constructs a base `network` with the full vertex set, wraps it as a
 #'    `networkDynamic`, and **activates** the relevant edges/vertices over
 #'    the computed time spells.
-#' 5) Calls `ndtv::timeline()` to draw a Gantt‑style plot.
+#' 5) Calls `ndtv::timeline()` to draw a Gantt-style plot.
 #'
 #' **Biological interpretation**
-#' - **Stable edges** (long bars) can suggest core, age‑independent regulatory
+#' - **Stable edges** (long bars) can suggest core, age-independent regulatory
 #'   relationships.
-#' - **Transient edges** (short bars) may reflect age‑specific responses.
-#' - **Late‑appearing vertices/edges** indicate genes/relationships activated
+#' - **Transient edges** (short bars) may reflect age-specific responses.
+#' - **Late-appearing vertices/edges** indicate genes/relationships activated
 #'   only at older age groups.
 #'
 #' @param net A multilayer network compatible with `multinet::edges_ml()` and
@@ -41,7 +41,7 @@
 #' @param slice.par List controlling the layer→time mapping:
 #'   `list(start=0, interval=1, aggregate.dur=1)`. Each layer *i* occupies
 #'   `[start + (i-1)*interval, start + (i-1)*interval + aggregate.dur)`.
-#' @param top_n Optional integer; plot only the `top_n` longest‑duration edges
+#' @param top_n Optional integer; plot only the `top_n` longest-duration edges
 #'   (for `type="edge"`) or vertices (`type="vertex"`). Default `NULL` = all.
 #' @param min_duration Minimum total duration (in time units) to keep an item.
 #'   Default `1` (keeps elements present in at least one layer).

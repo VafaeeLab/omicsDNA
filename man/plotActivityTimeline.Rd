@@ -39,7 +39,7 @@ natural order from \code{layers_ml(net)}.}
 \code{list(start=0, interval=1, aggregate.dur=1)}. Each layer \emph{i} occupies
 \verb{[start + (i-1)*interval, start + (i-1)*interval + aggregate.dur)}.}
 
-\item{top_n}{Optional integer; plot only the \code{top_n} longest‑duration edges
+\item{top_n}{Optional integer; plot only the \code{top_n} longest-duration edges
 (for \code{type="edge"}) or vertices (\code{type="vertex"}). Default \code{NULL} = all.}
 
 \item{min_duration}{Minimum total duration (in time units) to keep an item.
@@ -82,11 +82,11 @@ Invisibly returns a list:
 }
 \description{
 Build a temporal network from a multilayer \pkg{multinet} object and plot
-activity “spells” as a timeline using \pkg{ndtv}. Each horizontal bar
+activity "spells" as a timeline using \pkg{ndtv}. Each horizontal bar
 represents either a single \strong{edge} (co-expression relationship) or a single
 \strong{vertex} (gene), with bar length covering the age-group layers in which the
 element is present. Contiguous presence across adjacent layers is merged into
-a single spell so that “stable” elements appear as long bars.
+a single spell so that "stable" elements appear as long bars.
 }
 \details{
 The function:
@@ -101,15 +101,15 @@ The function:
 \item Constructs a base \code{network} with the full vertex set, wraps it as a
 \code{networkDynamic}, and \strong{activates} the relevant edges/vertices over
 the computed time spells.
-\item Calls \code{ndtv::timeline()} to draw a Gantt‑style plot.
+\item Calls \code{ndtv::timeline()} to draw a Gantt-style plot.
 }
 
 \strong{Biological interpretation}
 \itemize{
-\item \strong{Stable edges} (long bars) can suggest core, age‑independent regulatory
+\item \strong{Stable edges} (long bars) can suggest core, age-independent regulatory
 relationships.
-\item \strong{Transient edges} (short bars) may reflect age‑specific responses.
-\item \strong{Late‑appearing vertices/edges} indicate genes/relationships activated
+\item \strong{Transient edges} (short bars) may reflect age-specific responses.
+\item \strong{Late-appearing vertices/edges} indicate genes/relationships activated
 only at older age groups.
 }
 }

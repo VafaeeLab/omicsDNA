@@ -15,7 +15,7 @@
 #' If a community assignment is provided (a data frame with columns `actor`,
 #' `layer`, and either `com` or `cid`), vertices in each panel are coloured by
 #' their community membership for that layer. Colours are drawn from
-#' **RColorBrewer** when available, otherwise a perceptible HCL palette is used.
+#' **RColorBrewer** when available; otherwise, a perceptible HCL palette is used.
 #'
 #' The function can draw into the current device (e.g., the RStudio Plots pane)
 #' *and* save the same page to file. Layouts are computed with **igraph**; panels
@@ -25,17 +25,17 @@
 #' @details
 #' **Stable coordinates.** We build an *undirected* union graph from all edges in
 #' the selected layers, compute a single layout once (Kamada–Kawai by default),
-#' and reuse those coordinates for every panel. This prevents the common “nodes
-#' jumping around” problem across slices.
+#' and reuse those coordinates for every panel. This prevents the common "nodes
+#' jumping around" problem across slices.
 #'
 #' **Label size.** The visible label size is controlled by `label.cex` (passed to
-#' `plot.network()` as `label.cex`). A soft‑deprecated alias `cex` is accepted and
+#' `plot.network()` as `label.cex`). A soft-deprecated alias `cex` is accepted and
 #' mapped to `label.cex` to keep older scripts working.
 #'
 #' **Robust I/O.** The function is defensive about column names in
 #' `multinet::edges_ml()` and will detect reasonable synonyms for endpoints and
 #' layer columns. If both `from_layer`/`to_layer` are present, we show only
-#' **intra‑layer** edges (`from_layer == to_layer`) and store that layer name.
+#' **intra-layer** edges (`from_layer == to_layer`) and store that layer name.
 #'
 #' @param net A multilayer network usable with `multinet::layers_ml()` and
 #'   `multinet::edges_ml()`.
@@ -51,7 +51,7 @@
 #'   matching community `actor` IDs to network vertices. Any subset of
 #'   `c("strip_version","trim","tolower","toupper","rm_dash","rm_punct","alnum")`.
 #'   Default `c("strip_version","trim","tolower")`.
-#' @param ncol,nrow Grid dimensions. If both are `NULL`, a near‑square grid is
+#' @param ncol,nrow Grid dimensions. If both are `NULL`, a near-square grid is
 #'   chosen automatically.
 #' @param width,height Size of the saved figure (in inches). Default `12 × 8`.
 #' @param dpi Resolution for PNG output. Ignored for PDF. Default `300`.
@@ -60,7 +60,7 @@
 #'   `plot.network()` as `vertex.cex`). Default `0.9`.
 #' @param label.cex Numeric multiplier for **label** size (passed to
 #'   `plot.network()` as `label.cex`). Default `0.6`.
-#' @param cex Soft‑deprecated alias for `label.cex`. If supplied, it overrides
+#' @param cex Soft-deprecated alias for `label.cex`. If supplied, it overrides
 #'   `label.cex` and a message is emitted. Default `NULL`.
 #' @param label.col Single colour for labels. Default `"black"`.
 #' @param displaylabels Logical; whether to draw vertex labels. Default `TRUE`.
@@ -76,7 +76,7 @@
 #'   `results_dir`. If `NULL`, a timestamped name is generated.
 #' @param show_in_rstudio Logical; if `TRUE`, draw into the current device (e.g.
 #'   RStudio Plots) and then copy the exact page to file. If `FALSE`, draw
-#'   off‑screen directly to the file device. Default `TRUE`.
+#'   off-screen directly to the file device. Default `TRUE`.
 #' @param verbose Logical; print progress messages. Default `TRUE`.
 #'
 #' @return (Invisibly) a list with:

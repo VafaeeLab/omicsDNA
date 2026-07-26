@@ -9,17 +9,17 @@
 #' Print a report of attributes in a `multinet::ml.network`
 #'
 #' @description
-#' Prints a human‑readable summary of:
+#' Prints a human-readable summary of:
 #' - **Which attributes were added** (if available from the attachment reports
 #'   stored by `add_network_attributes()`), and
 #' - **What attributes are currently present** on **actors (nodes)**, **edges**,
-#'   and (if supported by your multinet version) **network‑level** attributes.
+#'   and (if supported by your multinet version) **network-level** attributes.
 #'
 #' The function is defensive across multinet versions:
 #' - It tries `attributes_ml(net, target = "actor"/"edge")`; if unavailable,
 #'   it infers attribute names from `actors_ml(net, attributes = TRUE)` and
 #'   `edges_ml(net, attributes = TRUE)` by subtracting the canonical ID columns.
-#' - For edges, it recognizes many possible column names for endpoints and
+#' - For edges, it recognises many possible column names for endpoints and
 #'   layer columns, and reports the **extra columns** as edge attributes.
 #'
 #' @param net A `multinet::ml.network` object with attributes attached.
@@ -37,13 +37,13 @@
 #'   - `present` — what is currently present on the object:
 #'       - `actor` — data.frame with `name` and `type` (or inferred types),
 #'       - `edge`  — data.frame with `name` and `type` (or inferred types),
-#'       - `network` — data.frame of network‑level attributes (if available).
+#'       - `network` — data.frame of network-level attributes (if available).
 #'   - `samples` — small tibbles with example rows for actors/edges if requested.
 #'
 #' @examples
 #' \dontrun{
 #' # After you call add_network_attributes(...):
-#' rep <- report_network_attributes(net, show_examples = TRUE, show_max = 8)
+#' rep <- network_attributes(net, show_examples = TRUE, show_max = 8)
 #'
 #' # Programmatic access
 #' rep$added$edge_attrs

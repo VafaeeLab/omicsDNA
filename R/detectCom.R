@@ -19,7 +19,7 @@
 #'
 #' * **Supra-graph community detection (\code{supra_graph = TRUE})**:
 #'   selected layers are first aggregated into a single undirected actor–actor graph
-#'   (a “supra-graph”). A standard \pkg{igraph} community algorithm is then applied,
+#'   (a "supra-graph"). A standard \pkg{igraph} community algorithm is then applied,
 #'   and community memberships are mapped back to each layer where the actor appears.
 #'
 #' In supra-graph mode, communities can be filtered by minimum size (\code{min.actors})

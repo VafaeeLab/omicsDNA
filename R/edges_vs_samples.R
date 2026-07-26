@@ -23,7 +23,7 @@
 #'   If supplied, it takes precedence over `net`/`edges`.
 #' @param layers Optional character vector to restrict/reorder layers.
 #' @param directed Logical; if FALSE (default), undirected duplicates are
-#'   canonicalised to min(u,v)–max(u,v) before counting.
+#'   canonicalised to min(u,v)-max(u,v) before counting.
 #'
 #' @return Named integer vector of edge counts per layer with attribute "plot".
 #' @importFrom ggplot2 ggplot aes geom_point geom_smooth labs theme_minimal

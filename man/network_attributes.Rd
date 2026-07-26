@@ -30,18 +30,18 @@ section. Default \code{10}.}
 \itemize{
 \item \code{actor} — data.frame with \code{name} and \code{type} (or inferred types),
 \item \code{edge}  — data.frame with \code{name} and \code{type} (or inferred types),
-\item \code{network} — data.frame of network‑level attributes (if available).
+\item \code{network} — data.frame of network-level attributes (if available).
 }
 \item \code{samples} — small tibbles with example rows for actors/edges if requested.
 }
 }
 \description{
-Prints a human‑readable summary of:
+Prints a human-readable summary of:
 \itemize{
 \item \strong{Which attributes were added} (if available from the attachment reports
 stored by \code{add_network_attributes()}), and
 \item \strong{What attributes are currently present} on \strong{actors (nodes)}, \strong{edges},
-and (if supported by your multinet version) \strong{network‑level} attributes.
+and (if supported by your multinet version) \strong{network-level} attributes.
 }
 
 The function is defensive across multinet versions:
@@ -49,14 +49,14 @@ The function is defensive across multinet versions:
 \item It tries \code{attributes_ml(net, target = "actor"/"edge")}; if unavailable,
 it infers attribute names from \code{actors_ml(net, attributes = TRUE)} and
 \code{edges_ml(net, attributes = TRUE)} by subtracting the canonical ID columns.
-\item For edges, it recognizes many possible column names for endpoints and
+\item For edges, it recognises many possible column names for endpoints and
 layer columns, and reports the \strong{extra columns} as edge attributes.
 }
 }
 \examples{
 \dontrun{
 # After you call add_network_attributes(...):
-rep <- report_network_attributes(net, show_examples = TRUE, show_max = 8)
+rep <- network_attributes(net, show_examples = TRUE, show_max = 8)
 
 # Programmatic access
 rep$added$edge_attrs

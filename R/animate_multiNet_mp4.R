@@ -17,7 +17,7 @@
 #' @param layer_order Optional character vector to specify the order of layers in the animation.
 #'   Default: order returned by layers_ml(net).
 #' @param layout One of c("kamadakawai","mds","circle"). Default "kamadakawai".
-#' @param actor_normalize Character vector of normalization steps used to match
+#' @param actor_normalize Character vector of normalisation steps used to match
 #'   community actor IDs to network actors. Default c("strip_version","trim","tolower").
 #' @param format Output format: "gif" (default) or "mp4".
 #' @param fps Frames per second (default 12).

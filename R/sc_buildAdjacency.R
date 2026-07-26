@@ -6,7 +6,7 @@
 #' Build single-cell (per cell-type) correlation-filtered adjacency matrices.
 #'
 #' This helper constructs **one correlation network per cell type** from a Seurat
-#' object by thresholding pairwise gene–gene correlations using both an absolute
+#' object by thresholding pairwise gene-gene correlations using both an absolute
 #' correlation cutoff and a (optionally adjusted) p-value cutoff. It can perform
 #' **balanced resampling** (bootstrap-like) so each repeat draws the same number
 #' of cells per cell type, stabilising downstream edges/metrics. The output shape
@@ -52,7 +52,7 @@
 #'    (`samples_per_group`) for each repeat (`n_repeats`).
 #' 3. Optionally filters bad samples/genes via `WGCNA::goodSamplesGenes()`
 #'    (if WGCNA is installed); logs removals when `verbose = TRUE`.
-#' 4. Computes pairwise gene–gene correlations and associated p-values using
+#' 4. Computes pairwise gene-gene correlations and associated p-values using
 #'    **WGCNA** (`corAndPvalue`) when available, otherwise **Hmisc** (`rcorr`).
 #' 5. Adjusts the **upper-triangular** p-values only (to avoid double counting),
 #'    mirrors them to the lower triangle, and sets diagonals appropriately.
@@ -84,9 +84,9 @@
 #'   `DefaultAssay(seurat_obj)`. Ensure it matches the modality you want to
 #'   correlate (e.g., "RNA" for gene expression).
 #' @param slot Character; which slot to pull: `"data"`, `"counts"`, or
-#'   `"scale.data"`. Default `"data"`. Use `"data"` after normalization/log-
-#'   transform, `"counts"` for raw counts (less typical for correlations), or
-#'   `"scale.data"` if you pre-scaled/centered features.
+#'   `"scale.data"`. Default `"data"`. Use `"data"` after normalisation/log-transform,
+#'   `"counts"` for raw counts (less typical for correlations), or
+#'   `"scale.data"` if you pre-scaled/centred features.
 #' @param cell_type_col Character; name of the `@meta.data` column that holds
 #'   **cell-type (layer) labels**. Required unless `group_col` (alias) is used.
 #' @param group_col Character; **alias** for `cell_type_col`. If provided and

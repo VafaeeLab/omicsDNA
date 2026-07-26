@@ -47,7 +47,7 @@
 #'   \item \strong{Attach edge attributes:} when \code{edgesMetadata} is provided, endpoints are mapped
 #'         to network actors, unmappable rows are dropped, and duplicate rows per edge are aggregated
 #'         (controlled by \code{edgeAggregate}). For undirected networks, endpoints are canonicalised so
-#'         \code{A–B} and \code{B–A} map to the same edge.
+#'         \code{A-B} and \code{B-A} map to the same edge.
 #'   \item \strong{Report:} a concise summary is attached to the returned object and can be saved to disk.
 #' }
 #' }

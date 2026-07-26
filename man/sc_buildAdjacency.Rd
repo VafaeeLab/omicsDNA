@@ -41,9 +41,9 @@ and \code{VariableFeatures}.}
 correlate (e.g., "RNA" for gene expression).}
 
 \item{slot}{Character; which slot to pull: \code{"data"}, \code{"counts"}, or
-\code{"scale.data"}. Default \code{"data"}. Use \code{"data"} after normalization/log-
-transform, \code{"counts"} for raw counts (less typical for correlations), or
-\code{"scale.data"} if you pre-scaled/centered features.}
+\code{"scale.data"}. Default \code{"data"}. Use \code{"data"} after normalisation/log-transform,
+\code{"counts"} for raw counts (less typical for correlations), or
+\code{"scale.data"} if you pre-scaled/centred features.}
 
 \item{cell_type_col}{Character; name of the \verb{@meta.data} column that holds
 \strong{cell-type (layer) labels}. Required unless \code{group_col} (alias) is used.}
@@ -132,7 +132,7 @@ The \strong{top-level} return object has attribute \code{"rds_file"} with the sa
 }
 \description{
 This helper constructs \strong{one correlation network per cell type} from a Seurat
-object by thresholding pairwise gene–gene correlations using both an absolute
+object by thresholding pairwise gene-gene correlations using both an absolute
 correlation cutoff and a (optionally adjusted) p-value cutoff. It can perform
 \strong{balanced resampling} (bootstrap-like) so each repeat draws the same number
 of cells per cell type, stabilising downstream edges/metrics. The output shape
@@ -151,7 +151,7 @@ if present; otherwise picks the top-variance genes (\code{n_var_features}).
 (\code{samples_per_group}) for each repeat (\code{n_repeats}).
 \item Optionally filters bad samples/genes via \code{WGCNA::goodSamplesGenes()}
 (if WGCNA is installed); logs removals when \code{verbose = TRUE}.
-\item Computes pairwise gene–gene correlations and associated p-values using
+\item Computes pairwise gene-gene correlations and associated p-values using
 \strong{WGCNA} (\code{corAndPvalue}) when available, otherwise \strong{Hmisc} (\code{rcorr}).
 \item Adjusts the \strong{upper-triangular} p-values only (to avoid double counting),
 mirrors them to the lower triangle, and sets diagonals appropriately.

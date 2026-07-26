@@ -2,7 +2,7 @@
 % Please edit documentation in R/build_multinet_from_graphs.R
 \name{build_multinet_from_graphs}
 \alias{build_multinet_from_graphs}
-\title{Build a multilayer network from per‑layer \strong{igraph} graphs}
+\title{Build a multilayer network from per-layer \strong{igraph} graphs}
 \usage{
 build_multinet_from_graphs(
   graphsPerLayer,
@@ -40,10 +40,10 @@ as vertex attributes. Default \code{NULL} = attach all except \code{featureID_co
 graph and in \code{nodesMetadata}. One of \code{"overwrite_with_meta"} (default),
 \code{"keep_graph"}, or \code{"coalesce"} (fill graph NAs with metadata).}
 
-\item{actor_normalize}{Optional character vector of normalization steps
+\item{actor_normalize}{Optional character vector of normalisation steps
 applied to vertex names within each graph. Any subset of
 \code{c("strip_version","trim","tolower")}. Default \code{NULL} = disabled (matches
-\code{build_multiNet()} behavior).}
+\code{build_multiNet()} behaviour).}
 
 \item{simplify}{Logical; if \code{TRUE}, call \code{igraph::simplify()} per layer to
 merge parallel edges and drop loops. Default \code{FALSE}.}
@@ -65,7 +65,7 @@ Default \code{"sum"}.}
 \item{graphml_prefix}{Basename prefix for GraphML files (layer name and a
 timestamp are appended). Default \code{"layer"}.}
 
-\item{verbose}{Logical; print per‑layer summaries and file paths. Default \code{TRUE}.}
+\item{verbose}{Logical; print per-layer summaries and file paths. Default \code{TRUE}.}
 }
 \value{
 A \code{multinet::ml.network} object with one layer per input graph.
@@ -81,8 +81,8 @@ multilayer object is the \strong{same} as what \code{build_multiNet()} would pro
 \item \strong{Layer ordering:} if \code{layerOrder = NULL}, layers are ordered \strong{alphabetically}.
 \item \strong{Vertex attributes:} when \code{nodesMetadata} is supplied, attributes from
 metadata \strong{overwrite} existing graph vertex attributes of the same name
-(default behavior in \code{build_multiNet()}).
-\item \strong{No automatic simplification or actor normalization} by default.
+(default behaviour in \code{build_multiNet()}).
+\item \strong{No automatic simplification or actor normalisation} by default.
 }
 
 \strong{Input expectations}
@@ -97,7 +97,7 @@ numeric IDs are assigned and coerced to character.
 \strong{Persistence}
 When \code{save_to_rds = TRUE}, the multilayer network is saved under
 \code{results_dir} (default: \code{getOption("mlnet.results_dir","omicsDNA_results")})
-with an auto‑stamped filename unless \code{rds_file} is supplied.
+with an auto-stamped filename unless \code{rds_file} is supplied.
 }
 \examples{
 \dontrun{

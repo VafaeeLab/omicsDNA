@@ -124,7 +124,7 @@ requested sources;
 \item saves a \strong{CSV} with results, including a plain-text
 \code{intersection_genes} column and simple enrichment metrics;
 \item saves a \strong{gost} dot plot of significant terms;
-\item saves a \strong{term–gene concept network};
+\item saves a \strong{term-gene concept network};
 \item saves a \strong{term-only overlap network}.
 }
 
@@ -181,7 +181,7 @@ Only communities/layers with at least \code{min_query_size} genes after
 restriction are tested.
 
 \strong{Statistics.}
-G:Profiler returns adjusted p-values using \code{correction_method}:
+g:Profiler returns adjusted p-values using \code{correction_method}:
 \code{"g_SCS"}, \code{"fdr"} (Benjamini–Hochberg FDR), or \code{"bonferroni"}.
 The threshold is given by \code{user_threshold}.
 

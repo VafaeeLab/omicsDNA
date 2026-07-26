@@ -2,7 +2,7 @@
 % Please edit documentation in R/graphs_to_edges_list.R
 \name{graphs_to_edges_list}
 \alias{graphs_to_edges_list}
-\title{Convert per‑layer \code{igraph} graphs to per‑layer edge tables}
+\title{Convert per-layer \code{igraph} graphs to per-layer edge tables}
 \usage{
 graphs_to_edges_list(
   graphs_list,
@@ -60,7 +60,7 @@ g2 <- igraph::graph_from_data_frame(
 edges_list <- graphs_to_edges_list(list(E1 = g1, E2 = g2))
 str(edges_list$E1)
 
-# Round‑trip (for undirected graphs, use directed = FALSE)
+# Round-trip (for undirected graphs, use directed = FALSE)
 list_graphs2 <- edges_list_to_graphs(edges_list, directed = FALSE)
 
 }

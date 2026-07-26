@@ -113,7 +113,7 @@
 #' }
 #'
 #' \section{Robust graph construction when overlaps are absent}{
-#' For term-only overlap networks (and occasionally for concept networks), it is plausible that no
+#' For term-only overlap networks (and occasionally for concept networks), it is possible that no
 #' term–term or term–gene edges remain after filtering. The function therefore constructs valid empty
 #' edge tables when necessary so that plots render as isolated nodes rather than failing during graph
 #' construction.

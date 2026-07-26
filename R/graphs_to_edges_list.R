@@ -3,7 +3,7 @@
 # 7 - Convert a list of igraphs to a list of edge data frames
 # ------------------------------------------------------------------------------
 
-#' Convert per‑layer `igraph` graphs to per‑layer edge tables
+#' Convert per-layer `igraph` graphs to per-layer edge tables
 #'
 #' @description
 #' Takes a **named list** of `igraph` graphs (one per layer) and returns a
@@ -44,7 +44,7 @@
 #' edges_list <- graphs_to_edges_list(list(E1 = g1, E2 = g2))
 #' str(edges_list$E1)
 #'
-#' # Round‑trip (for undirected graphs, use directed = FALSE)
+#' # Round-trip (for undirected graphs, use directed = FALSE)
 #' list_graphs2 <- edges_list_to_graphs(edges_list, directed = FALSE)
 #'
 #' @importFrom igraph as_data_frame

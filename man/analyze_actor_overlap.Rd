@@ -59,7 +59,7 @@ left as \code{NA} (rendered in a pale colour on the heatmap).
 \itemize{
 \item If \code{layers} is \code{NULL}, all layers from \code{multinet::layers_ml(net)} are used.
 If a subset is supplied, it is intersected with available layers.
-\item When \code{reorder = TRUE}, the matrix is re‑indexed by hierarchical clustering
+\item When \code{reorder = TRUE}, the matrix is re-indexed by hierarchical clustering
 on a dissimilarity of \code{1 - Jaccard} (average linkage). For the sole purpose
 of computing the dendrogram, \code{NA} entries are temporarily treated as \code{0}
 (i.e., no overlap).
@@ -92,5 +92,5 @@ attr(A, "plot")   # access the ggplot object programmatically
 
 }
 \seealso{
-\code{\link{analyze_edge_overlap}} for edge‑set overlap across layers.
+\code{\link{analyze_edge_overlap}} for edge-set overlap across layers.
 }

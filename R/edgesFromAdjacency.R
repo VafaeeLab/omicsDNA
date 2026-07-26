@@ -13,8 +13,8 @@
 #' @details
 #' **Directed vs. undirected**
 #' - `directed = FALSE` (default): return one edge per unordered pair (upper triangle),
-#'   excluding self‑loops.
-#' - `directed = TRUE`: return all off‑diagonal pairs.
+#'   excluding self-loops.
+#' - `directed = TRUE`: return all off-diagonal pairs.
 #'
 #' **Filtering**
 #' - Use `drop_zeros`, `min_abs`, and `na_rm` to remove edges. The sign of `weight`
@@ -22,7 +22,7 @@
 #'
 #' **Sparse input**
 #' - Sparse matrices (`dgCMatrix`, `dsCMatrix`, …) are handled efficiently by
-#'   enumerating only stored (non‑zero) entries. Note that explicit zeros are not
+#'   enumerating only stored (non-zero) entries. Note that explicit zeros are not
 #'   stored in sparse formats; therefore `drop_zeros = FALSE` will not add zeros.
 #' - Matrices are expected to be square (enforced for dense matrices and assumed
 #'   for sparse matrices).
@@ -43,8 +43,8 @@
 #'
 #' @param x Numeric square matrix (adjacency), a sparse Matrix, or a (possibly nested)
 #'   list of such matrices.
-#' @param directed Logical; if `FALSE` use upper triangle (no self‑loops); if `TRUE`
-#'   include all off‑diagonal pairs. Default `FALSE`.
+#' @param directed Logical; if `FALSE` use upper triangle (no self-loops); if `TRUE`
+#'   include all off-diagonal pairs. Default `FALSE`.
 #' @param drop_zeros Logical; drop edges with weight exactly 0 (dense matrices).
 #'   Default `TRUE`. For sparse matrices, zeros are not stored and thus never appear.
 #' @param min_abs Optional numeric; keep edges with `abs(weight) >= min_abs`. Default `NULL`.
@@ -72,7 +72,7 @@
 #' A <- matrix(c(0, 0.8, 0.8, 0), 2, 2, dimnames = list(c("a","b"), c("a","b")))
 #' edgesFromAdjacency(A)
 #'
-#' # Per‑group list, flattened with a label
+#' # Per-group list, flattened with a label
 #' L <- list(G1 = A, G2 = A * 0.5)
 #' edgesFromAdjacency(L, flatten = TRUE, id_cols = "group")
 #'
@@ -80,7 +80,7 @@
 #' NL <- list(`1` = list(E1 = A, E2 = A), `2` = list(E1 = A))
 #' edgesFromAdjacency(NL, flatten = TRUE, id_cols = c("repeat","group"))
 #'
-#' @seealso \code{\link{buildAdjacency}} to build group‑wise adjacency matrices.
+#' @seealso \code{\link{buildAdjacency}} to build group-wise adjacency matrices.
 #' @export
 edgesFromAdjacency <- function(
     x,

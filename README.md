@@ -4,20 +4,20 @@ omicsDNA
 - [omicsDNA
   <img src="man/figures/logo.png" align="right" height="110"/>](#omicsdna-)
   - [Installation](#installation)
-  - [Function‑by‑function examples](#functionbyfunction-examples)
-    - [1) `buildAdjacency()` — group‑wise correlation → adjacency (with
+  - [Function-by-function examples](#function-by-function-examples)
+    - [1) `buildAdjacency()` — group-wise correlation → adjacency (with
       optional
-      resampling)](#1-buildadjacency--groupwise-correlation--adjacency-with-optional-resampling)
-    - [1.1) `sc_buildAdjacency()` — **single‑cell** Seurat →
-      per‑cell‑type
-      adjacency](#11-sc_buildadjacency--singlecell-seurat--percelltype-adjacency)
+      resampling)](#1-buildadjacency--group-wise-correlation--adjacency-with-optional-resampling)
+    - [1.1) `sc_buildAdjacency()` — **single-cell** Seurat →
+      per-cell-type
+      adjacency](#11-sc_buildadjacency--single-cell-seurat--per-cell-type-adjacency)
     - [2) `edgesFromAdjacency()` — matrices (or lists of matrices) →
       edge
       tables](#2-edgesfromadjacency--matrices-or-lists-of-matrices--edge-tables)
-    - [3) `consensusEdges()` — across‑repeat edge consensus per layer
-      (CSV/XLSX/RDS)](#3-consensusedges--acrossrepeat-edge-consensus-per-layer-csvxlsxrds)
-    - [4) `build_multiNet()` — assemble multilayer from per‑layer **edge
-      lists**](#4-build_multinet--assemble-multilayer-from-perlayer-edge-lists)
+    - [3) `consensusEdges()` — across-repeat edge consensus per layer
+      (CSV/XLSX/RDS)](#3-consensusedges--across-repeat-edge-consensus-per-layer-csvxlsxrds)
+    - [4) `build_multiNet()` — assemble multilayer from per-layer **edge
+      lists**](#4-build_multinet--assemble-multilayer-from-per-layer-edge-lists)
     - [5) `edges_list_to_graphs()` and 6) `graphs_to_edges_list()` —
       convert back and
       forth](#5-edges_list_to_graphs-and-6-graphs_to_edges_list--convert-back-and-forth)
@@ -32,17 +32,18 @@ omicsDNA
     - [10) `network_attributes()` — report what attributes are
       attached](#10-network_attributes--report-what-attributes-are-attached)
     - [11) `detectCom()` — community detection per layer and on the
-      supra‑graph](#11-detectcom--community-detection-per-layer-and-on-the-supragraph)
+      supra-graph](#11-detectcom--community-detection-per-layer-and-on-the-supra-graph)
     - [12) `plotCom()` — community layout + CSV export of node
       positions](#12-plotcom--community-layout--csv-export-of-node-positions)
-    - [13) `edges_vs_samples()` — sanity: community counts vs sample
-      counts](#13-edges_vs_samples--sanity-community-counts-vs-sample-counts)
+    - [13) `edges_vs_samples()` — sanity check: community counts vs
+      sample
+      counts](#13-edges_vs_samples--sanity-check-community-counts-vs-sample-counts)
     - [14) `analyze_actor_overlap()` — actor Jaccard overlaps across
       layers](#14-analyze_actor_overlap--actor-jaccard-overlaps-across-layers)
     - [15) `analyze_edge_overlap()` — edge Jaccard overlaps across
       layers](#15-analyze_edge_overlap--edge-jaccard-overlaps-across-layers)
-    - [16) `layer_metrics()` — per‑layer size/centrality/path
-      summaries](#16-layer_metrics--perlayer-sizecentralitypath-summaries)
+    - [16) `layer_metrics()` — per-layer size/centrality/path
+      summaries](#16-layer_metrics--per-layer-sizecentralitypath-summaries)
     - [17) `annotateCom()` — add feature attributes (e.g., GeneType) to
       community
       rows](#17-annotatecom--add-feature-attributes-eg-genetype-to-community-rows)
@@ -63,13 +64,13 @@ omicsDNA
       animation](#23-animate_multinet--interactive-html-animation)
     - [24) `filmstrip_multiNet()` — static grid (one panel per
       layer)](#24-filmstrip_multinet--static-grid-one-panel-per-layer)
-    - [25) `plotActivityTimeline()` — Gantt‑style lifespans of
-      edges/vertices](#25-plotactivitytimeline--ganttstyle-lifespans-of-edgesvertices)
+    - [25) `plotActivityTimeline()` — Gantt-style lifespans of
+      edges/vertices](#25-plotactivitytimeline--gantt-style-lifespans-of-edgesvertices)
     - [26) `plot_layer_diff()` — pairwise layer “new / lost / common”
       edges](#26-plot_layer_diff--pairwise-layer-new--lost--common-edges)
-    - [27) `grid_layer_diffs()` — multi‑panel grid of **all consecutive
+    - [27) `grid_layer_diffs()` — multi-panel grid of **all consecutive
       pair**
-      differences](#27-grid_layer_diffs--multipanel-grid-of-all-consecutive-pair-differences)
+      differences](#27-grid_layer_diffs--multi-panel-grid-of-all-consecutive-pair-differences)
   - [Reproducibility notes](#reproducibility-notes)
   - [🙋 Feedback & contributions](#raising_hand-feedback--contributions)
   - [📄 License](#page_facing_up-license)
@@ -77,17 +78,17 @@ omicsDNA
 # omicsDNA <img src="man/figures/logo.png" align="right" height="110"/>
 
 *A multilayer network toolkit for grouped omics (and other
-high‑dimensional) data.*
+high-dimensional) data.*
 
 `omicsDNA` builds **layered networks** from grouped data (e.g., age
 groups, disease stages), stabilises edges via resampling + consensus,
 assembles a **multilayer** object, detects and visualises
-**communities**, quantifies **layer‑wise structure**, compares
+**communities**, quantifies **layer-wise structure**, compares
 **overlaps**, and produces **static** and **dynamic** visuals with
 reproducible, timestamped outputs. (Examples below follow the function
 order in the package script.)
 
-> Tip: set a default results directory so all artifacts land in one
+> Tip: set a default results directory so all artefacts land in one
 > place.
 
 ``` r
@@ -110,13 +111,13 @@ install.packages(c("gifski","gganimate","png","av"))# GIF / MP4 exporters
 
 ------------------------------------------------------------------------
 
-## Function‑by‑function examples
+## Function-by-function examples
 
 Below, each function has **one example with its most informative
 arguments** (as in the package script). Replace object names
-(`expression_mat`, `metaData`, …) with your data.
+(`expression_mat`, `metaData`, …) with your own data.
 
-### 1) `buildAdjacency()` — group‑wise correlation → adjacency (with optional resampling)
+### 1) `buildAdjacency()` — group-wise correlation → adjacency (with optional resampling)
 
 ``` r
 
@@ -172,10 +173,10 @@ adjacency <- buildAdjacency(
 # Later you can reload via: readRDS(attr(adjacency, "rds_file"))
 ```
 
-### 1.1) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
+### 1.1) `sc_buildAdjacency()` — **single-cell** Seurat → per-cell-type adjacency
 
-For a comprehensive detailed analysis, refer to following vignette on
-human foetal kidney single cell RNA-seq data:
+For a comprehensive, detailed analysis, refer to the following vignette
+on human foetal kidney single-cell RNA-seq data:
 
 [sc_omicsDNA](https://rstudio.anc-lab.cloud.edu.au/~mpir0002/22_09_2025_sc_omicsDNA_v3.html)
 
@@ -227,7 +228,7 @@ edges_list <- edgesFromAdjacency(
 )
 ```
 
-### 3) `consensusEdges()` — across‑repeat edge consensus per layer (CSV/XLSX/RDS)
+### 3) `consensusEdges()` — across-repeat edge consensus per layer (CSV/XLSX/RDS)
 
 ``` r
 
@@ -261,7 +262,7 @@ cons_list <- consensusEdges(
 
 ```
 
-### 4) `build_multiNet()` — assemble multilayer from per‑layer **edge lists**
+### 4) `build_multiNet()` — assemble multilayer from per-layer **edge lists**
 
 ``` r
 
@@ -324,8 +325,8 @@ net_graphs <- build_multinet_from_graphs(
 )
 ```
 
-Build a second graph to make a comparison between two multi-layer graphs
-using the next function.
+Build a second graph so that two multilayer graphs can be compared with
+the next function.
 
 ``` r
 
@@ -354,10 +355,10 @@ diff_report <- compare_multinets(
 
 ```
 
-**compare_multinets() helps compare common and different edges between
-layers of two multilayer graphs, can be used in the downstream
-enrichment analysis with aim of comparing two biological contexts across
-same time points or layers.**
+**compare_multinets() compares the common and differing edges between
+the layers of two multilayer graphs. It can be used in downstream
+enrichment analysis to compare two biological contexts across the same
+time points or layers.**
 
 ### 9) `add_network_attributes()` — attach actor/edge metadata to the multilayer net
 
@@ -401,7 +402,7 @@ rep$present$actor            # current actor-attribute definitions
 rep$samples$edges            # first rows of edges with attribute columns
 ```
 
-### 11) `detectCom()` — community detection per layer and on the supra‑graph
+### 11) `detectCom()` — community detection per layer and on the supra-graph
 
 ``` r
 
@@ -501,7 +502,7 @@ p <- plotCom(
 )
 ```
 
-### 13) `edges_vs_samples()` — sanity: community counts vs sample counts
+### 13) `edges_vs_samples()` — sanity check: community counts vs sample counts
 
 ``` r
 
@@ -534,7 +535,7 @@ Eov <- analyze_edge_overlap(
 )
 ```
 
-### 16) `layer_metrics()` — per‑layer size/centrality/path summaries
+### 16) `layer_metrics()` — per-layer size/centrality/path summaries
 
 ``` r
 
@@ -1089,7 +1090,7 @@ fs <- filmstrip_multiNet(
 )
 ```
 
-### 25) `plotActivityTimeline()` — Gantt‑style lifespans of edges/vertices
+### 25) `plotActivityTimeline()` — Gantt-style lifespans of edges/vertices
 
 ``` r
 timeline_edges  <- plotActivityTimeline(net, type = "edge",   top_n = 300)
@@ -1107,7 +1108,7 @@ plot_layer_diff(
 )
 ```
 
-### 27) `grid_layer_diffs()` — multi‑panel grid of **all consecutive pair** differences
+### 27) `grid_layer_diffs()` — multi-panel grid of **all consecutive pair** differences
 
 ``` r
 grid_layer_diffs(
@@ -1126,8 +1127,8 @@ grid_layer_diffs(
 Most functions save outputs under
 `getOption("mlnet.results_dir","omicsDNA_results")` with timestamped
 names; many return a `file` / `files` attribute pointing to what was
-written. Set a seed before stochastic steps (resampling, layouts,
-communities):
+written. Set a seed before any stochastic step (resampling, layouts,
+community detection):
 
 ``` r
 set.seed(1)

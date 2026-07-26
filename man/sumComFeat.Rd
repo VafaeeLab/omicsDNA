@@ -2,7 +2,7 @@
 % Please edit documentation in R/sumComFeat.R
 \name{sumComFeat}
 \alias{sumComFeat}
-\title{Summarise community membership for selected feature types (pure data‑frame workflow)}
+\title{Summarise community membership for selected feature types (pure data-frame workflow)}
 \usage{
 sumComFeat(
   communities,
@@ -32,7 +32,7 @@ sumComFeat(
 (use all layers present).}
 
 \item{ignore_case}{Logical; if \code{TRUE}, compare \code{feature_type} to \code{feature_col}
-values case‑insensitively. Default \code{FALSE}.}
+values case-insensitively. Default \code{FALSE}.}
 
 \item{actor_normalize}{Character vector of normalisation steps used to build
 \code{actor_clean} for display ordering (does \strong{not} affect grouping or counts).
@@ -43,7 +43,7 @@ Supported steps: \code{"strip_version"}, \code{"trim"}, \code{"tolower"}, \code{
 Default \code{FALSE}.}
 
 \item{prefix}{Optional filename stem for the CSVs. If \code{NULL}, a stem is
-auto‑generated from \code{feature_col} and \code{feature_type} (sanitised).}
+auto-generated from \code{feature_col} and \code{feature_type} (sanitised).}
 
 \item{results_dir}{Output directory for CSVs when \code{write_csv = TRUE}. Default
 \code{getOption("mlnet.results_dir", "omicsDNA_results")}.}
@@ -54,22 +54,22 @@ Default \code{TRUE}.}
 \value{
 (Invisibly) a list with three data frames:
 \itemize{
-\item \code{by_actor} — per‑actor membership summary,
-\item \code{by_cid} — per‑community composition summary,
-\item \code{counts_cid_layer} — unique‑actor counts by community × layer.
+\item \code{by_actor} — per-actor membership summary,
+\item \code{by_cid} — per-community composition summary,
+\item \code{counts_cid_layer} — unique-actor counts by community × layer.
 }
 If \code{write_csv = TRUE}, the list has an attribute \code{"files"} containing absolute
 paths to the three CSVs.
 }
 \description{
 Filter a community assignment table (e.g., from \code{detectCom()} plus your
-node‑metadata merge) to one or more \strong{feature types} (e.g., \code{"lncRNA"},
+node-metadata merge) to one or more \strong{feature types} (e.g., \code{"lncRNA"},
 \code{"protein_coding"}, \code{"TF"}), then produce three concise summaries:
-(1) \strong{per‑actor} membership across communities and layers;
-(2) \strong{per‑community} composition (actors and layers); and
+(1) \strong{per-actor} membership across communities and layers;
+(2) \strong{per-community} composition (actors and layers); and
 (3) \strong{counts} of unique actors per \verb{CID × layer}.
 This function does \strong{not} call \pkg{multinet}: it operates purely on data
-frames, making it fast, reproducible, and script‑friendly.
+frames, making it fast, reproducible, and script-friendly.
 }
 \details{
 \strong{Input expectations and harmonisation}
@@ -89,7 +89,7 @@ be present; it is used for the type filter.
 \strong{Filtering and normalisation}
 \itemize{
 \item Rows are kept only if their \code{feature_col} value is in \code{feature_type}
-(optionally case‑insensitive via \code{ignore_case}). You may further restrict to
+(optionally case-insensitive via \code{ignore_case}). You may further restrict to
 a subset of \code{layers}.
 \item An auxiliary \code{actor_clean} is created via \code{.normalize_keys()} using
 \code{actor_normalize} (default \code{c("strip_version","trim","tolower")}) \strong{only to
@@ -98,15 +98,15 @@ provide a deterministic display order}; it does not affect grouping or counts.
 
 \strong{Outputs produced}
 \enumerate{
-\item \strong{Per‑actor summary} (\code{by_actor}): columns
+\item \strong{Per-actor summary} (\code{by_actor}): columns
 \verb{actor, CIDs, Layers, n_cids, n_layers}, ordered by \code{actor_clean}.
-\item \strong{Per‑community summary} (\code{by_cid}): columns
+\item \strong{Per-community summary} (\code{by_cid}): columns
 \verb{cid, com, Features, Layers, n_features, n_layers}, where \code{Features}
-is a comma‑separated list of unique actor IDs belonging to the community
+is a comma-separated list of unique actor IDs belonging to the community
 (after filtering), and \code{Layers} lists the layers in which those actors occur.
 \item \strong{Counts by community × layer} (\code{counts_cid_layer}): columns
 \verb{cid, com, layer, n}, where \code{n} is the number of \strong{unique actors} in that
-community‑layer slice.
+community-layer slice.
 }
 
 \strong{Saving to disk}

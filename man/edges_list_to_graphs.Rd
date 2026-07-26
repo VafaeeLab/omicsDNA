@@ -2,7 +2,7 @@
 % Please edit documentation in R/edges_list_to_graphs.R
 \name{edges_list_to_graphs}
 \alias{edges_list_to_graphs}
-\title{Convert per‑layer edge tables to per‑layer \code{igraph} graphs}
+\title{Convert per-layer edge tables to per-layer \code{igraph} graphs}
 \usage{
 edges_list_to_graphs(edges_list, directed = FALSE)
 }

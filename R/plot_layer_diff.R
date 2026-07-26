@@ -21,7 +21,7 @@
 #'   those values are used. You can specify alternatives via \code{weight_attr}.
 #' - Duplicate edges in a layer (if any) are aggregated with \code{weight_aggregate}.
 #' - For undirected comparisons (\code{directed=FALSE}), edge keys use
-#'   \code{min(from,to)}–\code{max(from,to)} canonicalization; for directed,
+#'   \code{min(from,to)}-\code{max(from,to)} canonicalisation; for directed,
 #'   keys are \code{"from->to"}.
 #' - The CSV \code{category} values are \code{only_<L1>}, \code{common},
 #'   \code{only_<L2>} to match your requested naming.
@@ -38,7 +38,8 @@
 #' @param vertex_size,vertex_col,vertex_frame_col Vertex style.
 #' @param vertex_label FALSE/TRUE/character vector for labels; label_* control fonts.
 #' @param show_legend,legend_pos,legend_cex Legend style.
-#' @param title Optional plot title; if NULL a summary is used. @param bg background.
+#' @param title Optional plot title; if NULL a summary is used.
+#' @param bg Background colour.
 #' @param seed Optional integer seed for layout.
 #' @param results_dir,file,format,width,height,dpi Output controls for figure.
 #' @param save_edge_csv,csv_file Whether/where to write the edge CSV.

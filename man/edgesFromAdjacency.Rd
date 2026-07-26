@@ -22,8 +22,8 @@ edgesFromAdjacency(
 \item{x}{Numeric square matrix (adjacency), a sparse Matrix, or a (possibly nested)
 list of such matrices.}
 
-\item{directed}{Logical; if \code{FALSE} use upper triangle (no self‑loops); if \code{TRUE}
-include all off‑diagonal pairs. Default \code{FALSE}.}
+\item{directed}{Logical; if \code{FALSE} use upper triangle (no self-loops); if \code{TRUE}
+include all off-diagonal pairs. Default \code{FALSE}.}
 
 \item{drop_zeros}{Logical; drop edges with weight exactly 0 (dense matrices).
 Default \code{TRUE}. For sparse matrices, zeros are not stored and thus never appear.}
@@ -67,8 +67,8 @@ directed/undirected output, filtering, and optional flattening of nested inputs.
 \strong{Directed vs. undirected}
 \itemize{
 \item \code{directed = FALSE} (default): return one edge per unordered pair (upper triangle),
-excluding self‑loops.
-\item \code{directed = TRUE}: return all off‑diagonal pairs.
+excluding self-loops.
+\item \code{directed = TRUE}: return all off-diagonal pairs.
 }
 
 \strong{Filtering}
@@ -80,7 +80,7 @@ is preserved.
 \strong{Sparse input}
 \itemize{
 \item Sparse matrices (\code{dgCMatrix}, \code{dsCMatrix}, …) are handled efficiently by
-enumerating only stored (non‑zero) entries. Note that explicit zeros are not
+enumerating only stored (non-zero) entries. Note that explicit zeros are not
 stored in sparse formats; therefore \code{drop_zeros = FALSE} will not add zeros.
 \item Matrices are expected to be square (enforced for dense matrices and assumed
 for sparse matrices).
@@ -109,7 +109,7 @@ absolute path is respected.
 A <- matrix(c(0, 0.8, 0.8, 0), 2, 2, dimnames = list(c("a","b"), c("a","b")))
 edgesFromAdjacency(A)
 
-# Per‑group list, flattened with a label
+# Per-group list, flattened with a label
 L <- list(G1 = A, G2 = A * 0.5)
 edgesFromAdjacency(L, flatten = TRUE, id_cols = "group")
 
@@ -119,5 +119,5 @@ edgesFromAdjacency(NL, flatten = TRUE, id_cols = c("repeat","group"))
 
 }
 \seealso{
-\code{\link{buildAdjacency}} to build group‑wise adjacency matrices.
+\code{\link{buildAdjacency}} to build group-wise adjacency matrices.
 }

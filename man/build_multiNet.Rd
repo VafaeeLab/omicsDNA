@@ -90,7 +90,7 @@ The core input is \code{edgeListPerLayer}, which can be provided in several prac
 \itemize{
 \item \strong{Named list of per-layer edge tables:} each element is a data frame
 with columns \code{from}, \code{to}, and optionally \code{weight}.
-\item \strong{Single “flattened” edge table:} one data frame containing \code{from}, \code{to},
+\item \strong{Single "flattened" edge table:} one data frame containing \code{from}, \code{to},
 optional \code{weight}, and a layer identifier column (automatically detected or specified
 by \code{layer_col}). A repetition column may also be present (detected or specified by
 \code{rep_col}).
@@ -111,7 +111,7 @@ Vertices are matched using \code{nodesMetadata[[featureID_col]]} against vertex 
 and/or collapsed within each layer (\code{rep_collapse}).
 \item \strong{Resolve duplicates:} duplicate edges within a layer can be combined using
 \code{aggregate_duplicates}. For undirected networks, endpoints are canonicalised so that
-\code{A–B} and \code{B–A} are treated as the same edge.
+\code{A-B} and \code{B-A} are treated as the same edge.
 \item \strong{Build layer graphs:} each layer is converted to an \pkg{igraph} object.
 \item \strong{Attach node attributes (optional):} selected columns from \code{nodesMetadata} are
 assigned as vertex attributes.

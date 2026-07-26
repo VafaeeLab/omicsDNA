@@ -27,7 +27,7 @@
 #' **Layer selection and reordering**
 #' - If `layers` is `NULL`, all layers from `multinet::layers_ml(net)` are used.
 #'   If a subset is supplied, it is intersected with available layers.
-#' - When `reorder = TRUE`, the matrix is re‑indexed by hierarchical clustering
+#' - When `reorder = TRUE`, the matrix is re-indexed by hierarchical clustering
 #'   on a dissimilarity of `1 - Jaccard` (average linkage). For the sole purpose
 #'   of computing the dendrogram, `NA` entries are temporarily treated as `0`
 #'   (i.e., no overlap).
@@ -68,7 +68,7 @@
 #' attr(A, "plot")   # access the ggplot object programmatically
 #' }
 #'
-#' @seealso \code{\link{analyze_edge_overlap}} for edge‑set overlap across layers.
+#' @seealso \code{\link{analyze_edge_overlap}} for edge-set overlap across layers.
 #'
 #' @importFrom multinet layers_ml actors_ml layer_comparison_ml
 #' @importFrom ggplot2 ggplot aes geom_tile scale_fill_gradientn theme_minimal labs ggtitle element_text coord_equal

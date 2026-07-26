@@ -2,7 +2,7 @@
 % Please edit documentation in R/buildAdjacency.R
 \name{buildAdjacency}
 \alias{buildAdjacency}
-\title{Build correlation‑filtered adjacency matrices by group}
+\title{Build correlation-filtered adjacency matrices by group}
 \usage{
 buildAdjacency(
   dataMatrix,
@@ -33,7 +33,7 @@ buildAdjacency(
 \item{sample_metadata}{Data frame with at least \code{group_col} and \code{sample_col}.}
 
 \item{feature_ids}{Character vector of feature IDs to include (should match \code{rownames(dataMatrix)});
-missing features are zero‑padded in outputs so dimensions are consistent. IDs should be unique.}
+missing features are zero-padded in outputs so dimensions are consistent. IDs should be unique.}
 
 \item{feature_metadata}{Optional feature annotations (currently not used; kept for API symmetry).}
 
@@ -50,7 +50,7 @@ Options: "none" (default; use raw p-values), "fdr" (false discovery rate),
 "BH" (Benjamini–Hochberg), or "bonferroni". \strong{Synonyms} "bh" and "bf" are accepted.
 The cutoff in \code{pval_cutoff} will be applied to the adjusted values if this is not "none".}
 
-\item{pval_cutoff}{P‑value cutoff for keeping an edge. Default \code{0.05}.}
+\item{pval_cutoff}{P-value cutoff for keeping an edge. Default \code{0.05}.}
 
 \item{corr_threshold}{Absolute correlation threshold for keeping an edge. Default \code{0.7}.}
 
@@ -81,7 +81,7 @@ A list of adjacency matrices as described under \strong{Output shape}. The retur
 object carries \code{attr(x, "rds_file")} with the saved file path (or \code{NULL} if \code{save_rds = FALSE}).
 }
 \description{
-The function is domain‑agnostic:
+The function is domain-agnostic:
 \itemize{
 \item \emph{Omics:} features = genes/transcripts; samples = subjects/cells; groups = condition/age.
 \item \emph{Social/behavioral:} features = variables; samples = respondents; groups = cohorts.
@@ -89,9 +89,9 @@ The function is domain‑agnostic:
 }
 }
 \details{
-Construct one or more feature‑by‑feature networks for each group of samples
+Construct one or more feature-by-feature networks for each group of samples
 by correlating feature profiles across samples in that group and keeping only
-edges that satisfy \strong{both} an absolute correlation threshold and a p‑value
+edges that satisfy \strong{both} an absolute correlation threshold and a p-value
 cutoff. Optionally, repeat the procedure with balanced draws per group to
 produce multiple resampled networks (useful for consensus or stability work).
 
@@ -101,15 +101,15 @@ produce multiple resampled networks (useful for consensus or stability work).
 \item \code{sample_metadata} must contain a grouping column (\code{group_col}) and a sample ID column
 (\code{sample_col}) whose values match \code{colnames(dataMatrix)}. Samples not found are ignored.
 \item The analysis is restricted to \code{feature_ids} (order is preserved). Requested features
-not present in \code{dataMatrix} are zero‑padded in the final adjacency so all outputs
+not present in \code{dataMatrix} are zero-padded in the final adjacency so all outputs
 share identical dimensions and ordering.
 }
 
 \strong{Computation per group}
 \enumerate{
-\item Assemble the group’s samples (optionally sub‑sampled if resampling is enabled).
+\item Assemble the group's samples (optionally sub-sampled if resampling is enabled).
 \item (If available) run \code{WGCNA::goodSamplesGenes()} to drop problematic samples/features.
-\item Compute correlations and p‑values with \code{WGCNA::corAndPvalue()} when \strong{WGCNA} is
+\item Compute correlations and p-values with \code{WGCNA::corAndPvalue()} when \strong{WGCNA} is
 installed; otherwise fall back to \code{Hmisc::rcorr()}. Diagonals are set to 0 (corr) and 1 (p).
 \item Form the adjacency by zeroing entries that fail either filter:
 \code{abs(corr) < corr_threshold} \strong{or} \code{p > pval_cutoff} (where \code{p} can be \strong{adjusted}
@@ -128,7 +128,7 @@ according to \code{pval_adjust}).
 \itemize{
 \item Requires \strong{≥ 3 samples} per group and \strong{≥ 2 features} after QC; otherwise a zero
 matrix is returned for that group.
-\item Non‑numeric columns are coerced to numeric; coercion may introduce \code{NA}s.
+\item Non-numeric columns are coerced to numeric; coercion may introduce \code{NA}s.
 If \strong{WGCNA} is present, QC removes egregious rows/columns; otherwise the fallback
 correlation uses pairwise information via \code{Hmisc::rcorr()}.
 }
@@ -137,7 +137,7 @@ correlation uses pairwise information via \code{Hmisc::rcorr()}.
 \itemize{
 \item If \code{resample = FALSE}: a \strong{named list} of adjacency matrices (one per group).
 \item If \code{resample = TRUE}: a \strong{list of length \code{n_repeats}}, where each element is a
-named sub‑list of groups (\verb{out[[repeat]][[group]]}).
+named sub-list of groups (\verb{out[[repeat]][[group]]}).
 }
 
 \strong{Persistence}
@@ -151,7 +151,7 @@ The absolute file path is attached as \code{attr(result, "rds_file")}.
 
 \itemize{
 \item Call \code{set.seed()} for reproducible resampling.
-\item For very large \code{feature_ids}, pre‑filter (e.g., top DE features) to keep the
+\item For very large \code{feature_ids}, pre-filter (e.g., top DE features) to keep the
 number of pairwise correlations manageable.
 }
 }

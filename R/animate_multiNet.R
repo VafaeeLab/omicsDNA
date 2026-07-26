@@ -8,7 +8,7 @@
 #'
 #' @description
 #' \code{animate_multiNet()} converts a multilayer network (built with
-#' \pkg{multinet}) into a time‑aware \code{networkDynamic} object and renders an
+#' \pkg{multinet}) into a time-aware \code{networkDynamic} object and renders an
 #' interactive HTML animation with \pkg{ndtv}. Each **layer** is treated as a
 #' discrete **time slice**; nodes persist across slices (isolates are kept) and
 #' edges are taken from the corresponding layer only. Optionally, the function
@@ -17,7 +17,7 @@
 #' or conditions.
 #'
 #' The conversion is robust to minor schema differences in \code{multinet} edge
-#' tables (it auto‑detects endpoint and layer columns), and it writes a
+#' tables (it auto-detects endpoint and layer columns), and it writes a
 #' timestamped HTML file under your project results folder for easy sharing.
 #'
 #' @details
@@ -27,22 +27,22 @@
 #'    \code{multinet::layers_ml(net)} and optionally reorders/subsets them using
 #'    \code{layer_order}. If not supplied, all layers are used in their original
 #'    order.
-#' 2. **Edge normalization.** Pulls a single global edge table via
-#'    \code{multinet::edges_ml(net)} and harmonizes columns to one
-#'    \code{layer} field while keeping **intra‑layer** edges only
+#' 2. **Edge normalisation.** Pulls a single global edge table via
+#'    \code{multinet::edges_ml(net)} and harmonises columns to one
+#'    \code{layer} field while keeping **intra-layer** edges only
 #'    (if \code{from_layer}/\code{to_layer} exist, they are filtered to
 #'    \code{from_layer == to_layer}).
 #' 3. **Vertex universe.** Creates the union of all actors observed in the
 #'    selected layers (falling back to \code{multinet::actors_ml(net)} if
 #'    necessary) and constructs one static \pkg{network} object per layer with
 #'    that common vertex set (so isolates are preserved).
-#' 4. **Time mapping.** Wraps the list of per‑layer networks into a single
+#' 4. **Time mapping.** Wraps the list of per-layer networks into a single
 #'    \code{networkDynamic} object, assigning onsets/termini for each slice
 #'    (layer) based on \code{slice.par}. With \code{K} layers, the default
 #'    slices are \eqn{[0,1)}, \eqn{[1,2)}, …, \eqn{[K-1,K)}.
 #' 5. **Optional colours by community.** If a \code{communities} data frame is
 #'    provided (columns \code{actor}, \code{layer}, and \code{com} or \code{cid}),
-#'    the function assigns a per‑slice dynamic vertex attribute
+#'    the function assigns a per-slice dynamic vertex attribute
 #'    \code{"vertex.col"} so that \code{render.d3movie()} automatically colours
 #'    nodes by community on each layer.
 #' 6. **Layout and rendering.** Computes an animation layout with
@@ -51,18 +51,18 @@
 #'
 #' **Why this design?**
 #'
-#' - Treating layers as time slices is a natural way to visualize temporal or
-#'   age‑stratified multilayer graphs without requiring continuous timestamps.
+#' - Treating layers as time slices is a natural way to visualise temporal or
+#'   age-stratified multilayer graphs without requiring continuous timestamps.
 #' - Keeping isolates ensures that vertices can reappear after disappearing in
 #'   intermediate slices, making trajectories easy to follow.
 #' - Storing colours in the dynamic attribute \code{"vertex.col"} exploits
-#'   \pkg{ndtv}'s native mechanism for per‑slice styling.
+#'   \pkg{ndtv}'s native mechanism for per-slice styling.
 #'
 #' **Common interpretation**
 #'
 #' - Clusters of nodes that remain close across slices indicate communities that
 #'   persist across conditions/ages. Sudden movements or fragmentations suggest
-#'   community reorganization. Colour stability (when \code{communities} are
+#'   community reorganisation. Colour stability (when \code{communities} are
 #'   supplied) helps track membership changes.
 #'
 #' **Dependencies**
@@ -74,7 +74,7 @@
 #' @param net A multilayer network object compatible with
 #'   \code{multinet::layers_ml()}, \code{multinet::edges_ml()}, and (optionally)
 #'   \code{multinet::actors_ml()}.
-#' @param communities Optional \code{data.frame} with per‑slice community labels
+#' @param communities Optional \code{data.frame} with per-slice community labels
 #'   used for vertex colours. Must contain columns:
 #'   \itemize{
 #'     \item \code{actor}: vertex identifiers;
@@ -105,7 +105,7 @@
 #' @param directed Logical; whether to build directed \pkg{network} objects for
 #'   each slice (default \code{FALSE}). Note that most visual narratives benefit
 #'   from undirected layouts even if the underlying graph is directed.
-#' @param actor_normalize Character vector of normalization steps used to match
+#' @param actor_normalize Character vector of normalisation steps used to match
 #'   \code{communities$actor} to network vertex names. Defaults to
 #'   \code{c("strip_version","trim","tolower")}. Supported steps are:
 #'   \code{"strip_version"}, \code{"trim"}, \code{"tolower"}, \code{"toupper"},
@@ -149,13 +149,13 @@
 #'
 #' @section Troubleshooting:
 #' \itemize{
-#'   \item \strong{“invalid color name 'ndtv_col'”} — occurs when colours are not
+#'   \item \strong{"invalid color name 'ndtv_col'"} — occurs when colours are not
 #'         stored under the dynamic attribute \code{"vertex.col"} that
 #'         \pkg{ndtv} expects. This function writes to \code{"vertex.col"}
 #'         internally to avoid that error.
 #'   \item \strong{No layers found} — ensure \code{net} responds to
 #'         \code{multinet::layers_ml()} and that \code{layer_order}, if supplied,
-#'         matches existing layer names exactly (after normalization).
+#'         matches existing layer names exactly (after normalisation).
 #' }
 #'
 #' @examples

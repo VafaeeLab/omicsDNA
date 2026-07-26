@@ -59,16 +59,16 @@ file path. Default \code{TRUE}.}
 The input \code{communities} with one new column named exactly as
 \code{attribute} (e.g., \code{"GeneType"}). When \code{write_csv = TRUE}, the absolute file
 path is also attached as \code{attr(x, "file")}. Coverage (fraction of
-non‑missing, non‑empty annotations before filling) is reported to the console
+non-missing, non-empty annotations before filling) is reported to the console
 when \code{verbose = TRUE}.
 }
 \description{
 Add a node attribute (e.g., a gene annotation such as \code{"GeneType"}) to a
 \strong{community assignment table} by matching actor IDs in \code{communities} to an
-identifier column in \code{nodesMetadata}. The operation is \strong{metadata‑only}:
+identifier column in \code{nodesMetadata}. The operation is \strong{metadata-only}:
 it never calls \pkg{multinet}; it normalises IDs, performs a vectorised join,
 reports coverage, can fill unmatched rows with a sentinel value, and can write
-the annotated table to a timestamped CSV under your project’s results folder.
+the annotated table to a timestamped CSV under your project's results folder.
 }
 \details{
 \strong{Expected inputs}

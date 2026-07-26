@@ -38,14 +38,14 @@ plotCom(
 \item{communities}{\code{data.frame} with at least \code{actor} and \code{layer}, plus one of
 \code{cid}, \code{com}, or \code{community} describing community membership.}
 
-\item{layout}{Character; \code{"multiforce"} (force‑directed; supports \code{gravity})
+\item{layout}{Character; \code{"multiforce"} (force-directed; supports \code{gravity})
 or \code{"circular"}. Default \code{c("multiforce","circular")} (matched to \code{"multiforce"}).}
 
 \item{layersToPlot}{Optional character vector of layer names to draw. If
 \code{NULL}, plots the intersection of layers present in \code{communities} and in
 the network.}
 
-\item{grid}{\code{NULL} (auto near‑square) or integer vector \code{c(nrow, ncol)}.}
+\item{grid}{\code{NULL} (auto near-square) or integer vector \code{c(nrow, ncol)}.}
 
 \item{vertex.size}{Numeric; node size passed to the plotting backend. Default \code{5}.}
 
@@ -107,7 +107,7 @@ columns \code{actor}, \code{layer}, \code{cid}. The object carries attributes:
 }
 \description{
 Visualise community assignments on a multilayer network while \strong{also}
-exporting (i) a high‑resolution image and (ii) a tidy long table
+exporting (i) a high-resolution image and (ii) a tidy long table
 \verb{(actor, layer, cid)} for downstream analyses. By default the function
 (1) draws to the current graphics device (e.g., the RStudio \emph{Plots} pane),
 (2) writes an image to disk, and (3) saves the normalised assignment table.
@@ -118,21 +118,21 @@ exporting (i) a high‑resolution image and (ii) a tidy long table
 \item \strong{Normalisation} — The \code{communities} input is validated and reduced to a
 single \code{cid} per \verb{(actor, layer)} pair. If duplicates exist, the first is
 kept (message shown when \code{verbose = TRUE}). The community column can be
-any of \code{cid}, \code{com}, or \code{community}. Non‑numeric labels are factor‑coded to
+any of \code{cid}, \code{com}, or \code{community}. Non-numeric labels are factor-coded to
 integers for plotting; your original labels are unaffected upstream.
 \item \strong{Layer & actor intersection} — Only layers present in the network are
 plotted, and only actors that actually appear in those layers are kept.
-Intra‑layer edges are detected via \code{multinet::edges_ml()}; cross‑layer
-edges are discarded for the purpose of per‑layer drawing.
-\item \strong{Layout} — Choose either a force‑directed layout
+Intra-layer edges are detected via \code{multinet::edges_ml()}; cross-layer
+edges are discarded for the purpose of per-layer drawing.
+\item \strong{Layout} — Choose either a force-directed layout
 (\code{"multiforce"}, accepts \code{gravity}) or a \code{"circular"} arrangement via
 \code{multinet::layout_multiforce_ml()} / \code{layout_circular_ml()}.
-\item \strong{Grid arrangement} — Layers are laid out on a near‑square panel grid
+\item \strong{Grid arrangement} — Layers are laid out on a near-square panel grid
 unless you supply \code{grid = c(nrow, ncol)}.
 \item \strong{Reproducible export} — If \code{show_in_rstudio = TRUE}, you see the plot on
 screen and the same content is copied to file via \code{grDevices::dev.copy()}.
 If \code{show_in_rstudio = FALSE}, the figure is rendered directly to an
-off‑screen device. The long \verb{(actor, layer, cid)} table is saved as RDS
+off-screen device. The long \verb{(actor, layer, cid)} table is saved as RDS
 and/or CSV without printing to the console.
 }
 

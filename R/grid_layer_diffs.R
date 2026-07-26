@@ -7,14 +7,14 @@
 #'
 #' @description
 #' Builds a grid of **consecutive** layer difference plots from a multilayer network
-#' (e.g., E1→E2, E2→M1, …), saves **one per‑pair figure** in a user‑selected format
+#' (e.g., E1→E2, E2→M1, …), saves **one per-pair figure** in a user-selected format
 #' (\code{"png"}, \code{"pdf"}, \code{"jpg"}) **with a timestamped name**, and writes a
-#' **single combined CSV** stacking edges for all pairs (including per‑layer weights).
-#' A **grid figure** summarizing all pairs is also saved with a timestamped filename.
+#' **single combined CSV** stacking edges for all pairs (including per-layer weights).
+#' A **grid figure** summarising all pairs is also saved with a timestamped filename.
 #'
 #' @details
 #' The grid is assembled from PNG panels; if \code{pair_format != "png"}, an additional
-#' temporary PNG per pair is rendered for layout, while the per‑pair image is saved in
+#' temporary PNG per pair is rendered for layout, while the per-pair image is saved in
 #' the requested format.
 #'
 #' @param net A multilayer network (usable with \code{multinet::layers_ml()}).
@@ -25,33 +25,33 @@
 #'   \code{getOption("mlnet.results_dir","omicsDNA_results")}.
 #' @param grid_file Optional base filename for the grid figure (e.g., \code{"diffs_all_pairs.png"}).
 #'   If relative, it is created under \code{results_dir}. A timestamp is appended
-#'   before the extension. If \code{NULL}, a timestamped name is auto‑generated.
+#'   before the extension. If \code{NULL}, a timestamped name is auto-generated.
 #' @param grid_format Format for the grid figure: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
 #'   Default \code{"png"}.
 #' @param width,height,dpi Device size and resolution for the grid figure (\code{dpi} ignored for PDF).
-#' @param pair_format Format for **per‑pair** figures: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
+#' @param pair_format Format for **per-pair** figures: \code{"png"}, \code{"pdf"}, or \code{"jpg"}.
 #'   Default \code{"png"}.
-#' @param pair_file_prefix Basename prefix for per‑pair files (e.g., \code{"diff_pair"}).
+#' @param pair_file_prefix Basename prefix for per-pair files (e.g., \code{"diff_pair"}).
 #'   Files are named \code{"<prefix>_<L1>_vs_<L2>_<timestamp>.<ext>"} under \code{results_dir}.
 #' @param panel_width,panel_height,dpi_panel Geometry used when rendering panel PNGs for the grid
-#'   (and per‑pair PNGs). \code{dpi_panel} is ignored for PDF.
+#'   (and per-pair PNGs). \code{dpi_panel} is ignored for PDF.
 #' @param combined_csv_file Optional base filename for the combined CSV (e.g.,
 #'   \code{"diff_edges_all_pairs.csv"}). If relative, it is created under \code{results_dir}.
 #'   A timestamp is appended before \code{.csv}. If \code{NULL}, a default name is used.
 #' @param weight_attr Candidate edge attribute names for weights (forwarded to \code{plot_layer_diff()}).
 #' @param weight_aggregate How to combine duplicates per edge when weights exist (forwarded to \code{plot_layer_diff()}).
 #'   One of \code{"sum","mean","median","first"}. Default \code{"sum"}.
-#' @param bg Background color for grid and JPEG conversions. Default \code{"white"}.
-#' @param ... Additional aesthetics forwarded to \code{plot_layer_diff()} (layout, colors, sizes, labels, seed, etc.).
+#' @param bg Background colour for grid and JPEG conversions. Default \code{"white"}.
+#' @param ... Additional aesthetics forwarded to \code{plot_layer_diff()} (layout, colours, sizes, labels, seed, etc.).
 #'
 #' @return (Invisibly) a list with:
 #' \itemize{
 #'   \item \code{pairs} — \code{data.frame} of consecutive pairs (\code{L1}, \code{L2});
-#'   \item \code{pair_files} — named character vector of per‑pair file paths (names \code{"L1_vs_L2"});
+#'   \item \code{pair_files} — named character vector of per-pair file paths (names \code{"L1_vs_L2"});
 #'   \item \code{grid_file} — absolute path to the timestamped grid figure;
 #'   \item \code{combined_csv} — absolute path to the timestamped combined CSV;
 #'   \item \code{edges} — combined tidy \code{data.frame} across all pairs;
-#'   \item \code{counts} — per‑pair summary (\code{only_<L1>}, \code{only_<L2>}, \code{common}, \code{total}).
+#'   \item \code{counts} — per-pair summary (\code{only_<L1>}, \code{only_<L2>}, \code{common}, \code{total}).
 #' }
 #'
 #' @importFrom png readPNG

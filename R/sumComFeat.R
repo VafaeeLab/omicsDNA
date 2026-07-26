@@ -22,17 +22,17 @@
 # 18 - Summarize community membership for any feature type (short name)
 # ---------------------------------------------------------------------------
 
-#' Summarise community membership for selected feature types (pure data‑frame workflow)
+#' Summarise community membership for selected feature types (pure data-frame workflow)
 #'
 #' @description
 #' Filter a community assignment table (e.g., from `detectCom()` plus your
-#' node‑metadata merge) to one or more **feature types** (e.g., `"lncRNA"`,
+#' node-metadata merge) to one or more **feature types** (e.g., `"lncRNA"`,
 #' `"protein_coding"`, `"TF"`), then produce three concise summaries:
-#' (1) **per‑actor** membership across communities and layers;
-#' (2) **per‑community** composition (actors and layers); and
+#' (1) **per-actor** membership across communities and layers;
+#' (2) **per-community** composition (actors and layers); and
 #' (3) **counts** of unique actors per `CID × layer`.
 #' This function does **not** call \pkg{multinet}: it operates purely on data
-#' frames, making it fast, reproducible, and script‑friendly.
+#' frames, making it fast, reproducible, and script-friendly.
 #'
 #' @details
 #' **Input expectations and harmonisation**
@@ -47,22 +47,22 @@
 #'
 #' **Filtering and normalisation**
 #' - Rows are kept only if their `feature_col` value is in `feature_type`
-#'   (optionally case‑insensitive via `ignore_case`). You may further restrict to
+#'   (optionally case-insensitive via `ignore_case`). You may further restrict to
 #'   a subset of `layers`.
 #' - An auxiliary `actor_clean` is created via `.normalize_keys()` using
 #'   `actor_normalize` (default `c("strip_version","trim","tolower")`) **only to
 #'   provide a deterministic display order**; it does not affect grouping or counts.
 #'
 #' **Outputs produced**
-#' 1) **Per‑actor summary** (`by_actor`): columns
+#' 1) **Per-actor summary** (`by_actor`): columns
 #'    `actor, CIDs, Layers, n_cids, n_layers`, ordered by `actor_clean`.
-#' 2) **Per‑community summary** (`by_cid`): columns
+#' 2) **Per-community summary** (`by_cid`): columns
 #'    `cid, com, Features, Layers, n_features, n_layers`, where `Features`
-#'    is a comma‑separated list of unique actor IDs belonging to the community
+#'    is a comma-separated list of unique actor IDs belonging to the community
 #'    (after filtering), and `Layers` lists the layers in which those actors occur.
 #' 3) **Counts by community × layer** (`counts_cid_layer`): columns
 #'    `cid, com, layer, n`, where `n` is the number of **unique actors** in that
-#'    community‑layer slice.
+#'    community-layer slice.
 #'
 #' **Saving to disk**
 #' - When `write_csv = TRUE`, three timestamped CSVs are written under
@@ -89,7 +89,7 @@
 #' @param layers Optional character vector of layer names to retain. Default `NULL`
 #'   (use all layers present).
 #' @param ignore_case Logical; if `TRUE`, compare `feature_type` to `feature_col`
-#'   values case‑insensitively. Default `FALSE`.
+#'   values case-insensitively. Default `FALSE`.
 #' @param actor_normalize Character vector of normalisation steps used to build
 #'   `actor_clean` for display ordering (does **not** affect grouping or counts).
 #'   Supported steps: `"strip_version"`, `"trim"`, `"tolower"`, `"toupper"`,
@@ -97,7 +97,7 @@
 #' @param write_csv Logical; if `TRUE`, write the three CSVs described above.
 #'   Default `FALSE`.
 #' @param prefix Optional filename stem for the CSVs. If `NULL`, a stem is
-#'   auto‑generated from `feature_col` and `feature_type` (sanitised).
+#'   auto-generated from `feature_col` and `feature_type` (sanitised).
 #' @param results_dir Output directory for CSVs when `write_csv = TRUE`. Default
 #'   `getOption("mlnet.results_dir", "omicsDNA_results")`.
 #' @param verbose Logical; print short status messages (e.g., saved file paths).
@@ -105,9 +105,9 @@
 #'
 #' @return (Invisibly) a list with three data frames:
 #' \itemize{
-#'   \item `by_actor` — per‑actor membership summary,
-#'   \item `by_cid` — per‑community composition summary,
-#'   \item `counts_cid_layer` — unique‑actor counts by community × layer.
+#'   \item `by_actor` — per-actor membership summary,
+#'   \item `by_cid` — per-community composition summary,
+#'   \item `counts_cid_layer` — unique-actor counts by community × layer.
 #' }
 #' If `write_csv = TRUE`, the list has an attribute `"files"` containing absolute
 #' paths to the three CSVs.

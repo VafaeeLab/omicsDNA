@@ -51,7 +51,7 @@ matching community \code{actor} IDs to network vertices. Any subset of
 \code{c("strip_version","trim","tolower","toupper","rm_dash","rm_punct","alnum")}.
 Default \code{c("strip_version","trim","tolower")}.}
 
-\item{ncol, nrow}{Grid dimensions. If both are \code{NULL}, a near‑square grid is
+\item{ncol, nrow}{Grid dimensions. If both are \code{NULL}, a near-square grid is
 chosen automatically.}
 
 \item{width, height}{Size of the saved figure (in inches). Default \verb{12 × 8}.}
@@ -66,7 +66,7 @@ chosen automatically.}
 \item{label.cex}{Numeric multiplier for \strong{label} size (passed to
 \code{plot.network()} as \code{label.cex}). Default \code{0.6}.}
 
-\item{cex}{Soft‑deprecated alias for \code{label.cex}. If supplied, it overrides
+\item{cex}{Soft-deprecated alias for \code{label.cex}. If supplied, it overrides
 \code{label.cex} and a message is emitted. Default \code{NULL}.}
 
 \item{label.col}{Single colour for labels. Default \code{"black"}.}
@@ -91,7 +91,7 @@ with harmless placeholders.}
 
 \item{show_in_rstudio}{Logical; if \code{TRUE}, draw into the current device (e.g.
 RStudio Plots) and then copy the exact page to file. If \code{FALSE}, draw
-off‑screen directly to the file device. Default \code{TRUE}.}
+off-screen directly to the file device. Default \code{TRUE}.}
 
 \item{verbose}{Logical; print progress messages. Default \code{TRUE}.}
 }
@@ -113,7 +113,7 @@ differences easier to interpret.
 If a community assignment is provided (a data frame with columns \code{actor},
 \code{layer}, and either \code{com} or \code{cid}), vertices in each panel are coloured by
 their community membership for that layer. Colours are drawn from
-\strong{RColorBrewer} when available, otherwise a perceptible HCL palette is used.
+\strong{RColorBrewer} when available; otherwise, a perceptible HCL palette is used.
 
 The function can draw into the current device (e.g., the RStudio Plots pane)
 \emph{and} save the same page to file. Layouts are computed with \strong{igraph}; panels
@@ -123,17 +123,17 @@ many R network users.
 \details{
 \strong{Stable coordinates.} We build an \emph{undirected} union graph from all edges in
 the selected layers, compute a single layout once (Kamada–Kawai by default),
-and reuse those coordinates for every panel. This prevents the common “nodes
-jumping around” problem across slices.
+and reuse those coordinates for every panel. This prevents the common "nodes
+jumping around" problem across slices.
 
 \strong{Label size.} The visible label size is controlled by \code{label.cex} (passed to
-\code{plot.network()} as \code{label.cex}). A soft‑deprecated alias \code{cex} is accepted and
+\code{plot.network()} as \code{label.cex}). A soft-deprecated alias \code{cex} is accepted and
 mapped to \code{label.cex} to keep older scripts working.
 
 \strong{Robust I/O.} The function is defensive about column names in
 \code{multinet::edges_ml()} and will detect reasonable synonyms for endpoints and
 layer columns. If both \code{from_layer}/\code{to_layer} are present, we show only
-\strong{intra‑layer} edges (\code{from_layer == to_layer}) and store that layer name.
+\strong{intra-layer} edges (\code{from_layer == to_layer}) and store that layer name.
 }
 \section{Practical notes}{
 

@@ -7,7 +7,7 @@
 #'
 #' @description
 #' Visualise community assignments on a multilayer network while **also**
-#' exporting (i) a high‑resolution image and (ii) a tidy long table
+#' exporting (i) a high-resolution image and (ii) a tidy long table
 #' `(actor, layer, cid)` for downstream analyses. By default the function
 #' (1) draws to the current graphics device (e.g., the RStudio *Plots* pane),
 #' (2) writes an image to disk, and (3) saves the normalised assignment table.
@@ -18,21 +18,21 @@
 #' 1. **Normalisation** — The `communities` input is validated and reduced to a
 #'    single `cid` per `(actor, layer)` pair. If duplicates exist, the first is
 #'    kept (message shown when `verbose = TRUE`). The community column can be
-#'    any of `cid`, `com`, or `community`. Non‑numeric labels are factor‑coded to
+#'    any of `cid`, `com`, or `community`. Non-numeric labels are factor-coded to
 #'    integers for plotting; your original labels are unaffected upstream.
 #' 2. **Layer & actor intersection** — Only layers present in the network are
 #'    plotted, and only actors that actually appear in those layers are kept.
-#'    Intra‑layer edges are detected via `multinet::edges_ml()`; cross‑layer
-#'    edges are discarded for the purpose of per‑layer drawing.
-#' 3. **Layout** — Choose either a force‑directed layout
+#'    Intra-layer edges are detected via `multinet::edges_ml()`; cross-layer
+#'    edges are discarded for the purpose of per-layer drawing.
+#' 3. **Layout** — Choose either a force-directed layout
 #'    (`"multiforce"`, accepts `gravity`) or a `"circular"` arrangement via
 #'    `multinet::layout_multiforce_ml()` / `layout_circular_ml()`.
-#' 4. **Grid arrangement** — Layers are laid out on a near‑square panel grid
+#' 4. **Grid arrangement** — Layers are laid out on a near-square panel grid
 #'    unless you supply `grid = c(nrow, ncol)`.
 #' 5. **Reproducible export** — If `show_in_rstudio = TRUE`, you see the plot on
 #'    screen and the same content is copied to file via `grDevices::dev.copy()`.
 #'    If `show_in_rstudio = FALSE`, the figure is rendered directly to an
-#'    off‑screen device. The long `(actor, layer, cid)` table is saved as RDS
+#'    off-screen device. The long `(actor, layer, cid)` table is saved as RDS
 #'    and/or CSV without printing to the console.
 #'
 #' **File naming & persistence**
@@ -48,12 +48,12 @@
 #'   `multinet::edges_ml()` and the multilayer `plot()` method.
 #' @param communities `data.frame` with at least `actor` and `layer`, plus one of
 #'   `cid`, `com`, or `community` describing community membership.
-#' @param layout Character; `"multiforce"` (force‑directed; supports `gravity`)
+#' @param layout Character; `"multiforce"` (force-directed; supports `gravity`)
 #'   or `"circular"`. Default `c("multiforce","circular")` (matched to `"multiforce"`).
 #' @param layersToPlot Optional character vector of layer names to draw. If
 #'   `NULL`, plots the intersection of layers present in `communities` and in
 #'   the network.
-#' @param grid `NULL` (auto near‑square) or integer vector `c(nrow, ncol)`.
+#' @param grid `NULL` (auto near-square) or integer vector `c(nrow, ncol)`.
 #' @param vertex.size Numeric; node size passed to the plotting backend. Default `5`.
 #' @param vertex.cex Numeric; node size multiplier. Default `1.2`.
 #' @param show.labels Logical; whether to show vertex labels. Default `FALSE`.

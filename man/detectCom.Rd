@@ -110,7 +110,7 @@ clique percolation, ABACUS). In this mode the function returns the native
 \pkg{multinet} community object.
 \item \strong{Supra-graph community detection (\code{supra_graph = TRUE})}:
 selected layers are first aggregated into a single undirected actor–actor graph
-(a “supra-graph”). A standard \pkg{igraph} community algorithm is then applied,
+(a "supra-graph"). A standard \pkg{igraph} community algorithm is then applied,
 and community memberships are mapped back to each layer where the actor appears.
 }
 

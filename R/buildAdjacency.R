@@ -3,16 +3,16 @@
 # 1 - Build adjacency matrices
 # -----------------------------------------------------------------------------
 
-#' Build correlation‑filtered adjacency matrices by group
+#' Build correlation-filtered adjacency matrices by group
 #'
-#' Construct one or more feature‑by‑feature networks for each group of samples
+#' Construct one or more feature-by-feature networks for each group of samples
 #' by correlating feature profiles across samples in that group and keeping only
-#' edges that satisfy **both** an absolute correlation threshold and a p‑value
+#' edges that satisfy **both** an absolute correlation threshold and a p-value
 #' cutoff. Optionally, repeat the procedure with balanced draws per group to
 #' produce multiple resampled networks (useful for consensus or stability work).
 #'
 #' @description
-#' The function is domain‑agnostic:
+#' The function is domain-agnostic:
 #' - *Omics:* features = genes/transcripts; samples = subjects/cells; groups = condition/age.
 #' - *Social/behavioral:* features = variables; samples = respondents; groups = cohorts.
 #' - *Sensors/engineering:* features = channels; samples = runs/windows; groups = modes.
@@ -23,13 +23,13 @@
 #' - `sample_metadata` must contain a grouping column (`group_col`) and a sample ID column
 #'   (`sample_col`) whose values match `colnames(dataMatrix)`. Samples not found are ignored.
 #' - The analysis is restricted to `feature_ids` (order is preserved). Requested features
-#'   not present in `dataMatrix` are zero‑padded in the final adjacency so all outputs
+#'   not present in `dataMatrix` are zero-padded in the final adjacency so all outputs
 #'   share identical dimensions and ordering.
 #'
 #' **Computation per group**
-#' 1. Assemble the group’s samples (optionally sub‑sampled if resampling is enabled).
+#' 1. Assemble the group's samples (optionally sub-sampled if resampling is enabled).
 #' 2. (If available) run `WGCNA::goodSamplesGenes()` to drop problematic samples/features.
-#' 3. Compute correlations and p‑values with `WGCNA::corAndPvalue()` when **WGCNA** is
+#' 3. Compute correlations and p-values with `WGCNA::corAndPvalue()` when **WGCNA** is
 #'    installed; otherwise fall back to `Hmisc::rcorr()`. Diagonals are set to 0 (corr) and 1 (p).
 #' 4. Form the adjacency by zeroing entries that fail either filter:
 #'    `abs(corr) < corr_threshold` **or** `p > pval_cutoff` (where `p` can be **adjusted**
@@ -44,14 +44,14 @@
 #' **Size requirements & NA handling**
 #' - Requires **≥ 3 samples** per group and **≥ 2 features** after QC; otherwise a zero
 #'   matrix is returned for that group.
-#' - Non‑numeric columns are coerced to numeric; coercion may introduce `NA`s.
+#' - Non-numeric columns are coerced to numeric; coercion may introduce `NA`s.
 #'   If **WGCNA** is present, QC removes egregious rows/columns; otherwise the fallback
 #'   correlation uses pairwise information via `Hmisc::rcorr()`.
 #'
 #' **Output shape**
 #' - If `resample = FALSE`: a **named list** of adjacency matrices (one per group).
 #' - If `resample = TRUE`: a **list of length `n_repeats`**, where each element is a
-#'   named sub‑list of groups (`out[[repeat]][[group]]`).
+#'   named sub-list of groups (`out[[repeat]][[group]]`).
 #'
 #' **Persistence**
 #' - When `save_rds = TRUE`, the object is written to
@@ -61,7 +61,7 @@
 #' @param dataMatrix Numeric matrix/data.frame; **features in rows**, **samples in columns**.
 #' @param sample_metadata Data frame with at least `group_col` and `sample_col`.
 #' @param feature_ids Character vector of feature IDs to include (should match `rownames(dataMatrix)`);
-#'   missing features are zero‑padded in outputs so dimensions are consistent. IDs should be unique.
+#'   missing features are zero-padded in outputs so dimensions are consistent. IDs should be unique.
 #' @param feature_metadata Optional feature annotations (currently not used; kept for API symmetry).
 #' @param group_col Name of the grouping column in `sample_metadata`. Default `"group"`.
 #' @param sample_col Name of the sample ID column in `sample_metadata`. Default `"sample"`.
@@ -71,7 +71,7 @@
 #'   Options: "none" (default; use raw p-values), "fdr" (false discovery rate),
 #'   "BH" (Benjamini–Hochberg), or "bonferroni". **Synonyms** "bh" and "bf" are accepted.
 #'   The cutoff in `pval_cutoff` will be applied to the adjusted values if this is not "none".
-#' @param pval_cutoff P‑value cutoff for keeping an edge. Default `0.05`.
+#' @param pval_cutoff P-value cutoff for keeping an edge. Default `0.05`.
 #' @param corr_threshold Absolute correlation threshold for keeping an edge. Default `0.7`.
 #' @param resample Logical; enable balanced draws per group. Default `TRUE`.
 #' @param samples_per_group Target samples drawn per group when resampling. Default `10`.
@@ -92,7 +92,7 @@
 #'
 #' @section Tips:
 #' - Call `set.seed()` for reproducible resampling.
-#' - For very large `feature_ids`, pre‑filter (e.g., top DE features) to keep the
+#' - For very large `feature_ids`, pre-filter (e.g., top DE features) to keep the
 #'   number of pairwise correlations manageable.
 #'
 #' @examples

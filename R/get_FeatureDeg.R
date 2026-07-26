@@ -25,10 +25,10 @@
 #' Degrees for a selected feature set across layers (robust, \pkg{igraph}-based)
 #'
 #' @description
-#' Compute per‑layer **degrees** for an arbitrary set of actors (e.g., genes of
-#' interest). The function extracts all **intra‑layer** edges from a
+#' Compute per-layer **degrees** for an arbitrary set of actors (e.g., genes of
+#' interest). The function extracts all **intra-layer** edges from a
 #' \pkg{multinet} object, builds one \pkg{igraph} graph per layer, and reports
-#' each requested actor’s degree in that layer. Actors not present in a given
+#' each requested actor's degree in that layer. Actors not present in a given
 #' layer are added as **isolates** so their degree is reported as `0` rather than
 #' `NA`. Results can be returned in **wide** (default) or **long** shape and
 #' optionally written to a timestamped CSV in your project results folder.
@@ -36,13 +36,13 @@
 #' @details
 #' **Input normalisation and scope**
 #' - Edges are retrieved once via `multinet::edges_ml(net)` and coerced to a data
-#'   frame. If `from_layer` and `to_layer` exist, only **intra‑layer** edges are
+#'   frame. If `from_layer` and `to_layer` exist, only **intra-layer** edges are
 #'   kept (`from_layer == to_layer`) and a single `layer` column is created from
 #'   `from_layer`. Otherwise an existing `layer`/`Layer` column is used; if none
 #'   exists, a single layer `"L1"` is assumed.
 #' - Endpoint columns are identified robustly by name (tries common pairs such as
 #'   `from`/`to`, `source`/`target`, `actor1`/`actor2`). If these are absent, the
-#'   **first two character columns** (excluding layer‑like columns) are used.
+#'   **first two character columns** (excluding layer-like columns) are used.
 #'
 #' **Actor matching and normalisation**
 #' - Actor names in `featureList` are matched to vertex names per layer using the
@@ -59,7 +59,7 @@
 #' **Output shape and persistence**
 #' - By default (`return_long = FALSE`), a **wide** table is returned with one
 #'   row per `Layer` and one column per `Feature`. If \pkg{tidyr} is available,
-#'   reshaping is done with `pivot_wider`; otherwise a base‑R fallback is used.
+#'   reshaping is done with `pivot_wider`; otherwise a base-R fallback is used.
 #' - With `return_long = TRUE`, a **long** table is returned with columns
 #'   `Layer`, `Feature`, `Degree`.
 #' - If `write_csv = TRUE`, results are written under
@@ -77,8 +77,8 @@
 #' @param featureList Character vector of actor names to measure (duplicates are
 #'   ignored; input order is preserved in the output).
 #' @param layers Optional character vector of layer names to include. Default:
-#'   all layers found in `edges_ml(net)` after intra‑layer filtering.
-#' @param directed Logical; build directed per‑layer graphs? Default `FALSE`.
+#'   all layers found in `edges_ml(net)` after intra-layer filtering.
+#' @param directed Logical; build directed per-layer graphs? Default `FALSE`.
 #' @param mode Degree mode used when `directed = TRUE`: one of `"all"` (default),
 #'   `"in"`, or `"out"`. Ignored when `directed = FALSE`.
 #' @param actor_normalize Character vector of normalisation steps applied to both
@@ -92,7 +92,7 @@
 #'   the default placeholder (`"features-degree_byLayer.csv"`), an informative,
 #'   timestamped name is generated automatically in that folder.
 #' @param results_dir Directory used when `output_file` is relative or
-#'   auto‑generated. Default `getOption("mlnet.results_dir","omicsDNA_results")`.
+#'   auto-generated. Default `getOption("mlnet.results_dir","omicsDNA_results")`.
 #' @param return_long Logical; return long format (`Layer`, `Feature`, `Degree`)?
 #'   Default `FALSE` (wide).
 #' @param verbose Logical; print the saved file path when writing. Default `TRUE`.
@@ -114,14 +114,14 @@
 #'   output_file = "lncRNA_degree_byLayer.csv"
 #' )
 #'
-#' # 2) Protein‑coding, long shape (no file)
+#' # 2) Protein-coding, long shape (no file)
 #' pc_list <- unique(subset(comm_annot, GeneType == "protein_coding")$actor)
 #' deg_pc  <- get_FeatureDeg(
 #'   net, featureList = pc_list, layers = all_layers,
 #'   return_long = TRUE
 #' )
 #'
-#' # 3) Directed in‑degree for a custom list on selected layers
+#' # 3) Directed in-degree for a custom list on selected layers
 #' sel_layers <- c("Young","Old")
 #' deg_in <- get_FeatureDeg(
 #'   net, featureList = c("TP53","MYC","EGFR"),
@@ -130,8 +130,8 @@
 #' }
 #'
 #' @seealso
-#'   \code{\link{layer_metrics}} for broader per‑layer summaries;
-#'   \code{\link{sumComFeat}} and \code{\link{annotateCom}} for feature‑aware
+#'   \code{\link{layer_metrics}} for broader per-layer summaries;
+#'   \code{\link{sumComFeat}} and \code{\link{annotateCom}} for feature-aware
 #'   community summaries and annotations.
 #'
 #' @importFrom multinet edges_ml

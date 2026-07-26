@@ -26,10 +26,10 @@
 #' @description
 #' Add a node attribute (e.g., a gene annotation such as `"GeneType"`) to a
 #' **community assignment table** by matching actor IDs in `communities` to an
-#' identifier column in `nodesMetadata`. The operation is **metadata‑only**:
+#' identifier column in `nodesMetadata`. The operation is **metadata-only**:
 #' it never calls \pkg{multinet}; it normalises IDs, performs a vectorised join,
 #' reports coverage, can fill unmatched rows with a sentinel value, and can write
-#' the annotated table to a timestamped CSV under your project’s results folder.
+#' the annotated table to a timestamped CSV under your project's results folder.
 #'
 #' @details
 #' **Expected inputs**
@@ -91,7 +91,7 @@
 #' @return The input `communities` with one new column named exactly as
 #'   `attribute` (e.g., `"GeneType"`). When `write_csv = TRUE`, the absolute file
 #'   path is also attached as `attr(x, "file")`. Coverage (fraction of
-#'   non‑missing, non‑empty annotations before filling) is reported to the console
+#'   non-missing, non-empty annotations before filling) is reported to the console
 #'   when `verbose = TRUE`.
 #'
 #' @examples

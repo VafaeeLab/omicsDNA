@@ -3,7 +3,7 @@
 # 6 - Convert a list of edge data frames to a list of igraphs
 # ------------------------------------------------------------------------------
 
-#' Convert per‑layer edge tables to per‑layer `igraph` graphs
+#' Convert per-layer edge tables to per-layer `igraph` graphs
 #'
 #' @description
 #' Takes a **named list** of edge data frames (e.g., the output of

@@ -4,7 +4,7 @@
 # 5 - Build a multilayer network from per-layer igraph objects (aligned with build_multiNet)
 # ------------------------------------------------------------------------------
 
-#' Build a multilayer network from per‑layer **igraph** graphs
+#' Build a multilayer network from per-layer **igraph** graphs
 #'
 #' @description
 #' Construct a multilayer network—**one layer per graph**—from a named list of
@@ -16,8 +16,8 @@
 #' - **Layer ordering:** if `layerOrder = NULL`, layers are ordered **alphabetically**.
 #' - **Vertex attributes:** when `nodesMetadata` is supplied, attributes from
 #'   metadata **overwrite** existing graph vertex attributes of the same name
-#'   (default behavior in `build_multiNet()`).
-#' - **No automatic simplification or actor normalization** by default.
+#'   (default behaviour in `build_multiNet()`).
+#' - **No automatic simplification or actor normalisation** by default.
 #'
 #' **Input expectations**
 #' - `graphsPerLayer` is a **named list** where each element is an `igraph`.
@@ -29,7 +29,7 @@
 #' **Persistence**
 #' When `save_to_rds = TRUE`, the multilayer network is saved under
 #' `results_dir` (default: `getOption("mlnet.results_dir","omicsDNA_results")`)
-#' with an auto‑stamped filename unless `rds_file` is supplied.
+#' with an auto-stamped filename unless `rds_file` is supplied.
 #'
 #' @param graphsPerLayer Named list of `igraph` objects (one per layer).
 #' @param layerOrder Optional character vector specifying which layers to keep
@@ -42,10 +42,10 @@
 #' @param attr_conflict Conflict policy when a vertex attribute exists both in a
 #'   graph and in `nodesMetadata`. One of `"overwrite_with_meta"` (default),
 #'   `"keep_graph"`, or `"coalesce"` (fill graph NAs with metadata).
-#' @param actor_normalize Optional character vector of normalization steps
+#' @param actor_normalize Optional character vector of normalisation steps
 #'   applied to vertex names within each graph. Any subset of
 #'   `c("strip_version","trim","tolower")`. Default `NULL` = disabled (matches
-#'   `build_multiNet()` behavior).
+#'   `build_multiNet()` behaviour).
 #' @param simplify Logical; if `TRUE`, call `igraph::simplify()` per layer to
 #'   merge parallel edges and drop loops. Default `FALSE`.
 #' @param simplify_weight How to combine the `weight` attribute when simplifying.
@@ -59,7 +59,7 @@
 #' @param save_layers_graphml Logical; also export each layer as GraphML. Default `FALSE`.
 #' @param graphml_prefix Basename prefix for GraphML files (layer name and a
 #'   timestamp are appended). Default `"layer"`.
-#' @param verbose Logical; print per‑layer summaries and file paths. Default `TRUE`.
+#' @param verbose Logical; print per-layer summaries and file paths. Default `TRUE`.
 #'
 #' @return A `multinet::ml.network` object with one layer per input graph.
 #'

@@ -27,14 +27,14 @@
 #' **Layer selection and reordering**
 #' - If `layers` is `NULL`, all layers from `multinet::layers_ml(net)` are used.
 #'   If a subset is provided, it is intersected with available layers.
-#' - When `reorder = TRUE`, the matrix is re‑indexed by hierarchical clustering
+#' - When `reorder = TRUE`, the matrix is re-indexed by hierarchical clustering
 #'   on `1 - Jaccard` (average linkage). `NA` entries are temporarily treated as
 #'   `0` for the dendrogram only.
 #'
 #' **Heatmap**
 #' - The Jaccard matrix is converted to long form and plotted with
 #'   `ggplot2::geom_tile()`. The fill scale spans `[0, 1]`, `NA`s render in light
-#'   grey, aspect ratio is equal, and x‑axis labels are rotated for readability.
+#'   grey, aspect ratio is equal, and x-axis labels are rotated for readability.
 #'   Colours can be customised via `palette` (fed to `scale_fill_gradientn()`).
 #'
 #' @param net A multilayer network object compatible with `multinet`, i.e., one
@@ -57,8 +57,8 @@
 #' @section Notes and limitations:
 #' - In the fallback path, the endpoint identification is **heuristic** (first
 #'   two character columns). If your edge table contains additional character
-#'   columns (e.g., a textual layer label) before the endpoints, re‑order columns
-#'   or pre‑process the table to avoid misidentification.
+#'   columns (e.g., a textual layer label) before the endpoints, re-order columns
+#'   or pre-process the table to avoid misidentification.
 #' - Edges are treated as **undirected**; for directed analyses, build directed
 #'   keys explicitly upstream.
 #'
@@ -69,7 +69,7 @@
 #' attr(E, "plot")   # access the ggplot object programmatically
 #' }
 #'
-#' @seealso \code{\link{analyze_actor_overlap}} for actor‑set overlap across layers.
+#' @seealso \code{\link{analyze_actor_overlap}} for actor-set overlap across layers.
 #'
 #' @importFrom multinet layers_ml edges_ml layer_comparison_ml
 #' @importFrom ggplot2 ggplot aes geom_tile scale_fill_gradientn theme_minimal labs ggtitle element_text coord_equal

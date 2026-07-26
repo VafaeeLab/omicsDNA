@@ -10,11 +10,11 @@ editor_options:
 
 # omicsDNA <img src="man/figures/logo.png" align="right" height="110"/>
 
-*A multilayer network toolkit for grouped omics (and other high‑dimensional) data.*
+*A multilayer network toolkit for grouped omics (and other high-dimensional) data.*
 
-`omicsDNA` builds **layered networks** from grouped data (e.g., age groups, disease stages), stabilises edges via resampling + consensus, assembles a **multilayer** object, detects and visualises **communities**, quantifies **layer‑wise structure**, compares **overlaps**, and produces **static** and **dynamic** visuals with reproducible, timestamped outputs. (Examples below follow the function order in the package script.)
+`omicsDNA` builds **layered networks** from grouped data (e.g., age groups, disease stages), stabilises edges via resampling + consensus, assembles a **multilayer** object, detects and visualises **communities**, quantifies **layer-wise structure**, compares **overlaps**, and produces **static** and **dynamic** visuals with reproducible, timestamped outputs. (Examples below follow the function order in the package script.)
 
-> Tip: set a default results directory so all artifacts land in one place.
+> Tip: set a default results directory so all artefacts land in one place.
 ```r
 options(mlnet.results_dir = "~/omicsDNA_results")
 ```
@@ -35,11 +35,11 @@ install.packages(c("gifski","gganimate","png","av"))# GIF / MP4 exporters
 
 ---
 
-## Function‑by‑function examples
+## Function-by-function examples
 
-Below, each function has **one example with its most informative arguments** (as in the package script). Replace object names (`expression_mat`, `metaData`, …) with your data.
+Below, each function has **one example with its most informative arguments** (as in the package script). Replace object names (`expression_mat`, `metaData`, …) with your own data.
 
-### 1) `buildAdjacency()` — group‑wise correlation → adjacency (with optional resampling)
+### 1) `buildAdjacency()` — group-wise correlation → adjacency (with optional resampling)
 ```r
 
 setwd("~/Abir/test_data/")
@@ -95,9 +95,9 @@ adjacency <- buildAdjacency(
 
 ```
 
-### 1.1) `sc_buildAdjacency()` — **single‑cell** Seurat → per‑cell‑type adjacency
+### 1.1) `sc_buildAdjacency()` — **single-cell** Seurat → per-cell-type adjacency
 
-For a comprehensive detailed analysis, refer to following vignette on human foetal kidney single cell RNA-seq data:
+For a comprehensive, detailed analysis, refer to the following vignette on human foetal kidney single-cell RNA-seq data:
 
 [sc_omicsDNA](https://rstudio.anc-lab.cloud.edu.au/~mpir0002/22_09_2025_sc_omicsDNA_v3.html)
 
@@ -152,7 +152,7 @@ edges_list <- edgesFromAdjacency(
 ```
 
 
-### 3) `consensusEdges()` — across‑repeat edge consensus per layer (CSV/XLSX/RDS)
+### 3) `consensusEdges()` — across-repeat edge consensus per layer (CSV/XLSX/RDS)
 ```r
 
 # Tidy edge table with 'layer' and 'rep' columns
@@ -187,7 +187,7 @@ cons_list <- consensusEdges(
 ```
 
 
-### 4) `build_multiNet()` — assemble multilayer from per‑layer **edge lists**
+### 4) `build_multiNet()` — assemble multilayer from per-layer **edge lists**
 ```r
 
 gene_info <- read_csv("gene_info2.csv", skip = 1)
@@ -251,7 +251,7 @@ net_graphs <- build_multinet_from_graphs(
 ```
 
 
-Build a second graph to make a comparison between two multi-layer graphs using the next function.     
+Build a second graph so that two multilayer graphs can be compared with the next function.
 ```r
 
 net_edges <- build_multiNet(
@@ -282,7 +282,7 @@ diff_report <- compare_multinets(
 ```
 
 
-**compare_multinets() helps compare common and different edges between layers of two multilayer graphs, can be used in the downstream enrichment analysis with aim of comparing two biological contexts across same time points or layers.**     
+**compare_multinets() compares the common and differing edges between the layers of two multilayer graphs. It can be used in downstream enrichment analysis to compare two biological contexts across the same time points or layers.**
 
 ### 9) `add_network_attributes()` — attach actor/edge metadata to the multilayer net
 ```r
@@ -328,7 +328,7 @@ rep$samples$edges            # first rows of edges with attribute columns
 ```
 
 
-### 11) `detectCom()` — community detection per layer and on the supra‑graph
+### 11) `detectCom()` — community detection per layer and on the supra-graph
 ```r
 
 # Equivalent to multinet::glouvain_ml(net, gamma = 1, omega = 1)
@@ -430,7 +430,7 @@ p <- plotCom(
 ```
 
 
-### 13) `edges_vs_samples()` — sanity: community counts vs sample counts
+### 13) `edges_vs_samples()` — sanity check: community counts vs sample counts
 ```r
 
 ns <- c(E1 = 46, E2 = 22, M1 = 16, M2 = 27, M3 = 23, M4 = 26)
@@ -464,7 +464,7 @@ Eov <- analyze_edge_overlap(
 
 ```
 
-### 16) `layer_metrics()` — per‑layer size/centrality/path summaries
+### 16) `layer_metrics()` — per-layer size/centrality/path summaries
 ```r
 
 LM <- layer_metrics(net)
@@ -1033,13 +1033,13 @@ fs <- filmstrip_multiNet(
 )
 ```
 
-### 25) `plotActivityTimeline()` — Gantt‑style lifespans of edges/vertices
+### 25) `plotActivityTimeline()` — Gantt-style lifespans of edges/vertices
 ```r
 timeline_edges  <- plotActivityTimeline(net, type = "edge",   top_n = 300)
 timeline_actors <- plotActivityTimeline(net, type = "vertex", top_n = 100, vertex.col = "tomato")
 ```
 
-### 26) `plot_layer_diff()` — pairwise layer “new / lost / common” edges
+### 26) `plot_layer_diff()` — pairwise layer "new / lost / common" edges
 ```r
 plot_layer_diff(
   net,
@@ -1049,7 +1049,7 @@ plot_layer_diff(
 )
 ```
 
-### 27) `grid_layer_diffs()` — multi‑panel grid of **all consecutive pair** differences
+### 27) `grid_layer_diffs()` — multi-panel grid of **all consecutive pair** differences
 ```r
 grid_layer_diffs(
   net,
@@ -1064,7 +1064,7 @@ grid_layer_diffs(
 
 ## Reproducibility notes
 
-Most functions save outputs under `getOption("mlnet.results_dir","omicsDNA_results")` with timestamped names; many return a `file` / `files` attribute pointing to what was written. Set a seed before stochastic steps (resampling, layouts, communities):
+Most functions save outputs under `getOption("mlnet.results_dir","omicsDNA_results")` with timestamped names; many return a `file` / `files` attribute pointing to what was written. Set a seed before any stochastic step (resampling, layouts, community detection):
 
 ```r
 set.seed(1)

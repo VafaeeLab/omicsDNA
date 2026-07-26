@@ -60,7 +60,7 @@ corresponding entry is \code{NA}.
 \itemize{
 \item If \code{layers} is \code{NULL}, all layers from \code{multinet::layers_ml(net)} are used.
 If a subset is provided, it is intersected with available layers.
-\item When \code{reorder = TRUE}, the matrix is re‑indexed by hierarchical clustering
+\item When \code{reorder = TRUE}, the matrix is re-indexed by hierarchical clustering
 on \code{1 - Jaccard} (average linkage). \code{NA} entries are temporarily treated as
 \code{0} for the dendrogram only.
 }
@@ -69,7 +69,7 @@ on \code{1 - Jaccard} (average linkage). \code{NA} entries are temporarily treat
 \itemize{
 \item The Jaccard matrix is converted to long form and plotted with
 \code{ggplot2::geom_tile()}. The fill scale spans \verb{[0, 1]}, \code{NA}s render in light
-grey, aspect ratio is equal, and x‑axis labels are rotated for readability.
+grey, aspect ratio is equal, and x-axis labels are rotated for readability.
 Colours can be customised via \code{palette} (fed to \code{scale_fill_gradientn()}).
 }
 }
@@ -78,8 +78,8 @@ Colours can be customised via \code{palette} (fed to \code{scale_fill_gradientn(
 \itemize{
 \item In the fallback path, the endpoint identification is \strong{heuristic} (first
 two character columns). If your edge table contains additional character
-columns (e.g., a textual layer label) before the endpoints, re‑order columns
-or pre‑process the table to avoid misidentification.
+columns (e.g., a textual layer label) before the endpoints, re-order columns
+or pre-process the table to avoid misidentification.
 \item Edges are treated as \strong{undirected}; for directed analyses, build directed
 keys explicitly upstream.
 }
@@ -94,5 +94,5 @@ attr(E, "plot")   # access the ggplot object programmatically
 
 }
 \seealso{
-\code{\link{analyze_actor_overlap}} for actor‑set overlap across layers.
+\code{\link{analyze_actor_overlap}} for actor-set overlap across layers.
 }
