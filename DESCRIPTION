@@ -1,9 +1,12 @@
 Package: omicsDNA
 Title: A Multilayer Network Toolkit for Grouped Omics and Other High-Dimensional Data
 Version: 0.0.0.9000
-Authors@R:
+Authors@R: c(
     person("Mehran", "Piran", , "piranmehran@gmail.com", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0001-7891-728X"))
+           comment = c(ORCID = "0000-0001-7891-728X")),
+    person("Abir", "Khazaal", , "a.khazaal@unsw.edu.au", role = "aut",
+           comment = c(ORCID = "0009-0001-0281-3932")),
+    person("VafaeeLab", role = "cph"))
 Description: Builds layered networks from grouped data (e.g., age groups or
     disease stages), stabilises edges via resampling and consensus, assembles a
     multilayer network object, detects and visualises communities, quantifies
